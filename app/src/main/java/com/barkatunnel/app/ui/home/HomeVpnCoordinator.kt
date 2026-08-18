@@ -31,7 +31,8 @@ class HomeVpnCoordinator(
                 ) {
                     is VpnAccessResult.Connected ->
                         HomeVpnResult.Connected(network.displayName)
-
+is VpnAccessResult.Disconnected ->
+    HomeVpnResult.Disconnected
                     is VpnAccessResult.AccessDenied ->
                         HomeVpnResult.AccessDenied
 
