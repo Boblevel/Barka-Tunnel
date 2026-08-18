@@ -1,6 +1,6 @@
 package com.barkatunnel.app
 
-// BARKA_HOME_RUNTIME_V2
+// BARKA_HOME_RUNTIME_V3_COMPAT
 
 import android.app.AlertDialog
 import android.app.Dialog
@@ -18,10 +18,7 @@ import com.barkatunnel.app.ipfinder.IpFinderActivity
 import com.barkatunnel.app.journal.JournalActivity
 import com.barkatunnel.app.networkinfo.MoovIpValidator
 import com.barkatunnel.app.networkinfo.NetworkIpProvider
-import com.barkatunnel.app.networkinfo.NetworkTransport
 import com.barkatunnel.app.settings.SettingsActivity
-import com.barkatunnel.app.subscription.ActivationActivity
-import com.barkatunnel.app.subscription.SubscriptionActivity
 import com.barkatunnel.app.ui.home.HomeConnectionState
 import com.barkatunnel.app.ui.home.HomeController
 import com.barkatunnel.app.ui.home.HomeControllerResult
@@ -48,10 +45,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
-
-    private val networkIpProvider by lazy {
-        NetworkIpProvider(this)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -411,22 +404,6 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
-        dialog.findViewById<android.view.View>(R.id.menuSubscription)
-            .setOnClickListener {
-                dialog.dismiss()
-                startActivity(
-                    Intent(this, SubscriptionActivity::class.java)
-                )
-            }
-
-        dialog.findViewById<android.view.View>(R.id.menuActivation)
-            .setOnClickListener {
-                dialog.dismiss()
-                startActivity(
-                    Intent(this, ActivationActivity::class.java)
-                )
-            }
-
         dialog.findViewById<android.view.View>(R.id.menuIpFinder)
             .setOnClickListener {
                 dialog.dismiss()
@@ -460,16 +437,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshNetworkIp() {
-        val info = networkIpProvider.getCurrent()
+        val info = NetworkIpProvider.getCurrent(this)
 
-        networkIpValue.text = info.displayIp
+        networkIpValue.text = info.ip
 
-        val transportLabel = when (info.transport) {
-            NetworkTransport.CELLULAR -> "Données mobiles"
-            NetworkTransport.WIFI -> "Wi‑Fi"
-            NetworkTransport.VPN -> "VPN"
-            NetworkTransport.OTHER -> "Réseau"
-        }
+        val transportLabel = info.transport
 
         networkIpStatus.text = when (selectedNetwork?.id) {
             "moov_bf" -> {
