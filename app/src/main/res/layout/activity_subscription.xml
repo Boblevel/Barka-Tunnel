@@ -4,7 +4,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/barka_background">
+    android:background="@color/barka_background"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -24,101 +25,115 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="Choisissez votre abonnement"
+            android:layout_marginTop="22dp"
+            android:text="Choisissez une offre"
             android:textColor="@color/barka_text"
-            android:textSize="18sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Le code sera généré automatiquement après confirmation du paiement."
-            android:textColor="@color/barka_text_secondary"
-            android:textSize="13sp" />
 
         <RadioGroup
             android:id="@+id/plansGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp">
+            android:layout_marginTop="10dp"
+            android:checkedButton="@id/plan24h">
 
             <RadioButton
                 android:id="@+id/plan24h"
                 android:layout_width="match_parent"
-                android:layout_height="68dp"
+                android:layout_height="60dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
+                android:checked="true"
                 android:paddingHorizontal="16dp"
-                android:text="24 HEURES                                  300 XOF"
+                android:text="24 HEURES                                      300 XOF"
                 android:textColor="@color/barka_text"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:textStyle="bold" />
 
             <RadioButton
                 android:id="@+id/plan1w"
                 android:layout_width="match_parent"
-                android:layout_height="68dp"
-                android:layout_marginTop="10dp"
+                android:layout_height="60dp"
+                android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
                 android:paddingHorizontal="16dp"
-                android:text="1 SEMAINE                                  800 XOF"
+                android:text="1 SEMAINE                                      800 XOF"
                 android:textColor="@color/barka_text"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:textStyle="bold" />
 
             <RadioButton
                 android:id="@+id/plan2w"
                 android:layout_width="match_parent"
-                android:layout_height="68dp"
-                android:layout_marginTop="10dp"
+                android:layout_height="60dp"
+                android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
                 android:paddingHorizontal="16dp"
-                android:text="2 SEMAINES                              1 000 XOF"
+                android:text="2 SEMAINES                                  1 000 XOF"
                 android:textColor="@color/barka_text"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:textStyle="bold" />
 
             <RadioButton
                 android:id="@+id/plan1m"
                 android:layout_width="match_parent"
-                android:layout_height="68dp"
-                android:layout_marginTop="10dp"
+                android:layout_height="60dp"
+                android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
                 android:paddingHorizontal="16dp"
-                android:text="1 MOIS                                      2 000 XOF"
+                android:text="1 MOIS                                          2 000 XOF"
                 android:textColor="@color/barka_text"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:textStyle="bold" />
-
         </RadioGroup>
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:background="@drawable/bg_network_selected"
-            android:padding="16dp"
-            android:text="Paiement 100% sécurisé"
-            android:textColor="@color/barka_text"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/payButton"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="16dp"
-            android:text="PAYER MAINTENANT"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:backgroundTint="@color/barka_blue"
-            app:cornerRadius="14dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PAIEMENT SÉCURISÉ"
+                android:textColor="@color/barka_blue"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Payez facilement et recevez votre code d’activation."
+                android:textColor="@color/barka_text_secondary"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/payButton"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="14dp"
+                android:text="PAYER"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_blue"
+                app:cornerRadius="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:text="Après paiement, vous recevrez votre code d’activation à copier."
+                android:textColor="@color/barka_text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
-
 </ScrollView>

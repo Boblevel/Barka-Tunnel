@@ -1,17 +1,17 @@
 package com.barkatunnel.app.subscription
 
 import android.os.Bundle
-import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.barkatunnel.app.R
+import com.barkatunnel.app.journal.AppLogStore
 import com.google.android.material.button.MaterialButton
 
 class SubscriptionActivity : AppCompatActivity() {
 
-    private var selectedPlanId: String? = null
-    private var selectedAmount: Int = 0
+    private var selectedPlanId: String = "24h"
+    private var selectedAmount: Int = 300
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,6 +19,8 @@ class SubscriptionActivity : AppCompatActivity() {
 
         val plansGroup = findViewById<RadioGroup>(R.id.plansGroup)
         val payButton = findViewById<MaterialButton>(R.id.payButton)
+
+        plansGroup.check(R.id.plan24h)
 
         plansGroup.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
@@ -30,14 +32,14 @@ class SubscriptionActivity : AppCompatActivity() {
         }
 
         payButton.setOnClickListener {
-            if (selectedPlanId == null) {
-                Toast.makeText(this, "Choisis d’abord un abonnement.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
+            AppLogStore.add(
+                this,
+                "Paiement",
+                "Offre sélectionnée : $selectedPlanId • $selectedAmount XOF"
+            )
             Toast.makeText(
                 this,
-                "Paiement $selectedAmount XOF : connexion serveur au prochain bloc.",
+                "Offre sélectionnée : $selectedAmount XOF. Paiement serveur à connecter.",
                 Toast.LENGTH_SHORT
             ).show()
         }

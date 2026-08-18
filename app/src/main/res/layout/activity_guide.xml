@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/barka_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="GUIDE D’UTILISATION"
+            android:textColor="@color/barka_blue"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView android:id="@+id/guide1" style="@style/BarkaGuideItem" android:text="1. Présentation                                      ⌄" />
+        <TextView android:id="@+id/guide1Details" style="@style/BarkaGuideDetails" android:text="Découvrez Barka Tunnel et les éléments principaux de l’accueil." />
+
+        <TextView android:id="@+id/guide2" style="@style/BarkaGuideItem" android:text="2. Choisir le réseau                              ⌄" />
+        <TextView android:id="@+id/guide2Details" style="@style/BarkaGuideDetails" android:text="Sélectionnez MOOV-AFRICA BF, ORANGE BF ou TELECEL BF selon votre réseau." />
+
+        <TextView android:id="@+id/guide3" style="@style/BarkaGuideItem" android:text="3. IP Finder                                           ⌄" />
+        <TextView android:id="@+id/guide3Details" style="@style/BarkaGuideDetails" android:text="Ajoutez vos IP, choisissez les ports et lancez le scan. Le scan s’arrête dès qu’une IP répond." />
+
+        <TextView android:id="@+id/guide4" style="@style/BarkaGuideItem" android:text="4. Abonnement                                      ⌄" />
+        <TextView android:id="@+id/guide4Details" style="@style/BarkaGuideDetails" android:text="Choisissez une offre puis appuyez sur PAYER pour obtenir votre code après paiement." />
+
+        <TextView android:id="@+id/guide5" style="@style/BarkaGuideItem" android:text="5. Code d’activation                              ⌄" />
+        <TextView android:id="@+id/guide5Details" style="@style/BarkaGuideDetails" android:text="Copiez le code reçu après paiement, collez-le dans Code d’activation puis appuyez sur ACTIVER." />
+
+        <TextView android:id="@+id/guide6" style="@style/BarkaGuideItem" android:text="6. Connexion                                         ⌄" />
+        <TextView android:id="@+id/guide6Details" style="@style/BarkaGuideDetails" android:text="Sur l’accueil, utilisez le bouton central pour démarrer ou arrêter la connexion VPN." />
+
+        <TextView android:id="@+id/guide7" style="@style/BarkaGuideItem" android:text="7. Journal                                              ⌄" />
+        <TextView android:id="@+id/guide7Details" style="@style/BarkaGuideDetails" android:text="Consultez les tentatives, erreurs, connexions réussies et autres événements importants." />
+
+        <TextView android:id="@+id/guide8" style="@style/BarkaGuideItem" android:text="8. Paramètres                                        ⌄" />
+        <TextView android:id="@+id/guide8Details" style="@style/BarkaGuideDetails" android:text="Personnalisez l’application, vérifiez les autorisations, les mises à jour et accédez au support." />
+    </LinearLayout>
+</ScrollView>
