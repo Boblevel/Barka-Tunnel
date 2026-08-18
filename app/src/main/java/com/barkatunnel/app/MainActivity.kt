@@ -1,20 +1,21 @@
 package com.barkatunnel.app
 
-// BARKA_HOME_RUNTIME_V3_COMPAT
+// BARKA_HOME_RUNTIME_V4_NO_LOGIN_LOGS
 
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.barkatunnel.app.account.LoginActivity
 import com.barkatunnel.app.ipfinder.IpFinderActivity
+import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.journal.JournalActivity
 import com.barkatunnel.app.networkinfo.MoovIpValidator
 import com.barkatunnel.app.networkinfo.NetworkIpProvider
@@ -61,6 +62,14 @@ class MainActivity : AppCompatActivity() {
 
         networkIpValue = findViewById(R.id.networkIpValue)
         networkIpStatus = findViewById(R.id.networkIpStatus)
+
+        val openIpFinder = {
+            AppLogStore.add(this, "Ouverture de l’IP Finder.")
+            startActivity(Intent(this, IpFinderActivity::class.java))
+        }
+        networkIpValue.setOnClickListener { openIpFinder() }
+        networkIpStatus.setOnClickListener { openIpFinder() }
+
         accessRemainingTime = findViewById(R.id.accessRemainingTime)
         accessStatus = findViewById(R.id.accessStatus)
         connectionTime = findViewById(R.id.connectionTime)
@@ -91,6 +100,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         timerController.start()
+        AppLogStore.add(this, "Barka Tunnel démarré.")
         refreshNetworkIp()
         initializeHomeRuntime()
 
@@ -156,10 +166,17 @@ class MainActivity : AppCompatActivity() {
                             result.value.connection is HomeConnectionState.Disconnected
                         ) {
                             timerController.stopConnectionTimer()
+                            AppLogStore.add(this, "VPN déconnecté.")
                         }
 
                         result
                     } else {
+                        val selected = controller.currentState().selectedNetwork
+                        AppLogStore.add(
+                            this,
+                            "Tentative de connexion${selected?.let { " • ${it.displayName}" } ?: ""}."
+                        )
+
                         val result = controller.connect()
 
                         if (
@@ -167,6 +184,10 @@ class MainActivity : AppCompatActivity() {
                             result.value.connection is HomeConnectionState.Connected
                         ) {
                             timerController.startConnectionTimer()
+                            AppLogStore.add(
+                                this,
+                                "VPN connecté • ${(result.value.connection as HomeConnectionState.Connected).networkName}."
+                            )
                         }
 
                         result
@@ -225,17 +246,8 @@ class MainActivity : AppCompatActivity() {
             container = app.container
         )
 
-        if (runtime == null) {
-            homeController = null
-            accessRemainingTime.text = "00:00:00"
-            accessStatus.text = "Connexion au compte requise"
-            uiBinder.showConnection(
-                HomeConnectionState.Disconnected
-            )
-            return
-        }
-
         homeController = HomeController(runtime)
+        accessStatus.text = "Aucun temps actif"
         refreshHomeState()
     }
 
@@ -277,6 +289,7 @@ class MainActivity : AppCompatActivity() {
             .setItems(labels) { _, which ->
                 val network = options[which]
                 selectedNetwork = network
+                AppLogStore.add(this, "Réseau sélectionné • ${network.displayName}.")
 
                 val controller = homeController
 
@@ -301,17 +314,15 @@ class MainActivity : AppCompatActivity() {
             return controller
         }
 
+        AppLogStore.add(this, "Contrôleur VPN indisponible.")
         Toast.makeText(
             this,
-            "Connecte-toi d’abord à ton compte.",
-            Toast.LENGTH_LONG
+            "Initialisation du VPN en cours. Réessaie.",
+            Toast.LENGTH_SHORT
         ).show()
 
-        startActivity(
-            Intent(this, LoginActivity::class.java)
-        )
-
-        return null
+        initializeHomeRuntime()
+        return homeController
     }
 
     private fun runHomeAction(
@@ -363,6 +374,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             is HomeControllerResult.Message -> {
+                AppLogStore.add(this, "Échec / information : ${result.text}")
                 Toast.makeText(
                     this,
                     result.text,
@@ -371,7 +383,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             HomeControllerResult.LoginRequired -> {
-                requireController()
+                AppLogStore.add(this, "Ancienne demande de compte ignorée.")
+                initializeHomeRuntime()
             }
         }
     }
@@ -394,6 +407,40 @@ class MainActivity : AppCompatActivity() {
         dialog.findViewById<android.view.View>(R.id.menuHome)
             .setOnClickListener {
                 dialog.dismiss()
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuGuide)
+            .setOnClickListener {
+                dialog.dismiss()
+                AlertDialog.Builder(this)
+                    .setTitle("Guide d’utilisation")
+                    .setMessage(
+                        "1. Choisis ton réseau.\n" +
+                            "2. Ouvre l’IP Finder en touchant l’IP du réseau si nécessaire.\n" +
+                            "3. Active ton essai ou ton abonnement.\n" +
+                            "4. Appuie sur le bouton central pour connecter le VPN.\n" +
+                            "5. Consulte le Journal en cas d’erreur."
+                    )
+                    .setPositiveButton("COMPRIS", null)
+                    .show()
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuSubscription)
+            .setOnClickListener {
+                dialog.dismiss()
+                openOptionalScreen(
+                    "com.barkatunnel.app.subscription.SubscriptionActivity",
+                    "L’écran Abonnement n’est pas encore raccordé."
+                )
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuActivation)
+            .setOnClickListener {
+                dialog.dismiss()
+                openOptionalScreen(
+                    "com.barkatunnel.app.subscription.ActivationActivity",
+                    "L’écran Code d’activation n’est pas encore raccordé."
+                )
             }
 
         dialog.findViewById<android.view.View>(R.id.menuJournal)
@@ -423,9 +470,16 @@ class MainActivity : AppCompatActivity() {
         dialog.findViewById<android.view.View>(R.id.menuSupport)
             .setOnClickListener {
                 dialog.dismiss()
-                startActivity(
-                    Intent(this, SettingsActivity::class.java)
-                )
+                try {
+                    val uri = Uri.parse("https://wa.me/message/XUBALKJE5J2CB1")
+                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                } catch (_: Exception) {
+                    Toast.makeText(
+                        this,
+                        "Impossible d’ouvrir le support pour le moment.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
 
         dialog.show()
@@ -434,6 +488,26 @@ class MainActivity : AppCompatActivity() {
             (resources.displayMetrics.widthPixels * 0.82).toInt(),
             WindowManager.LayoutParams.MATCH_PARENT
         )
+    }
+
+    private fun openOptionalScreen(
+        className: String,
+        fallbackMessage: String
+    ) {
+        try {
+            startActivity(
+                Intent().setClassName(
+                    packageName,
+                    className
+                )
+            )
+        } catch (_: Exception) {
+            Toast.makeText(
+                this,
+                fallbackMessage,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     private fun refreshNetworkIp() {

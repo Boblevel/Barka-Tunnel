@@ -1,84 +1,256 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/barka_background"
-    android:fillViewport="true">
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/backButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:gravity="center"
+                    android:text="‹"
+                    android:textColor="@color/barka_text"
+                    android:textSize="34sp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="IP FINDER"
+                    android:textColor="@color/barka_blue"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="48dp"
+                    android:layout_height="48dp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Entrez vos IP (une IP par ligne). Le scan s’arrête automatiquement dès qu’une IP fonctionne."
+                android:textColor="@color/barka_text"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/ipInput"
+                android:layout_width="match_parent"
+                android:layout_height="190dp"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_network_selected"
+                android:gravity="top|start"
+                android:hint="Collez vos IP ici…"
+                android:inputType="textMultiLine"
+                android:padding="16dp"
+                android:textColor="@color/barka_text"
+                android:textColorHint="@color/barka_text_secondary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="PORTS À TESTER"
+                android:textColor="@color/barka_blue"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/portsInput"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_network_selected"
+                android:hint="443, 80, 8080, 53"
+                android:inputType="text"
+                android:paddingHorizontal="16dp"
+                android:text="443, 80, 8080, 53"
+                android:textColor="@color/barka_text"
+                android:textColorHint="@color/barka_text_secondary"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_network_selected"
+                android:gravity="center_vertical"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MODE DE SCAN"
+                    android:textColor="@color/barka_blue"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="Auto (recommandé)"
+                    android:textColor="@color/barka_text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/scanButton"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginTop="12dp"
+                android:text="DÉMARRER LE SCAN"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_blue"
+                app:cornerRadius="12dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_network_selected"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/scanStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Prêt à scanner"
+                    android:textColor="@color/barka_text"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/scanProgress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="Aucun scan lancé."
+                    android:textColor="@color/barka_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="RÉSULTAT"
+                android:textColor="@color/barka_blue"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/scanResult"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_network_selected"
+                android:minHeight="90dp"
+                android:padding="16dp"
+                android:text="Aucune IP trouvée pour le moment."
+                android:textColor="@color/barka_text"
+                android:textIsSelectable="true"
+                android:textSize="15sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/useIpButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:enabled="false"
+                android:text="UTILISER CETTE IP"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_card"
+                app:cornerRadius="12dp"
+                app:strokeColor="@color/barka_blue"
+                app:strokeWidth="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/copyIpButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="8dp"
+                android:enabled="false"
+                android:text="COPIER L’IP"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_card"
+                app:cornerRadius="12dp"
+                app:strokeColor="@color/barka_blue"
+                app:strokeWidth="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/stopButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="8dp"
+                android:enabled="false"
+                android:text="ARRÊTER LE SCAN"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_card"
+                app:cornerRadius="12dp"
+                app:strokeColor="#D93025"
+                app:strokeWidth="1dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/barka_border" />
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="68dp"
+        android:background="@color/white"
+        android:gravity="center"
+        android:orientation="horizontal">
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:id="@+id/navHome"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
             android:gravity="center"
-            android:text="IP FINDER"
+            android:text="⌂&#10;Accueil"
             android:textColor="@color/barka_blue"
-            android:textSize="21sp"
-            android:textStyle="bold" />
+            android:textSize="12sp" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Entre tes IP personnelles, une IP par ligne. Le scan s’arrête automatiquement dès qu’une IP répond."
+            android:id="@+id/navJournal"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="▤&#10;Journal"
             android:textColor="@color/barka_text_secondary"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/ipInput"
-            android:layout_width="match_parent"
-            android:layout_height="220dp"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_network_selected"
-            android:gravity="top|start"
-            android:hint="102.22.45.12&#10;102.22.45.13&#10;172.67.140.10"
-            android:inputType="textMultiLine"
-            android:padding="16dp"
-            android:textColor="@color/barka_text"
-            android:textColorHint="@color/barka_text_secondary"
-            android:textSize="15sp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/airplaneSettingsButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginTop="16dp"
-            android:text="OUVRIR LE MODE AVION"
-            android:textStyle="bold"
-            app:backgroundTint="@color/barka_card"
-            app:cornerRadius="14dp"
-            app:strokeColor="@color/barka_blue"
-            app:strokeWidth="1dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/scanButton"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="12dp"
-            android:text="LANCER LE SCAN"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:backgroundTint="@color/barka_blue"
-            app:cornerRadius="14dp" />
-
-        <TextView
-            android:id="@+id/scanResult"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:background="@drawable/bg_network_selected"
-            android:minHeight="100dp"
-            android:padding="16dp"
-            android:text="En attente du scan."
-            android:textColor="@color/barka_text"
-            android:textSize="15sp" />
-
+            android:textSize="12sp" />
     </LinearLayout>
-
-</ScrollView>
+</LinearLayout>

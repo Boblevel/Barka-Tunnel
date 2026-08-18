@@ -9,7 +9,7 @@ object AppLogStore {
 
     private const val PREFS = "barka_journal"
     private const val KEY_LOGS = "logs"
-    private const val MAX_LINES = 200
+    private const val MAX_LINES = 250
 
     fun add(
         context: Context,
@@ -36,16 +36,15 @@ object AppLogStore {
 
         current.add(line)
 
-        val trimmed = current.takeLast(MAX_LINES)
-
         prefs.edit()
-            .putString(KEY_LOGS, trimmed.joinToString("\n"))
+            .putString(
+                KEY_LOGS,
+                current.takeLast(MAX_LINES).joinToString("\n")
+            )
             .apply()
     }
 
-    fun getAll(
-        context: Context
-    ): String {
+    fun getAll(context: Context): String {
         return context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
@@ -53,9 +52,7 @@ object AppLogStore {
             .orEmpty()
     }
 
-    fun clear(
-        context: Context
-    ) {
+    fun clear(context: Context) {
         context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
