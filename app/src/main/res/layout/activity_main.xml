@@ -1,16 +1,279 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:background="@color/barka_background"
+    android:fillViewport="true">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Barka Tunnel"
-        android:textSize="28sp"
-        android:textStyle="bold" />
+        android:orientation="vertical"
+        android:padding="20dp">
 
-</LinearLayout>
+        <!-- EN-TÊTE -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/buttonMenu"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="☰"
+                android:textColor="@color/barka_text"
+                android:textSize="30sp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="BARKA TUNNEL"
+                android:textColor="@color/barka_text"
+                android:textSize="21sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/buttonFreeTrial"
+                android:layout_width="56dp"
+                android:layout_height="52dp"
+                android:gravity="center"
+                android:text="🎁&#10;1H"
+                android:textColor="@color/barka_blue"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/buttonRefresh"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:gravity="center"
+                android:text="☁"
+                android:textColor="@color/barka_blue"
+                android:textSize="27sp" />
+
+        </LinearLayout>
+
+
+        <!-- RÉSEAU -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="RÉSEAU"
+            android:textColor="@color/barka_blue"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/networkSelector"
+            android:layout_width="match_parent"
+            android:layout_height="82dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_network_selected"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="18dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/networkName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CHOISIR LE RÉSEAU"
+                    android:textColor="@color/barka_text"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/networkSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="MOOV-AFRICA BF 🇧🇫  •  ORANGE BF 🇧🇫  •  TELECEL BF 🇧🇫"
+                    android:textColor="@color/barka_text_secondary"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="32dp"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="›"
+                android:textColor="@color/barka_blue"
+                android:textSize="32sp" />
+
+        </LinearLayout>
+
+
+        <!-- BOUTON POWER -->
+        <TextView
+            android:id="@+id/powerButton"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="35dp"
+            android:background="@drawable/bg_network_selected"
+            android:elevation="6dp"
+            android:gravity="center"
+            android:text="⏻"
+            android:textColor="@color/barka_blue"
+            android:textSize="72sp" />
+
+        <TextView
+            android:id="@+id/vpnStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="NON CONNECTÉ"
+            android:textColor="@color/barka_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/connectionTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:gravity="center"
+            android:text="Temps de connexion : 00:00:00"
+            android:textColor="@color/barka_text_secondary"
+            android:textSize="13sp" />
+
+
+        <!-- TEMPS RESTANT -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="110dp"
+            android:layout_marginTop="28dp"
+            android:background="@drawable/bg_network_selected"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="18dp">
+
+            <TextView
+                android:layout_width="55dp"
+                android:layout_height="55dp"
+                android:gravity="center"
+                android:text="◷"
+                android:textColor="@color/barka_blue"
+                android:textSize="36sp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TEMPS RESTANT"
+                    android:textColor="@color/barka_blue"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/accessRemainingTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="00:00:00"
+                    android:textColor="@color/barka_text"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/accessStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Aucun temps actif"
+                    android:textColor="@color/barka_text_secondary"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+
+        <!-- CONNEXION -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/connectButton"
+            android:layout_width="match_parent"
+            android:layout_height="62dp"
+            android:layout_marginTop="22dp"
+            android:text="SE CONNECTER"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/barka_blue"
+            app:cornerRadius="14dp" />
+
+
+        <!-- NAVIGATION -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="78dp"
+            android:layout_marginTop="24dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/navHome"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="⌂&#10;Accueil"
+                android:textColor="@color/barka_blue"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/navIpFinder"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="◎&#10;IP Finder"
+                android:textColor="@color/barka_text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/navJournal"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="▤&#10;Journal"
+                android:textColor="@color/barka_text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/navSettings"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="⚙&#10;Paramètres"
+                android:textColor="@color/barka_text_secondary"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>
