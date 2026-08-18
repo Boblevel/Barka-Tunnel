@@ -1,0 +1,301 @@
+name: Réparer Home Barka Tunnel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair-home:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          clean: true
+          persist-credentials: true
+
+      - name: Installer Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Installer Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          cache-disabled: true
+
+      - name: Réparer les 3 fichiers Home
+        shell: bash
+        run: |
+          set -e
+          HOME_DIR="app/src/main/java/com/barkatunnel/app/ui/home"
+          mkdir -p "$HOME_DIR"
+
+          cat > "$HOME_DIR/HomeVpnResult.kt" <<'EOF'
+          package com.barkatunnel.app.ui.home
+
+          sealed class HomeVpnResult {
+
+              data class Connected(
+                  val networkName: String
+              ) : HomeVpnResult()
+
+              data object Disconnected : HomeVpnResult()
+
+              data object AccessDenied : HomeVpnResult()
+
+              data class Error(
+                  val message: String
+              ) : HomeVpnResult()
+          }
+          EOF
+
+          cat > "$HOME_DIR/HomeVpnCoordinator.kt" <<'EOF'
+          package com.barkatunnel.app.ui.home
+
+          import com.barkatunnel.app.network.ApiResult
+          import com.barkatunnel.app.server.VpnServer
+          import com.barkatunnel.app.server.VpnServerManager
+          import com.barkatunnel.app.vpn.ProtectedVpnController
+          import com.barkatunnel.app.vpn.VpnAccessResult
+
+          class HomeVpnCoordinator(
+              private val serverManager: VpnServerManager,
+              private val protectedVpnController: ProtectedVpnController
+          ) {
+
+              fun connect(
+                  network: NetworkOption,
+                  servers: List<VpnServer>
+              ): HomeVpnResult {
+
+                  val server = NetworkServerResolver.resolve(
+                      network = network,
+                      servers = servers
+                  ) ?: return HomeVpnResult.Error(
+                      "Aucun serveur disponible pour ${network.displayName}"
+                  )
+
+                  return when (val configResult = serverManager.getConfig(server.id)) {
+                      is ApiResult.Success -> {
+                          when (
+                              val result = protectedVpnController.connect(
+                                  configResult.data.config
+                              )
+                          ) {
+                              is VpnAccessResult.Connected ->
+                                  HomeVpnResult.Connected(network.displayName)
+
+                              is VpnAccessResult.Disconnected ->
+                                  HomeVpnResult.Disconnected
+
+                              is VpnAccessResult.AccessDenied ->
+                                  HomeVpnResult.AccessDenied
+
+                              is VpnAccessResult.Error ->
+                                  HomeVpnResult.Error(result.message)
+                          }
+                      }
+
+                      is ApiResult.Error ->
+                          HomeVpnResult.Error(configResult.message)
+                  }
+              }
+
+              fun disconnect(): HomeVpnResult {
+                  return when (val result = protectedVpnController.disconnect()) {
+                      is VpnAccessResult.Disconnected ->
+                          HomeVpnResult.Disconnected
+
+                      is VpnAccessResult.Connected ->
+                          HomeVpnResult.Error("Le VPN est toujours connecté.")
+
+                      is VpnAccessResult.AccessDenied ->
+                          HomeVpnResult.Error("Déconnexion refusée.")
+
+                      is VpnAccessResult.Error ->
+                          HomeVpnResult.Error(result.message)
+                  }
+              }
+          }
+          EOF
+
+          cat > "$HOME_DIR/HomeController.kt" <<'EOF'
+          package com.barkatunnel.app.ui.home
+
+          import com.barkatunnel.app.server.VpnServer
+
+          class HomeController(
+              private val runtime: HomeRuntime
+          ) {
+
+              private var state = HomeScreenState()
+              private var servers: List<VpnServer> = emptyList()
+
+              fun currentState(): HomeScreenState = state
+
+              fun selectNetwork(
+                  network: NetworkOption
+              ): HomeControllerResult {
+                  state = state.copy(selectedNetwork = network)
+                  return HomeControllerResult.State(state)
+              }
+
+              fun refreshAccess(): HomeControllerResult {
+                  state = state.copy(
+                      access = runtime.accessController.refreshAccess()
+                  )
+                  return HomeControllerResult.State(state)
+              }
+
+              fun startFreeTrial(): HomeControllerResult {
+                  state = state.copy(
+                      access = runtime.accessController.startFreeTrial()
+                  )
+                  return HomeControllerResult.State(state)
+              }
+
+              fun refreshServers(): HomeControllerResult {
+                  val (refreshState, loadedServers) =
+                      runtime.serverController.refreshServers()
+
+                  return when (refreshState) {
+                      is ServerRefreshState.Success -> {
+                          servers = loadedServers
+                          state = state.copy(
+                              serversLoaded = refreshState.serverCount
+                          )
+                          HomeControllerResult.State(state)
+                      }
+
+                      is ServerRefreshState.Error ->
+                          HomeControllerResult.Message(refreshState.message)
+
+                      else ->
+                          HomeControllerResult.State(state)
+                  }
+              }
+
+              fun connect(): HomeControllerResult {
+                  val network = state.selectedNetwork
+                      ?: return HomeControllerResult.Message(
+                          "Choisis d’abord un réseau."
+                      )
+
+                  if (!state.access.allowed) {
+                      return HomeControllerResult.Message(
+                          "Aucun accès actif."
+                      )
+                  }
+
+                  state = state.copy(
+                      connection = HomeConnectionState.Connecting
+                  )
+
+                  return when (
+                      val result = runtime.vpnCoordinator.connect(
+                          network = network,
+                          servers = servers
+                      )
+                  ) {
+                      is HomeVpnResult.Connected -> {
+                          state = state.copy(
+                              connection = HomeConnectionState.Connected(
+                                  result.networkName
+                              )
+                          )
+                          HomeControllerResult.State(state)
+                      }
+
+                      is HomeVpnResult.Disconnected -> {
+                          state = state.copy(
+                              connection = HomeConnectionState.Disconnected
+                          )
+                          HomeControllerResult.State(state)
+                      }
+
+                      is HomeVpnResult.AccessDenied -> {
+                          state = state.copy(
+                              connection = HomeConnectionState.Disconnected
+                          )
+                          HomeControllerResult.Message(
+                              "Accès refusé par le serveur."
+                          )
+                      }
+
+                      is HomeVpnResult.Error -> {
+                          state = state.copy(
+                              connection = HomeConnectionState.Error(
+                                  result.message
+                              )
+                          )
+                          HomeControllerResult.Message(result.message)
+                      }
+                  }
+              }
+
+              fun disconnect(): HomeControllerResult {
+                  return when (val result = runtime.vpnCoordinator.disconnect()) {
+                      is HomeVpnResult.Disconnected -> {
+                          state = state.copy(
+                              connection = HomeConnectionState.Disconnected
+                          )
+                          HomeControllerResult.State(state)
+                      }
+
+                      is HomeVpnResult.Connected ->
+                          HomeControllerResult.Message(
+                              "Le VPN est toujours connecté."
+                          )
+
+                      is HomeVpnResult.AccessDenied ->
+                          HomeControllerResult.Message(
+                              "Déconnexion refusée."
+                          )
+
+                      is HomeVpnResult.Error ->
+                          HomeControllerResult.Message(result.message)
+                  }
+              }
+          }
+          EOF
+
+      - name: Vérifier les fichiers réparés
+        shell: bash
+        run: |
+          set -e
+          grep -n "fun disconnect" app/src/main/java/com/barkatunnel/app/ui/home/HomeController.kt
+          grep -n "fun disconnect" app/src/main/java/com/barkatunnel/app/ui/home/HomeVpnCoordinator.kt
+          grep -n "Disconnected" app/src/main/java/com/barkatunnel/app/ui/home/HomeVpnResult.kt
+          grep -n "VpnAccessResult.Disconnected" app/src/main/java/com/barkatunnel/app/ui/home/HomeVpnCoordinator.kt
+          git diff -- app/src/main/java/com/barkatunnel/app/ui/home/
+
+      - name: Compiler avant enregistrement
+        shell: bash
+        run: |
+          rm -rf .gradle build app/build
+          gradle clean assembleDebug --no-daemon --no-build-cache --rerun-tasks
+
+      - name: Enregistrer définitivement la réparation
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/barkatunnel/app/ui/home/HomeController.kt
+          git add app/src/main/java/com/barkatunnel/app/ui/home/HomeVpnCoordinator.kt
+          git add app/src/main/java/com/barkatunnel/app/ui/home/HomeVpnResult.kt
+
+          if git diff --cached --quiet; then
+            echo "Aucun changement à enregistrer."
+          else
+            git commit -m "Fix Home VPN disconnect state"
+            git push origin HEAD:main
+          fi
