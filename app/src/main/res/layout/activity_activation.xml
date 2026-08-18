@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/barka_background"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="ACTIVER CODE"
+        android:textColor="@color/barka_blue"
+        android:textSize="21sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:text="Entre ton code d’abonnement"
+        android:textColor="@color/barka_text"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/activationCodeInput"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_network_selected"
+        android:hint="Ex : BT-ABCD-1234-5678"
+        android:inputType="textCapCharacters"
+        android:paddingHorizontal="16dp"
+        android:textColor="@color/barka_text"
+        android:textColorHint="@color/barka_text_secondary"
+        android:textSize="16sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/activateButton"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginTop="14dp"
+        android:text="ACTIVER"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:backgroundTint="@color/barka_blue"
+        app:cornerRadius="14dp" />
+
+</LinearLayout>
