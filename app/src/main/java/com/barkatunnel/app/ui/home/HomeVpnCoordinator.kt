@@ -31,8 +31,7 @@ class HomeVpnCoordinator(
                 ) {
                     is VpnAccessResult.Connected ->
                         HomeVpnResult.Connected(network.displayName)
-is VpnAccessResult.Disconnected ->
-    HomeVpnResult.Disconnected
+
                     is VpnAccessResult.AccessDenied ->
                         HomeVpnResult.AccessDenied
 
@@ -45,15 +44,4 @@ is VpnAccessResult.Disconnected ->
                 HomeVpnResult.Error(configResult.message)
         }
     }
-fun disconnect(): HomeVpnResult {
-    return when (val result = protectedVpnController.disconnect()) {
-        is VpnAccessResult.Disconnected ->
-            HomeVpnResult.Disconnected
-
-        is VpnAccessResult.Error ->
-            HomeVpnResult.Error(result.message)
-
-        else ->
-            HomeVpnResult.Error("Déconnexion impossible.")
-    }
-}}
+}
