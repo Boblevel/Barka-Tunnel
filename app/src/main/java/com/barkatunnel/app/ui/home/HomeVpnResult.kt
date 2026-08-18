@@ -6,6 +6,8 @@ sealed class HomeVpnResult {
         val networkName: String
     ) : HomeVpnResult()
 
+    data object Disconnected : HomeVpnResult()
+
     data object AccessDenied : HomeVpnResult()
 
     data class Error(

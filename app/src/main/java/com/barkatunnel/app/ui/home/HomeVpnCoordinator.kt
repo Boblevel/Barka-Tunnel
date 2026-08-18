@@ -1,6 +1,7 @@
 package com.barkatunnel.app.ui.home
 
 import com.barkatunnel.app.network.ApiResult
+import com.barkatunnel.app.server.VpnServer
 import com.barkatunnel.app.server.VpnServerManager
 import com.barkatunnel.app.vpn.ProtectedVpnController
 import com.barkatunnel.app.vpn.VpnAccessResult
@@ -12,7 +13,7 @@ class HomeVpnCoordinator(
 
     fun connect(
         network: NetworkOption,
-        servers: List<com.barkatunnel.app.server.VpnServer>
+        servers: List<VpnServer>
     ): HomeVpnResult {
 
         val server = NetworkServerResolver.resolve(
@@ -32,6 +33,9 @@ class HomeVpnCoordinator(
                     is VpnAccessResult.Connected ->
                         HomeVpnResult.Connected(network.displayName)
 
+                    is VpnAccessResult.Disconnected ->
+                        HomeVpnResult.Disconnected
+
                     is VpnAccessResult.AccessDenied ->
                         HomeVpnResult.AccessDenied
 
@@ -42,6 +46,22 @@ class HomeVpnCoordinator(
 
             is ApiResult.Error ->
                 HomeVpnResult.Error(configResult.message)
+        }
+    }
+
+    fun disconnect(): HomeVpnResult {
+        return when (val result = protectedVpnController.disconnect()) {
+            is VpnAccessResult.Disconnected ->
+                HomeVpnResult.Disconnected
+
+            is VpnAccessResult.Connected ->
+                HomeVpnResult.Error("Le VPN est toujours connecté.")
+
+            is VpnAccessResult.AccessDenied ->
+                HomeVpnResult.Error("Déconnexion refusée.")
+
+            is VpnAccessResult.Error ->
+                HomeVpnResult.Error(result.message)
         }
     }
 }

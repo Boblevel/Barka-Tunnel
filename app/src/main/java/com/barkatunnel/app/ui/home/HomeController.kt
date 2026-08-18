@@ -14,30 +14,21 @@ class HomeController(
     fun selectNetwork(
         network: NetworkOption
     ): HomeControllerResult {
-        state = state.copy(
-            selectedNetwork = network
-        )
-
+        state = state.copy(selectedNetwork = network)
         return HomeControllerResult.State(state)
     }
 
     fun refreshAccess(): HomeControllerResult {
-        val access = runtime.accessController.refreshAccess()
-
         state = state.copy(
-            access = access
+            access = runtime.accessController.refreshAccess()
         )
-
         return HomeControllerResult.State(state)
     }
 
     fun startFreeTrial(): HomeControllerResult {
-        val access = runtime.accessController.startFreeTrial()
-
         state = state.copy(
-            access = access
+            access = runtime.accessController.startFreeTrial()
         )
-
         return HomeControllerResult.State(state)
     }
 
@@ -48,18 +39,14 @@ class HomeController(
         return when (refreshState) {
             is ServerRefreshState.Success -> {
                 servers = loadedServers
-
                 state = state.copy(
                     serversLoaded = refreshState.serverCount
                 )
-
                 HomeControllerResult.State(state)
             }
 
             is ServerRefreshState.Error ->
-                HomeControllerResult.Message(
-                    refreshState.message
-                )
+                HomeControllerResult.Message(refreshState.message)
 
             else ->
                 HomeControllerResult.State(state)
@@ -94,7 +81,13 @@ class HomeController(
                         result.networkName
                     )
                 )
+                HomeControllerResult.State(state)
+            }
 
+            is HomeVpnResult.Disconnected -> {
+                state = state.copy(
+                    connection = HomeConnectionState.Disconnected
+                )
                 HomeControllerResult.State(state)
             }
 
@@ -102,7 +95,6 @@ class HomeController(
                 state = state.copy(
                     connection = HomeConnectionState.Disconnected
                 )
-
                 HomeControllerResult.Message(
                     "Accès refusé par le serveur."
                 )
@@ -114,11 +106,32 @@ class HomeController(
                         result.message
                     )
                 )
-
-                HomeControllerResult.Message(
-                    result.message
-                )
+                HomeControllerResult.Message(result.message)
             }
+        }
+    }
+
+    fun disconnect(): HomeControllerResult {
+        return when (val result = runtime.vpnCoordinator.disconnect()) {
+            is HomeVpnResult.Disconnected -> {
+                state = state.copy(
+                    connection = HomeConnectionState.Disconnected
+                )
+                HomeControllerResult.State(state)
+            }
+
+            is HomeVpnResult.Connected ->
+                HomeControllerResult.Message(
+                    "Le VPN est toujours connecté."
+                )
+
+            is HomeVpnResult.AccessDenied ->
+                HomeControllerResult.Message(
+                    "Déconnexion refusée."
+                )
+
+            is HomeVpnResult.Error ->
+                HomeControllerResult.Message(result.message)
         }
     }
 }
