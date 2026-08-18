@@ -25,4 +25,17 @@ class ProtectedVpnController(
                 VpnAccessResult.Error("Connexion VPN impossible")
         }
     }
+
+    fun disconnect(): VpnAccessResult {
+        return when (val result = vpnController.disconnect()) {
+            is VpnConnectionResult.Disconnected ->
+                VpnAccessResult.Disconnected
+
+            is VpnConnectionResult.Error ->
+                VpnAccessResult.Error(result.message)
+
+            else ->
+                VpnAccessResult.Error("Déconnexion VPN impossible")
+        }
+    }
 }
