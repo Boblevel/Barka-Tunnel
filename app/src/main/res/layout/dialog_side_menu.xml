@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="34dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="24dp">
+
+    <ImageView
+        android:layout_width="76dp"
+        android:layout_height="76dp"
+        android:contentDescription="Logo Barka Tunnel"
+        android:src="@drawable/ic_barka_logo" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="12dp"
+        android:background="@color/barka_border" />
+
+    <TextView
+        android:id="@+id/menuHome"
+        style="@style/BarkaMenuItem"
+        android:text="⌂   Accueil" />
+
+    <TextView
+        android:id="@+id/menuJournal"
+        style="@style/BarkaMenuItem"
+        android:text="▤   Journal" />
+
+    <TextView
+        android:id="@+id/menuIpFinder"
+        style="@style/BarkaMenuItem"
+        android:text="◎   IP Finder" />
+
+    <TextView
+        android:id="@+id/menuSettings"
+        style="@style/BarkaMenuItem"
+        android:text="⚙   Paramètres" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp"
+        android:background="@color/barka_border" />
+
+    <TextView
+        android:id="@+id/menuSupport"
+        style="@style/BarkaMenuItem"
+        android:text="☏   Support" />
+
+</LinearLayout>
