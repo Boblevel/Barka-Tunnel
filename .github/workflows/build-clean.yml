@@ -1,0 +1,64 @@
+name: Build propre Barka Tunnel
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-clean:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Recuperer exactement le commit courant
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          clean: true
+
+      - name: Verifier le commit compile
+        shell: bash
+        run: |
+          echo "GITHUB_SHA=$GITHUB_SHA"
+          echo "HEAD=$(git rev-parse HEAD)"
+          git status --short
+          echo "===== HomeController.kt ====="
+          sed -n '1,220p' app/src/main/java/com/barkatunnel/app/ui/home/HomeController.kt
+          echo "===== HomeVpnCoordinator.kt ====="
+          sed -n '1,220p' app/src/main/java/com/barkatunnel/app/ui/home/HomeVpnCoordinator.kt
+          echo "===== HomeVpnResult.kt ====="
+          sed -n '1,120p' app/src/main/java/com/barkatunnel/app/ui/home/HomeVpnResult.kt
+          echo "===== HomeOrchestrator.kt ====="
+          sed -n '1,180p' app/src/main/java/com/barkatunnel/app/ui/home/HomeOrchestrator.kt
+          echo "===== Recherche doublons ====="
+          find app/src/main -type f \( \
+            -name 'HomeController.kt' -o \
+            -name 'HomeVpnCoordinator.kt' -o \
+            -name 'HomeVpnResult.kt' -o \
+            -name 'HomeOrchestrator.kt' \
+          \) -print
+
+      - name: Installer Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Installer Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          cache-disabled: true
+
+      - name: Nettoyer totalement le projet
+        shell: bash
+        run: |
+          rm -rf .gradle
+          rm -rf build
+          rm -rf app/build
+          gradle --stop || true
+
+      - name: Compiler Barka Tunnel sans cache
+        run: gradle clean assembleDebug --no-daemon --no-build-cache --rerun-tasks --stacktrace
