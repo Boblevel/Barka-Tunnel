@@ -12,12 +12,23 @@
         android:theme="@style/Theme.BarkaTunnel">
 
         <activity
+            android:name=".settings.SettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".journal.JournalActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ipfinder.IpFinderActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
