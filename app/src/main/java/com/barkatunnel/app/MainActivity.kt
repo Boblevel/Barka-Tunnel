@@ -1,73 +1,184 @@
 package com.barkatunnel.app
 
+// BARKA_HOME_RUNTIME_V2
+
 import android.app.AlertDialog
+import android.app.Dialog
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.view.Gravity
+import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.barkatunnel.app.account.LoginActivity
+import com.barkatunnel.app.ipfinder.IpFinderActivity
+import com.barkatunnel.app.journal.JournalActivity
+import com.barkatunnel.app.networkinfo.MoovIpValidator
+import com.barkatunnel.app.networkinfo.NetworkIpProvider
+import com.barkatunnel.app.networkinfo.NetworkTransport
+import com.barkatunnel.app.settings.SettingsActivity
+import com.barkatunnel.app.subscription.ActivationActivity
+import com.barkatunnel.app.subscription.SubscriptionActivity
+import com.barkatunnel.app.ui.home.HomeConnectionState
+import com.barkatunnel.app.ui.home.HomeController
+import com.barkatunnel.app.ui.home.HomeControllerResult
+import com.barkatunnel.app.ui.home.HomeRuntimeFactory
+import com.barkatunnel.app.ui.home.HomeTimerController
+import com.barkatunnel.app.ui.home.HomeUiBinder
 import com.barkatunnel.app.ui.home.NetworkOption
 import com.google.android.material.button.MaterialButton
 
 class MainActivity : AppCompatActivity() {
 
     private var selectedNetwork: NetworkOption? = null
+    private var homeController: HomeController? = null
+
+    private lateinit var networkIpValue: TextView
+    private lateinit var networkIpStatus: TextView
+    private lateinit var networkName: TextView
+    private lateinit var networkSubtitle: TextView
+    private lateinit var accessRemainingTime: TextView
+    private lateinit var accessStatus: TextView
+    private lateinit var connectionTime: TextView
+    private lateinit var vpnStatus: TextView
+    private lateinit var connectButton: MaterialButton
+
+    private lateinit var uiBinder: HomeUiBinder
+    private lateinit var timerController: HomeTimerController
+
+    private val networkIpProvider by lazy {
+        NetworkIpProvider(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         val networkSelector = findViewById<android.view.View>(R.id.networkSelector)
-        val networkName = findViewById<TextView>(R.id.networkName)
-        val networkSubtitle = findViewById<TextView>(R.id.networkSubtitle)
+        networkName = findViewById(R.id.networkName)
+        networkSubtitle = findViewById(R.id.networkSubtitle)
+
         val buttonFreeTrial = findViewById<android.view.View>(R.id.buttonFreeTrial)
         val buttonRefresh = findViewById<android.view.View>(R.id.buttonRefresh)
-        val connectButton = findViewById<MaterialButton>(R.id.connectButton)
+        connectButton = findViewById(R.id.connectButton)
         val powerButton = findViewById<TextView>(R.id.powerButton)
 
-        networkSelector.setOnClickListener {
-            val options = NetworkOption.ALL
-            val labels = options.map { it.displayName }.toTypedArray()
+        networkIpValue = findViewById(R.id.networkIpValue)
+        networkIpStatus = findViewById(R.id.networkIpStatus)
+        accessRemainingTime = findViewById(R.id.accessRemainingTime)
+        accessStatus = findViewById(R.id.accessStatus)
+        connectionTime = findViewById(R.id.connectionTime)
+        vpnStatus = findViewById(R.id.vpnStatus)
 
-            AlertDialog.Builder(this)
-                .setTitle("Choisir le réseau")
-                .setItems(labels) { _, which ->
-                    selectedNetwork = options[which]
-                    networkName.text = options[which].displayName
-                    networkSubtitle.text = "Réseau sélectionné"
+        uiBinder = HomeUiBinder(
+            networkName = networkName,
+            networkSubtitle = networkSubtitle,
+            vpnStatus = vpnStatus,
+            connectionTime = connectionTime,
+            accessRemainingTime = accessRemainingTime,
+            accessStatus = accessStatus,
+            connectButton = connectButton
+        )
+
+        timerController = HomeTimerController(
+            onAccessTick = { seconds ->
+                accessRemainingTime.text = formatDuration(seconds)
+
+                if (seconds <= 0L && accessStatus.text == "Accès actif") {
+                    accessStatus.text = "Aucun temps actif"
                 }
-                .setNegativeButton("Annuler", null)
-                .show()
+            },
+            onConnectionTick = { seconds ->
+                connectionTime.text =
+                    "Temps de connexion : ${formatDuration(seconds)}"
+            }
+        )
+
+        timerController.start()
+        refreshNetworkIp()
+        initializeHomeRuntime()
+
+        networkSelector.setOnClickListener {
+            showNetworkDialog()
         }
 
         buttonFreeTrial.setOnClickListener {
-            Toast.makeText(
-                this,
-                "L’essai 1H sera activé uniquement après validation du serveur.",
-                Toast.LENGTH_SHORT
-            ).show()
+            val controller = requireController() ?: return@setOnClickListener
+
+            runHomeAction {
+                val result = controller.startFreeTrial()
+
+                if (result is HomeControllerResult.State) {
+                    timerController.syncAccessRemaining(
+                        result.value.access.remainingSeconds
+                    )
+                }
+
+                result
+            }
         }
 
         buttonRefresh.setOnClickListener {
-            Toast.makeText(
-                this,
-                "Actualisation des serveurs...",
-                Toast.LENGTH_SHORT
-            ).show()
+            refreshNetworkIp()
+
+            val controller = requireController() ?: return@setOnClickListener
+
+            runHomeAction(
+                successMessage = "Serveurs et accès actualisés."
+            ) {
+                val serverResult = controller.refreshServers()
+
+                if (serverResult is HomeControllerResult.Message) {
+                    return@runHomeAction serverResult
+                }
+
+                val accessResult = controller.refreshAccess()
+
+                if (accessResult is HomeControllerResult.State) {
+                    timerController.syncAccessRemaining(
+                        accessResult.value.access.remainingSeconds
+                    )
+                }
+
+                accessResult
+            }
         }
 
         val connectAction = {
-            if (selectedNetwork == null) {
-                Toast.makeText(
-                    this,
-                    "Choisis d’abord un réseau.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            } else {
-                Toast.makeText(
-                    this,
-                    "Connexion ${selectedNetwork!!.displayName} prête à être reliée au serveur.",
-                    Toast.LENGTH_SHORT
-                ).show()
+            val controller = requireController()
+
+            if (controller != null) {
+                val currentConnection =
+                    controller.currentState().connection
+
+                runHomeAction {
+                    if (currentConnection is HomeConnectionState.Connected) {
+                        val result = controller.disconnect()
+
+                        if (
+                            result is HomeControllerResult.State &&
+                            result.value.connection is HomeConnectionState.Disconnected
+                        ) {
+                            timerController.stopConnectionTimer()
+                        }
+
+                        result
+                    } else {
+                        val result = controller.connect()
+
+                        if (
+                            result is HomeControllerResult.State &&
+                            result.value.connection is HomeConnectionState.Connected
+                        ) {
+                            timerController.startConnectionTimer()
+                        }
+
+                        result
+                    }
+                }
             }
         }
 
@@ -75,23 +186,324 @@ class MainActivity : AppCompatActivity() {
         powerButton.setOnClickListener { connectAction() }
 
         findViewById<android.view.View>(R.id.navHome).setOnClickListener {
-            Toast.makeText(this, "Accueil", Toast.LENGTH_SHORT).show()
+            refreshNetworkIp()
+            refreshHomeState()
         }
 
         findViewById<android.view.View>(R.id.navIpFinder).setOnClickListener {
-            Toast.makeText(this, "IP Finder arrive au prochain bloc.", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, IpFinderActivity::class.java))
         }
 
         findViewById<android.view.View>(R.id.navJournal).setOnClickListener {
-            Toast.makeText(this, "Journal arrive au prochain bloc.", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, JournalActivity::class.java))
         }
 
         findViewById<android.view.View>(R.id.navSettings).setOnClickListener {
-            Toast.makeText(this, "Paramètres arrivent au prochain bloc.", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
 
         findViewById<android.view.View>(R.id.buttonMenu).setOnClickListener {
-            Toast.makeText(this, "Menu latéral arrive au prochain bloc.", Toast.LENGTH_SHORT).show()
+            showSideMenu()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        if (::networkIpValue.isInitialized) {
+            refreshNetworkIp()
+            initializeHomeRuntime()
+        }
+    }
+
+    override fun onDestroy() {
+        if (::timerController.isInitialized) {
+            timerController.stop()
+        }
+
+        super.onDestroy()
+    }
+
+    private fun initializeHomeRuntime() {
+        val app = application as BarkaApplication
+
+        val runtime = HomeRuntimeFactory.create(
+            context = this,
+            container = app.container
+        )
+
+        if (runtime == null) {
+            homeController = null
+            accessRemainingTime.text = "00:00:00"
+            accessStatus.text = "Connexion au compte requise"
+            uiBinder.showConnection(
+                HomeConnectionState.Disconnected
+            )
+            return
+        }
+
+        homeController = HomeController(runtime)
+        refreshHomeState()
+    }
+
+    private fun refreshHomeState() {
+        val controller = homeController ?: return
+
+        Thread {
+            val serverResult = controller.refreshServers()
+            val accessResult = controller.refreshAccess()
+
+            runOnUiThread {
+                if (serverResult is HomeControllerResult.Message) {
+                    Toast.makeText(
+                        this,
+                        serverResult.text,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                handleHomeResult(accessResult)
+
+                if (accessResult is HomeControllerResult.State) {
+                    timerController.syncAccessRemaining(
+                        accessResult.value.access.remainingSeconds
+                    )
+                }
+            }
+        }.start()
+    }
+
+    private fun showNetworkDialog() {
+        val options = NetworkOption.ALL
+        val labels = options
+            .map { it.displayName }
+            .toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("Choisir le réseau")
+            .setItems(labels) { _, which ->
+                val network = options[which]
+                selectedNetwork = network
+
+                val controller = homeController
+
+                if (controller != null) {
+                    handleHomeResult(
+                        controller.selectNetwork(network)
+                    )
+                } else {
+                    uiBinder.showNetwork(network)
+                }
+
+                refreshNetworkIp()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun requireController(): HomeController? {
+        val controller = homeController
+
+        if (controller != null) {
+            return controller
+        }
+
+        Toast.makeText(
+            this,
+            "Connecte-toi d’abord à ton compte.",
+            Toast.LENGTH_LONG
+        ).show()
+
+        startActivity(
+            Intent(this, LoginActivity::class.java)
+        )
+
+        return null
+    }
+
+    private fun runHomeAction(
+        successMessage: String? = null,
+        action: () -> HomeControllerResult
+    ) {
+        connectButton.isEnabled = false
+
+        Thread {
+            val result = action()
+
+            runOnUiThread {
+                connectButton.isEnabled = true
+                handleHomeResult(result)
+
+                if (
+                    successMessage != null &&
+                    result is HomeControllerResult.State
+                ) {
+                    Toast.makeText(
+                        this,
+                        successMessage,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun handleHomeResult(
+        result: HomeControllerResult
+    ) {
+        when (result) {
+            is HomeControllerResult.State -> {
+                selectedNetwork =
+                    result.value.selectedNetwork
+
+                uiBinder.showNetwork(
+                    result.value.selectedNetwork
+                )
+
+                uiBinder.showAccess(
+                    result.value.access
+                )
+
+                uiBinder.showConnection(
+                    result.value.connection
+                )
+            }
+
+            is HomeControllerResult.Message -> {
+                Toast.makeText(
+                    this,
+                    result.text,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+            HomeControllerResult.LoginRequired -> {
+                requireController()
+            }
+        }
+    }
+
+    private fun showSideMenu() {
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_side_menu)
+
+        dialog.window?.apply {
+            setBackgroundDrawable(
+                ColorDrawable(Color.TRANSPARENT)
+            )
+            setGravity(Gravity.START)
+            setLayout(
+                (resources.displayMetrics.widthPixels * 0.82).toInt(),
+                WindowManager.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        dialog.findViewById<android.view.View>(R.id.menuHome)
+            .setOnClickListener {
+                dialog.dismiss()
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuJournal)
+            .setOnClickListener {
+                dialog.dismiss()
+                startActivity(
+                    Intent(this, JournalActivity::class.java)
+                )
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuSubscription)
+            .setOnClickListener {
+                dialog.dismiss()
+                startActivity(
+                    Intent(this, SubscriptionActivity::class.java)
+                )
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuActivation)
+            .setOnClickListener {
+                dialog.dismiss()
+                startActivity(
+                    Intent(this, ActivationActivity::class.java)
+                )
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuIpFinder)
+            .setOnClickListener {
+                dialog.dismiss()
+                startActivity(
+                    Intent(this, IpFinderActivity::class.java)
+                )
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuSettings)
+            .setOnClickListener {
+                dialog.dismiss()
+                startActivity(
+                    Intent(this, SettingsActivity::class.java)
+                )
+            }
+
+        dialog.findViewById<android.view.View>(R.id.menuSupport)
+            .setOnClickListener {
+                dialog.dismiss()
+                startActivity(
+                    Intent(this, SettingsActivity::class.java)
+                )
+            }
+
+        dialog.show()
+
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.82).toInt(),
+            WindowManager.LayoutParams.MATCH_PARENT
+        )
+    }
+
+    private fun refreshNetworkIp() {
+        val info = networkIpProvider.getCurrent()
+
+        networkIpValue.text = info.displayIp
+
+        val transportLabel = when (info.transport) {
+            NetworkTransport.CELLULAR -> "Données mobiles"
+            NetworkTransport.WIFI -> "Wi‑Fi"
+            NetworkTransport.VPN -> "VPN"
+            NetworkTransport.OTHER -> "Réseau"
+        }
+
+        networkIpStatus.text = when (selectedNetwork?.id) {
+            "moov_bf" -> {
+                if (MoovIpValidator.isCompatible(info.ip)) {
+                    "$transportLabel • IP compatible MOOV"
+                } else {
+                    "$transportLabel • IP MOOV non compatible"
+                }
+            }
+
+            "orange_bf" ->
+                "$transportLabel • Vérification Orange via IP Finder"
+
+            "telecel_bf" ->
+                "$transportLabel • IP actuelle"
+
+            else ->
+                "$transportLabel • IP actuelle"
+        }
+    }
+
+    private fun formatDuration(
+        totalSeconds: Long
+    ): String {
+        val safe = totalSeconds.coerceAtLeast(0L)
+        val hours = safe / 3600L
+        val minutes = (safe % 3600L) / 60L
+        val seconds = safe % 60L
+
+        return String.format(
+            "%02d:%02d:%02d",
+            hours,
+            minutes,
+            seconds
+        )
     }
 }
