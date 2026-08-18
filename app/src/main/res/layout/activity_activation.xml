@@ -57,7 +57,7 @@
         android:layout_height="48dp"
         android:layout_marginTop="6dp"
         android:gravity="center"
-        android:text="?   Où trouver mon code ?"
+        android:text="ⓘ   Où trouver mon code ?"
         android:textColor="@color/barka_blue"
         android:textSize="13sp"
         android:textStyle="bold" />
