@@ -61,6 +61,52 @@
 
         </LinearLayout>
 
+        <!-- IP DU RÉSEAU -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="88dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_network_selected"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="18dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="IP DU RÉSEAU"
+                    android:textColor="@color/barka_blue"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/networkIpValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Indisponible"
+                    android:textColor="@color/barka_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/networkIpStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="Réseau • IP actuelle"
+                    android:textColor="@color/barka_text_secondary"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
 
         <!-- RÉSEAU -->
         <TextView
@@ -118,7 +164,6 @@
 
         </LinearLayout>
 
-
         <!-- BOUTON POWER -->
         <TextView
             android:id="@+id/powerButton"
@@ -153,7 +198,6 @@
             android:text="Temps de connexion : 00:00:00"
             android:textColor="@color/barka_text_secondary"
             android:textSize="13sp" />
-
 
         <!-- TEMPS RESTANT -->
         <LinearLayout
@@ -210,7 +254,6 @@
 
         </LinearLayout>
 
-
         <!-- CONNEXION -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/connectButton"
@@ -222,7 +265,6 @@
             android:textStyle="bold"
             app:backgroundTint="@color/barka_blue"
             app:cornerRadius="14dp" />
-
 
         <!-- NAVIGATION -->
         <LinearLayout
