@@ -121,19 +121,4 @@ class HomeController(
             }
         }
     }
-fun disconnect(): HomeControllerResult {
-    return when (val result = runtime.vpnCoordinator.disconnect()) {
-        is HomeVpnResult.Disconnected -> {
-            state = state.copy(
-                connection = HomeConnectionState.Disconnected
-            )
-            HomeControllerResult.State(state)
-        }
-
-        is HomeVpnResult.Error ->
-            HomeControllerResult.Message(result.message)
-
-        else ->
-            HomeControllerResult.Message("Déconnexion impossible.")
-    }
 }
