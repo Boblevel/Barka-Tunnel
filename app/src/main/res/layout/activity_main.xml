@@ -178,7 +178,7 @@
                 android:background="@drawable/bg_power_final"
                 android:elevation="5dp"
                 android:gravity="center"
-                android:text="⏻"
+                android:text=""
                 android:textColor="@color/barka_blue"
                 android:textSize="58sp" />
 

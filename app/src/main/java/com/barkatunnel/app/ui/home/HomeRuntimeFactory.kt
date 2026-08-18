@@ -13,22 +13,25 @@ object HomeRuntimeFactory {
     fun create(
         context: Context,
         container: AppContainer
-    ): HomeRuntime? {
-
-        val session = container.sessionStore.get()
-            ?: return null
+    ): HomeRuntime {
 
         val deviceId = DeviceIdentity.getDeviceId(context)
 
+        // L'application ne force plus une connexion identifiant/mot de passe.
+        // Une ancienne session reste compatible ; sinon le téléphone possède
+        // une identité stable côté accès/essai.
+        val accountId = container.sessionStore.get()?.accountId
+            ?: "device:$deviceId"
+
         val accessCoordinator = AccessCoordinator(
             api = container.accessApi,
-            accountId = session.accountId,
+            accountId = accountId,
             deviceId = deviceId
         )
 
         val accessProvider = ServerAccessProvider(
             api = container.accessApi,
-            accountId = session.accountId,
+            accountId = accountId,
             deviceId = deviceId
         )
 

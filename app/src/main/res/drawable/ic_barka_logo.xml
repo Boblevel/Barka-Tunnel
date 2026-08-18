@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="@android:color/transparent"
-        android:strokeColor="#1167E8" android:strokeWidth="6"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+
+    <!-- Arc extérieur volontairement agrandi pour mieux remplir l'icône launcher. -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M62,9 C47,0 24,2 11,16 C-1,29 1,50 15,62 C29,74 51,70 63,56"
+        android:strokeColor="@color/barka_blue"
         android:strokeLineCap="round"
-        android:pathData="M78,22 C54,9 23,22 18,50 C13,77 36,96 63,90 C72,88 78,84 83,79" />
-    <path android:fillColor="@android:color/transparent"
-        android:strokeColor="#121A2A" android:strokeWidth="7"
-        android:strokeLineCap="round" android:strokeLineJoin="round"
-        android:pathData="M40,77 L40,31 L60,31 C73,31 78,39 78,49 C78,57 73,62 66,64 C74,65 80,71 80,79 C80,85 77,89 72,92" />
+        android:strokeWidth="5" />
+
+    <!-- B central agrandi. -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M22,16 L22,58 M22,16 L40,16 C51,16 57,22 57,30 C57,36 52,40 47,41 C54,42 59,47 59,54 C59,63 51,67 40,67 L22,67"
+        android:strokeColor="@color/barka_text"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="6" />
 </vector>
