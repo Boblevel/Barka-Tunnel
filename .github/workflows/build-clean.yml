@@ -62,3 +62,21 @@ jobs:
 
       - name: Compiler Barka Tunnel sans cache
         run: gradle clean assembleDebug --no-daemon --no-build-cache --rerun-tasks --stacktrace
+
+      - name: Preparer APK telechargeable
+        shell: bash
+        run: |
+          set -e
+          APK_SOURCE="app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK_SOURCE"
+          cp "$APK_SOURCE" BarkaTunnel-debug.apk
+          sha256sum BarkaTunnel-debug.apk
+
+      - name: Publier APK dans Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: BarkaTunnel-APK
+          path: BarkaTunnel-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
