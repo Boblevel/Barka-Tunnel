@@ -2,7 +2,6 @@ package com.barkatunnel.app
 
 // BARKA_HOME_RUNTIME_V5_FINAL_NAV_NO_LOGIN
 
-import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
@@ -11,6 +10,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.WindowManager
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -18,7 +18,6 @@ import com.barkatunnel.app.guide.GuideActivity
 import com.barkatunnel.app.ipfinder.IpFinderActivity
 import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.journal.JournalActivity
-import com.barkatunnel.app.networkinfo.MoovIpValidator
 import com.barkatunnel.app.networkinfo.NetworkIpProvider
 import com.barkatunnel.app.settings.SettingsActivity
 import com.barkatunnel.app.subscription.ActivationActivity
@@ -39,6 +38,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var networkIpValue: TextView
     private lateinit var networkIpStatus: TextView
+    private lateinit var networkLogo: ImageView
     private lateinit var networkName: TextView
     private lateinit var networkSubtitle: TextView
     private lateinit var accessRemainingTime: TextView
@@ -55,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val networkSelector = findViewById<android.view.View>(R.id.networkSelector)
+        networkLogo = findViewById(R.id.networkLogo)
         networkName = findViewById(R.id.networkName)
         networkSubtitle = findViewById(R.id.networkSubtitle)
 
@@ -87,6 +88,8 @@ class MainActivity : AppCompatActivity() {
             accessStatus = accessStatus,
             connectButton = connectButton
         )
+
+        updateSelectedNetworkLogo(selectedNetwork)
 
         timerController = HomeTimerController(
             onAccessTick = { seconds ->
@@ -133,14 +136,8 @@ class MainActivity : AppCompatActivity() {
             val controller = requireController() ?: return@setOnClickListener
 
             runHomeAction(
-                successMessage = "Serveurs et accès actualisés."
+                successMessage = "Accès et informations actualisés."
             ) {
-                val serverResult = controller.refreshServers()
-
-                if (serverResult is HomeControllerResult.Message) {
-                    return@runHomeAction serverResult
-                }
-
                 val accessResult = controller.refreshAccess()
 
                 if (accessResult is HomeControllerResult.State) {
@@ -279,32 +276,67 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showNetworkDialog() {
-        val options = NetworkOption.ALL
-        val labels = options
-            .map { it.displayName }
-            .toTypedArray()
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_network_selection)
 
-        AlertDialog.Builder(this)
-            .setTitle("Choisir le réseau")
-            .setItems(labels) { _, which ->
-                val network = options[which]
-                selectedNetwork = network
-                AppLogStore.add(this, "Réseau sélectionné • ${network.displayName}.")
+        val selectedId =
+            homeController?.currentState()?.selectedNetwork?.id
+                ?: selectedNetwork?.id
+                ?: NetworkOption.ALL.firstOrNull()?.id
 
-                val controller = homeController
+        val checkMoov = dialog.findViewById<TextView>(R.id.optionMoovCheck)
+        val checkOrange = dialog.findViewById<TextView>(R.id.optionOrangeCheck)
+        val checkTelecel = dialog.findViewById<TextView>(R.id.optionTelecelCheck)
 
-                if (controller != null) {
-                    handleHomeResult(
-                        controller.selectNetwork(network)
-                    )
-                } else {
-                    uiBinder.showNetwork(network)
-                }
+        checkMoov.text = if (selectedId == "moov_bf") "✓" else "○"
+        checkOrange.text = if (selectedId == "orange_bf") "✓" else "○"
+        checkTelecel.text = if (selectedId == "telecel_bf") "✓" else "○"
 
-                refreshNetworkIp()
+        fun select(networkId: String) {
+            val network = NetworkOption.ALL.firstOrNull { it.id == networkId }
+                ?: return
+
+            selectedNetwork = network
+            AppLogStore.add(
+                this,
+                "Réseau sélectionné • ${network.displayName}."
+            )
+
+            val controller = homeController
+            if (controller != null) {
+                handleHomeResult(
+                    controller.selectNetwork(network)
+                )
+            } else {
+                uiBinder.showNetwork(network)
+                updateSelectedNetworkLogo(network)
             }
-            .setNegativeButton("Annuler", null)
-            .show()
+
+            refreshNetworkIp()
+            dialog.dismiss()
+        }
+
+        dialog.findViewById<android.view.View>(R.id.networkDialogClose)
+            .setOnClickListener { dialog.dismiss() }
+
+        dialog.findViewById<android.view.View>(R.id.optionMoov)
+            .setOnClickListener { select("moov_bf") }
+
+        dialog.findViewById<android.view.View>(R.id.optionOrange)
+            .setOnClickListener { select("orange_bf") }
+
+        dialog.findViewById<android.view.View>(R.id.optionTelecel)
+            .setOnClickListener { select("telecel_bf") }
+
+        dialog.show()
+
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setLayout(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT
+            )
+        }
     }
 
     private fun requireController(): HomeController? {
@@ -361,6 +393,9 @@ class MainActivity : AppCompatActivity() {
                     result.value.selectedNetwork
 
                 uiBinder.showNetwork(
+                    result.value.selectedNetwork
+                )
+                updateSelectedNetworkLogo(
                     result.value.selectedNetwork
                 )
 
@@ -484,27 +519,20 @@ class MainActivity : AppCompatActivity() {
         val info = NetworkIpProvider.getCurrent(this)
 
         networkIpValue.text = info.ip
+        networkIpStatus.text =
+            "${info.transport} • IP actuelle"
+    }
 
-        val transportLabel = info.transport
-
-        networkIpStatus.text = when (selectedNetwork?.id) {
-            "moov_bf" -> {
-                if (MoovIpValidator.isCompatible(info.ip)) {
-                    "$transportLabel • IP compatible MOOV"
-                } else {
-                    "$transportLabel • IP MOOV non compatible"
-                }
-            }
-
-            "orange_bf" ->
-                "$transportLabel • Vérification Orange via IP Finder"
-
-            "telecel_bf" ->
-                "$transportLabel • IP actuelle"
-
-            else ->
-                "$transportLabel • IP actuelle"
+    private fun updateSelectedNetworkLogo(
+        network: NetworkOption?
+    ) {
+        val drawable = when (network?.id) {
+            "orange_bf" -> R.drawable.ic_operator_orange
+            "telecel_bf" -> R.drawable.ic_operator_telecel
+            else -> R.drawable.ic_operator_moov
         }
+
+        networkLogo.setImageResource(drawable)
     }
 
     private fun formatDuration(

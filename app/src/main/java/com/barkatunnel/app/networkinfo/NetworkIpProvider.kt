@@ -25,7 +25,16 @@ object NetworkIpProvider {
             else -> "Réseau"
         }
 
-        val ip = findIpv4() ?: "Indisponible"
+        val activeIp = active
+            ?.let { cm.getLinkProperties(it) }
+            ?.linkAddresses
+            ?.asSequence()
+            ?.map { it.address }
+            ?.filterIsInstance<Inet4Address>()
+            ?.firstOrNull { !it.isLoopbackAddress }
+            ?.hostAddress
+
+        val ip = activeIp ?: findIpv4() ?: "Indisponible"
         return NetworkIpInfo(ip = ip, transport = transport)
     }
 

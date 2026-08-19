@@ -38,20 +38,27 @@ class HomeTimerController(
      * Il ne décide jamais si l'accès est autorisé.
      */
     fun syncAccessRemaining(remainingSeconds: Long) {
-        accessBaseSeconds = remainingSeconds.coerceAtLeast(0L)
-        accessStartedElapsed = SystemClock.elapsedRealtime()
-        onAccessTick(accessBaseSeconds)
+        val safeSeconds = remainingSeconds.coerceAtLeast(0L)
+        runOnMain {
+            accessBaseSeconds = safeSeconds
+            accessStartedElapsed = SystemClock.elapsedRealtime()
+            onAccessTick(accessBaseSeconds)
+        }
     }
 
     fun startConnectionTimer() {
-        connectionStartedElapsed = SystemClock.elapsedRealtime()
-        connectionRunning = true
-        onConnectionTick(0L)
+        runOnMain {
+            connectionStartedElapsed = SystemClock.elapsedRealtime()
+            connectionRunning = true
+            onConnectionTick(0L)
+        }
     }
 
     fun stopConnectionTimer() {
-        connectionRunning = false
-        onConnectionTick(0L)
+        runOnMain {
+            connectionRunning = false
+            onConnectionTick(0L)
+        }
     }
 
     private fun update() {
@@ -70,6 +77,14 @@ class HomeTimerController(
                 (SystemClock.elapsedRealtime() - connectionStartedElapsed) / 1000L
 
             onConnectionTick(connectedSeconds)
+        }
+    }
+
+    private fun runOnMain(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            action()
+        } else {
+            handler.post(action)
         }
     }
 }

@@ -12,26 +12,34 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="154dp"
             android:background="@drawable/bg_menu_header"
             android:gravity="center_vertical"
             android:orientation="vertical"
             android:paddingHorizontal="26dp">
 
             <ImageView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
                 android:contentDescription="Logo Barka Tunnel"
                 android:src="@drawable/ic_barka_logo" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="7dp"
                 android:text="BARKA TUNNEL"
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Version 1.0.0"
+                android:textColor="#D8E8FF"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -39,7 +47,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingStart="22dp"
-            android:paddingTop="14dp"
+            android:paddingTop="16dp"
             android:paddingEnd="22dp"
             android:paddingBottom="22dp">
 
@@ -71,21 +79,19 @@
             <TextView
                 android:id="@+id/menuSupport"
                 style="@style/BarkaMenuItem"
-                android:text="●   Contacter le support" />
+                android:text="◉   Contacter le support" />
 
-            <TextView
+            <View
                 android:id="@+id/menuJournal"
                 android:layout_width="1dp"
                 android:layout_height="1dp"
-                android:visibility="gone"
-                android:text="Journal" />
+                android:visibility="gone" />
 
-            <TextView
+            <View
                 android:id="@+id/menuIpFinder"
                 android:layout_width="1dp"
                 android:layout_height="1dp"
-                android:visibility="gone"
-                android:text="IP Finder" />
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
