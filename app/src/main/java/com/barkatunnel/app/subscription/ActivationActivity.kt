@@ -45,8 +45,7 @@ class ActivationActivity : AppCompatActivity() {
             codeInput.setText(code)
             AppLogStore.add(
                 this,
-                "Activation",
-                "Tentative de validation d’un code d’activation."
+                "Activation • Tentative de validation d’un code d’activation."
             )
 
             Toast.makeText(

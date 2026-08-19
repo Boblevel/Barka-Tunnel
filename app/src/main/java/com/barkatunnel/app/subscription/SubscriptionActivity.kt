@@ -34,8 +34,7 @@ class SubscriptionActivity : AppCompatActivity() {
         payButton.setOnClickListener {
             AppLogStore.add(
                 this,
-                "Paiement",
-                "Offre sélectionnée : $selectedPlanId • $selectedAmount XOF"
+                "Paiement • Offre sélectionnée : $selectedPlanId • $selectedAmount XOF"
             )
             Toast.makeText(
                 this,
