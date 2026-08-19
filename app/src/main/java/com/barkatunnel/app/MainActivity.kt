@@ -264,18 +264,9 @@ class MainActivity : AppCompatActivity() {
         val controller = homeController ?: return
 
         Thread {
-            val serverResult = controller.refreshServers()
             val accessResult = controller.refreshAccess()
 
             runOnUiThread {
-                if (serverResult is HomeControllerResult.Message) {
-                    Toast.makeText(
-                        this,
-                        serverResult.text,
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-
                 handleHomeResult(accessResult)
 
                 if (accessResult is HomeControllerResult.State) {
