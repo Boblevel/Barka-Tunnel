@@ -86,6 +86,49 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
+
+    fun getVpnCatalog(): List<BackendVpnProfileMeta> {
+        val array = getArray("/v1/vpn/catalog")
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                add(parseVpnProfileMeta(item))
+            }
+        }
+    }
+
+    fun getVpnProfile(networkId: String): BackendVpnProfile {
+        val body = post(
+            path = "/v1/vpn/profile",
+            payload = JSONObject()
+                .put("device_id", deviceId)
+                .put("network_id", networkId)
+        )
+
+        val meta = parseVpnProfileMeta(body)
+        val config = body.optJSONObject("config") ?: JSONObject()
+        if (!meta.enabled || config.length() == 0) {
+            throw BarkaBackendException("Configuration VPN indisponible pour ce réseau.")
+        }
+
+        return BackendVpnProfile(
+            meta = meta,
+            configJson = config.toString()
+        )
+    }
+
+    private fun parseVpnProfileMeta(body: JSONObject): BackendVpnProfileMeta {
+        return BackendVpnProfileMeta(
+            networkId = body.optString("network_id", "").trim(),
+            displayName = body.optString("display_name", "").trim(),
+            protocol = body.optString("protocol", "").trim().uppercase(),
+            enabled = body.optBoolean("enabled", false),
+            priority = body.optInt("priority", 100),
+            version = body.optInt("version", 0),
+            updatedAt = body.optString("updated_at", "").trim()
+        )
+    }
+
     fun redeemActivationCode(code: String): BackendActivationResult {
         val body = post(
             path = "/v1/activation/redeem",
@@ -107,6 +150,37 @@ class BarkaBackendClient(context: Context) {
             accessType = body.optString("access_type", "NONE"),
             remainingSeconds = body.optLong("remaining_seconds", 0L).coerceAtLeast(0L)
         )
+    }
+
+    private fun getArray(path: String): org.json.JSONArray {
+        val connection = (URL(BASE_URL + path).openConnection() as HttpURLConnection)
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = CONNECT_TIMEOUT_MS
+            connection.readTimeout = READ_TIMEOUT_MS
+            connection.setRequestProperty("Accept", "application/json")
+
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.use { input ->
+                BufferedReader(InputStreamReader(input, Charsets.UTF_8)).readText()
+            }.orEmpty()
+
+            if (status !in 200..299) {
+                val detail = try { JSONObject(text).optString("detail", "Erreur serveur HTTP $status") }
+                catch (_: Exception) { "Erreur serveur HTTP $status" }
+                throw BarkaBackendException(cleanMessage(detail))
+            }
+
+            return try { org.json.JSONArray(text) }
+            catch (_: Exception) { throw BarkaBackendException("Réponse VPN invalide.") }
+        } catch (e: BarkaBackendException) {
+            throw e
+        } catch (_: Exception) {
+            throw BarkaBackendException("Impossible de joindre le serveur Barka Tunnel.")
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun post(path: String, payload: JSONObject): JSONObject {
@@ -154,6 +228,21 @@ class BarkaBackendClient(context: Context) {
         return message.replace(Regex("(?i)lomopay"), "service de paiement")
     }
 }
+
+data class BackendVpnProfileMeta(
+    val networkId: String,
+    val displayName: String,
+    val protocol: String,
+    val enabled: Boolean,
+    val priority: Int,
+    val version: Int,
+    val updatedAt: String
+)
+
+data class BackendVpnProfile(
+    val meta: BackendVpnProfileMeta,
+    val configJson: String
+)
 
 data class BackendAccessState(
     val allowed: Boolean,

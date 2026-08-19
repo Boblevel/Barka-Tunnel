@@ -77,7 +77,38 @@ def init_db() -> None:
                     event_id TEXT PRIMARY KEY,
                     received_at INTEGER NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS vpn_profiles(
+                    network_id TEXT PRIMARY KEY,
+                    display_name TEXT NOT NULL,
+                    protocol TEXT NOT NULL,
+                    enabled INTEGER NOT NULL DEFAULT 0,
+                    priority INTEGER NOT NULL DEFAULT 100,
+                    version INTEGER NOT NULL DEFAULT 1,
+                    config_json TEXT NOT NULL DEFAULT '{}',
+                    updated_at INTEGER NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_vpn_profiles_enabled
+                ON vpn_profiles(enabled, priority, network_id);
                 """
+            )
+
+            now = int(__import__("time").time())
+            defaults = (
+                ("moov_bf", "MOOV-AFRICA BF", "SLOWDNS"),
+                ("orange_bf", "ORANGE BF", "VLESS"),
+                ("telecel_bf", "TELECEL BF", "UDP"),
+            )
+            cx.executemany(
+                """
+                INSERT OR IGNORE INTO vpn_profiles(
+                    network_id, display_name, protocol, enabled,
+                    priority, version, config_json, updated_at
+                ) VALUES(?,?,?,0,100,1,'{}',?)
+                """,
+                [(network_id, display_name, protocol, now)
+                 for network_id, display_name, protocol in defaults],
             )
         finally:
             cx.close()

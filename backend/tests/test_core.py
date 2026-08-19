@@ -72,3 +72,60 @@ def test_payment_code_is_deterministic(tmp_path):
     code2 = services.issue_activation_code(source, "1w", reference)
     assert code1 == code2
     assert code1.startswith("BARKA-")
+
+
+def test_vpn_profiles_are_seeded_and_secrets_require_access(tmp_path):
+    db, services = load_modules(tmp_path)
+    import app.vpn_profiles as vpn_profiles
+    importlib.reload(vpn_profiles)
+
+    catalog = vpn_profiles.list_catalog()
+    assert [item["network_id"] for item in catalog] == ["moov_bf", "orange_bf", "telecel_bf"]
+    assert [item["protocol"] for item in catalog] == ["SLOWDNS", "VLESS", "UDP"]
+    assert all(item["enabled"] is False for item in catalog)
+
+    device = "device-vpnprofile-abcdef"
+    try:
+        vpn_profiles.get_profile_for_device(device, "orange_bf")
+        assert False, "Un appareil sans accès ne doit pas recevoir la configuration"
+    except PermissionError:
+        pass
+
+    services.issue_activation_code("TEST:VPN", "24h")
+    code = services.issue_activation_code("TEST:VPN2", "24h")
+    ok, _, _ = services.redeem_activation_code(device, code)
+    assert ok is True
+
+    profile = vpn_profiles.upsert_admin_profile({
+        "network_id": "orange_bf",
+        "display_name": "ORANGE BF",
+        "protocol": "VLESS",
+        "enabled": True,
+        "priority": 10,
+        "config": {"uri": "vless://example-only"},
+    })
+    assert profile["enabled"] is True
+    assert profile["version"] >= 2
+
+    live = vpn_profiles.get_profile_for_device(device, "orange_bf")
+    assert live["protocol"] == "VLESS"
+    assert live["config"]["uri"] == "vless://example-only"
+
+
+def test_vpn_profile_protocol_is_locked_to_operator(tmp_path):
+    load_modules(tmp_path)
+    import app.vpn_profiles as vpn_profiles
+    importlib.reload(vpn_profiles)
+
+    try:
+        vpn_profiles.upsert_admin_profile({
+            "network_id": "moov_bf",
+            "display_name": "MOOV-AFRICA BF",
+            "protocol": "VLESS",
+            "enabled": False,
+            "priority": 100,
+            "config": {},
+        })
+        assert False, "MOOV ne doit pas accepter VLESS dans cette architecture"
+    except ValueError as exc:
+        assert "SLOWDNS" in str(exc)

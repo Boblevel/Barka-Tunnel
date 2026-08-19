@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -81,3 +81,38 @@ class PlanResponse(BaseModel):
     amount: int
     currency: str
     duration_seconds: int
+
+
+VpnNetworkId = Literal["moov_bf", "orange_bf", "telecel_bf"]
+VpnProtocol = Literal["SLOWDNS", "VLESS", "UDP"]
+
+
+class VpnProfileRequest(DeviceRequest):
+    network_id: VpnNetworkId
+
+
+class VpnProfileCatalogItem(BaseModel):
+    network_id: VpnNetworkId
+    display_name: str
+    protocol: VpnProtocol
+    enabled: bool
+    priority: int
+    version: int
+    updated_at: str
+
+
+class VpnProfileResponse(VpnProfileCatalogItem):
+    config: dict[str, Any]
+
+
+class AdminVpnProfileUpsert(BaseModel):
+    network_id: VpnNetworkId
+    display_name: str = Field(min_length=2, max_length=80)
+    protocol: VpnProtocol
+    enabled: bool = False
+    priority: int = Field(default=100, ge=1, le=1000)
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdminVpnProfileResponse(VpnProfileResponse):
+    pass

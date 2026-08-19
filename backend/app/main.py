@@ -23,6 +23,11 @@ from .models import (
     PaymentStatusResponse,
     PlanResponse,
     TrialStartResponse,
+    AdminVpnProfileResponse,
+    AdminVpnProfileUpsert,
+    VpnProfileCatalogItem,
+    VpnProfileRequest,
+    VpnProfileResponse,
 )
 from .plans import PLANS, get_plan
 from .security import require_admin, verify_lomopay_signature
@@ -41,6 +46,12 @@ from .services import (
     register_webhook_event,
     start_trial,
     update_payment_created,
+)
+from .vpn_profiles import (
+    get_profile_for_device,
+    list_admin_profiles,
+    list_catalog,
+    upsert_admin_profile,
 )
 
 
@@ -189,6 +200,43 @@ async def payment_status(body: PaymentStatusRequest):
 def activation_redeem(body: ActivationRequest):
     success, message, access = redeem_activation_code(body.device_id, body.code)
     return ActivationResponse(success=success, message=message, access=access)
+
+
+@app.get("/v1/vpn/catalog", response_model=list[VpnProfileCatalogItem])
+def vpn_catalog():
+    # Ce catalogue n'expose aucune configuration sensible.
+    return list_catalog()
+
+
+@app.post("/v1/vpn/profile", response_model=VpnProfileResponse)
+def vpn_profile(body: VpnProfileRequest):
+    try:
+        return get_profile_for_device(body.device_id, body.network_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get(
+    "/v1/admin/vpn/profiles",
+    response_model=list[AdminVpnProfileResponse],
+    dependencies=[Depends(require_admin)],
+)
+def admin_vpn_profiles():
+    return list_admin_profiles()
+
+
+@app.post(
+    "/v1/admin/vpn/profiles",
+    response_model=AdminVpnProfileResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_vpn_profile_upsert(body: AdminVpnProfileUpsert):
+    try:
+        return upsert_admin_profile(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/v1/webhooks/lomopay")
