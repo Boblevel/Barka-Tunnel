@@ -168,6 +168,9 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
             else:
                 success = False
                 message = "Ce code a déjà été utilisé."
+        elif row["status"] != "issued":
+            success = False
+            message = "Ce code a été désactivé."
         else:
             device = cx.execute(
                 "SELECT * FROM devices WHERE device_id=?",

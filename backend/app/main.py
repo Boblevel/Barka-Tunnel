@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
+
+from .admin_ops import admin_stats_extended, list_activation_codes, revoke_activation_code
+from .admin_panel import ADMIN_PANEL_HTML
+from .app_updates import (
+    get_app_update_admin,
+    get_app_update_for_client,
+    release_apk_path,
+    release_apk_url,
+    upsert_app_update,
+)
 
 from .config import settings
 from .db import connect, init_db
@@ -23,6 +35,12 @@ from .models import (
     PaymentStatusResponse,
     PlanResponse,
     TrialStartResponse,
+    AdminCodeListItem,
+    AdminCodeRevokeRequest,
+    AdminCodeRevokeResponse,
+    AppUpdateAdminResponse,
+    AppUpdateAdminUpsert,
+    AppUpdateResponse,
     AdminVpnProfileResponse,
     AdminVpnProfileUpsert,
     VpnProfileCatalogItem,
@@ -64,7 +82,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Barka Tunnel Backend",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -74,7 +92,7 @@ def health():
     return {
         "ok": True,
         "service": "barka-tunnel-backend",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "payment_configured": settings.payment_ready,
     }
 
@@ -82,6 +100,13 @@ def health():
 @app.get("/v1/plans", response_model=list[PlanResponse])
 def plans():
     return list(PLANS.values())
+
+@app.get("/v1/app/update", response_model=AppUpdateResponse)
+def app_update(version_code: int = 1):
+    if version_code < 1:
+        raise HTTPException(status_code=400, detail="Version Android invalide")
+    return get_app_update_for_client(version_code)
+
 
 
 @app.post("/v1/access/check", response_model=AccessResponse)
@@ -310,27 +335,123 @@ def admin_codes(body: AdminCodeRequest):
 
 @app.get("/v1/admin/stats", dependencies=[Depends(require_admin)])
 def admin_stats():
-    cx = connect()
+    return admin_stats_extended()
+
+
+@app.get(
+    "/v1/admin/codes",
+    response_model=list[AdminCodeListItem],
+    dependencies=[Depends(require_admin)],
+)
+def admin_codes_list(limit: int = 100):
+    return list_activation_codes(limit)
+
+
+@app.post(
+    "/v1/admin/codes/revoke",
+    response_model=AdminCodeRevokeResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_code_revoke(body: AdminCodeRevokeRequest):
+    success, message = revoke_activation_code(body.code)
+    return AdminCodeRevokeResponse(success=success, message=message)
+
+
+@app.get(
+    "/v1/admin/app-update",
+    response_model=AppUpdateAdminResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_app_update_get():
+    return get_app_update_admin()
+
+
+@app.post(
+    "/v1/admin/app-update",
+    response_model=AppUpdateAdminResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_app_update_set(body: AppUpdateAdminUpsert):
     try:
-        devices = cx.execute("SELECT COUNT(*) AS n FROM devices").fetchone()["n"]
-        paid = cx.execute(
-            "SELECT COUNT(*) AS n FROM payments WHERE status='paid'"
-        ).fetchone()["n"]
-        pending = cx.execute(
-            "SELECT COUNT(*) AS n FROM payments WHERE status='pending'"
-        ).fetchone()["n"]
-        redeemed = cx.execute(
-            "SELECT COUNT(*) AS n FROM activation_codes WHERE status='redeemed'"
-        ).fetchone()["n"]
-    finally:
-        cx.close()
+        return upsert_app_update(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.put(
+    "/v1/admin/app-update/apk",
+    dependencies=[Depends(require_admin)],
+)
+async def admin_app_update_apk(request: Request):
+    target = release_apk_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp = target.with_suffix(".apk.tmp")
+    max_bytes = 100 * 1024 * 1024
+    total = 0
+    digest = hashlib.sha256()
+    first = b""
+
+    try:
+        with temp.open("wb") as output:
+            async for chunk in request.stream():
+                if not chunk:
+                    continue
+                if len(first) < 4:
+                    first += chunk[: 4 - len(first)]
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(status_code=413, detail="APK trop volumineux (100 Mo max).")
+                digest.update(chunk)
+                output.write(chunk)
+
+        if total < 4 or not first.startswith(b"PK"):
+            raise HTTPException(status_code=400, detail="Fichier APK invalide.")
+
+        os.replace(temp, target)
+    except Exception:
+        temp.unlink(missing_ok=True)
+        raise
 
     return {
-        "devices": devices,
-        "payments_paid": paid,
-        "payments_pending": pending,
-        "codes_redeemed": redeemed,
+        "success": True,
+        "apk_url": release_apk_url(),
+        "size_bytes": total,
+        "sha256": digest.hexdigest(),
     }
+
+
+@app.get("/downloads/BarkaTunnel.apk", include_in_schema=False)
+def download_barka_apk():
+    target = release_apk_path()
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="APK non publié")
+    return FileResponse(
+        target,
+        media_type="application/vnd.android.package-archive",
+        filename="BarkaTunnel.apk",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
+def admin_panel():
+    return HTMLResponse(
+        ADMIN_PANEL_HTML,
+        headers={
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer",
+            "Content-Security-Policy": (
+                "default-src 'self'; "
+                "style-src 'unsafe-inline'; "
+                "script-src 'unsafe-inline'; "
+                "img-src 'self' data:; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none'"
+            ),
+        },
+    )
 
 
 @app.get("/payment-return", response_class=HTMLResponse)

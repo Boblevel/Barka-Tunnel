@@ -129,6 +129,26 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
+    fun checkAppUpdate(currentVersionCode: Long): BackendAppUpdate {
+        val body = getObject(
+            path = "/v1/app/update?version_code=${currentVersionCode.coerceAtLeast(1L)}"
+        )
+        return BackendAppUpdate(
+            enabled = body.optBoolean("enabled", false),
+            updateAvailable = body.optBoolean("update_available", false),
+            forceUpdate = body.optBoolean("force_update", false),
+            latestVersionCode = body.optLong("latest_version_code", 1L),
+            latestVersionName = body.optString("latest_version_name", "").trim(),
+            apkUrl = body.optString("apk_url", "").trim(),
+            message = cleanMessage(
+                body.optString(
+                    "message",
+                    "Une nouvelle version de Barka Tunnel est disponible."
+                )
+            )
+        )
+    }
+
     fun redeemActivationCode(code: String): BackendActivationResult {
         val body = post(
             path = "/v1/activation/redeem",
@@ -150,6 +170,41 @@ class BarkaBackendClient(context: Context) {
             accessType = body.optString("access_type", "NONE"),
             remainingSeconds = body.optLong("remaining_seconds", 0L).coerceAtLeast(0L)
         )
+    }
+
+    private fun getObject(path: String): JSONObject {
+        val connection = (URL(BASE_URL + path).openConnection() as HttpURLConnection)
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = CONNECT_TIMEOUT_MS
+            connection.readTimeout = READ_TIMEOUT_MS
+            connection.setRequestProperty("Accept", "application/json")
+
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.use { input ->
+                BufferedReader(InputStreamReader(input, Charsets.UTF_8)).readText()
+            }.orEmpty()
+
+            val body = try {
+                if (text.isBlank()) JSONObject() else JSONObject(text)
+            } catch (_: Exception) {
+                JSONObject()
+            }
+
+            if (status !in 200..299) {
+                val detail = body.optString("detail", "Erreur serveur HTTP $status")
+                throw BarkaBackendException(cleanMessage(detail))
+            }
+
+            return body
+        } catch (e: BarkaBackendException) {
+            throw e
+        } catch (_: Exception) {
+            throw BarkaBackendException("Impossible de joindre le serveur Barka Tunnel.")
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun getArray(path: String): org.json.JSONArray {
@@ -242,6 +297,16 @@ data class BackendVpnProfileMeta(
 data class BackendVpnProfile(
     val meta: BackendVpnProfileMeta,
     val configJson: String
+)
+
+data class BackendAppUpdate(
+    val enabled: Boolean,
+    val updateAvailable: Boolean,
+    val forceUpdate: Boolean,
+    val latestVersionCode: Long,
+    val latestVersionName: String,
+    val apkUrl: String,
+    val message: String
 )
 
 data class BackendAccessState(

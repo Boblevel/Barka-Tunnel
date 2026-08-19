@@ -116,3 +116,46 @@ class AdminVpnProfileUpsert(BaseModel):
 
 class AdminVpnProfileResponse(VpnProfileResponse):
     pass
+
+
+class AdminCodeListItem(BaseModel):
+    code: str
+    plan_id: str
+    status: Literal["issued", "redeemed", "revoked"]
+    created_at: str
+    redeemed_at: str | None = None
+    redeemed_device_id: str | None = None
+    source_type: str
+
+
+class AdminCodeRevokeRequest(BaseModel):
+    code: str = Field(min_length=8, max_length=80)
+
+
+class AdminCodeRevokeResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class AppUpdateAdminUpsert(BaseModel):
+    enabled: bool = False
+    latest_version_code: int = Field(default=1, ge=1, le=2_000_000_000)
+    latest_version_name: str = Field(default="1.0.0", min_length=1, max_length=50)
+    apk_url: str = Field(default="", max_length=1000)
+    message: str = Field(default="Une nouvelle version de Barka Tunnel est disponible.", max_length=500)
+    mandatory: bool = False
+
+
+class AppUpdateAdminResponse(AppUpdateAdminUpsert):
+    updated_at: str
+
+
+class AppUpdateResponse(BaseModel):
+    enabled: bool
+    update_available: bool
+    force_update: bool
+    latest_version_code: int
+    latest_version_name: str
+    apk_url: str
+    message: str
+    updated_at: str

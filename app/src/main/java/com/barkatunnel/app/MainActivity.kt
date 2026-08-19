@@ -29,6 +29,9 @@ import com.barkatunnel.app.ui.home.HomeRuntimeFactory
 import com.barkatunnel.app.ui.home.HomeTimerController
 import com.barkatunnel.app.ui.home.HomeUiBinder
 import com.barkatunnel.app.ui.home.NetworkOption
+import com.barkatunnel.app.backend.BarkaBackendClient
+import com.barkatunnel.app.update.AppUpdateCoordinator
+import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.google.android.material.button.MaterialButton
 
 class MainActivity : AppCompatActivity() {
@@ -49,10 +52,16 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
+    private lateinit var updateCoordinator: AppUpdateCoordinator
+
+    private val vpnProfileRepository by lazy {
+        VpnProfileRepository(BarkaBackendClient(this))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        updateCoordinator = AppUpdateCoordinator(this)
 
         val networkSelector = findViewById<android.view.View>(R.id.networkSelector)
         networkLogo = findViewById(R.id.networkLogo)
@@ -132,6 +141,8 @@ class MainActivity : AppCompatActivity() {
 
         buttonRefresh.setOnClickListener {
             refreshNetworkIp()
+            refreshVpnServices()
+            updateCoordinator.check(showNoUpdate = true, force = true)
 
             val controller = requireController() ?: return@setOnClickListener
 
@@ -150,7 +161,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val connectAction = {
+        val connectAction = connectAction@{
+            if (updateCoordinator.showBlockingIfNeeded()) {
+                return@connectAction
+            }
+
             val controller = requireController()
 
             if (controller != null) {
@@ -227,6 +242,9 @@ class MainActivity : AppCompatActivity() {
         if (::networkIpValue.isInitialized) {
             refreshNetworkIp()
             initializeHomeRuntime()
+            if (::updateCoordinator.isInitialized) {
+                updateCoordinator.check(showNoUpdate = false)
+            }
         }
     }
 
@@ -513,6 +531,26 @@ class MainActivity : AppCompatActivity() {
             (resources.displayMetrics.widthPixels * 0.82).toInt(),
             WindowManager.LayoutParams.MATCH_PARENT
         )
+    }
+
+    private fun refreshVpnServices() {
+        Thread {
+            when (val result = vpnProfileRepository.refreshCatalog()) {
+                is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Success -> {
+                    AppLogStore.add(
+                        this,
+                        "Services VPN actualisés • ${result.enabledCount} actif(s)."
+                    )
+                }
+
+                is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Error -> {
+                    AppLogStore.add(
+                        this,
+                        "Actualisation des services impossible • ${result.message}"
+                    )
+                }
+            }
+        }.start()
     }
 
     private fun refreshNetworkIp() {

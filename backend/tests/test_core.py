@@ -129,3 +129,65 @@ def test_vpn_profile_protocol_is_locked_to_operator(tmp_path):
         assert False, "MOOV ne doit pas accepter VLESS dans cette architecture"
     except ValueError as exc:
         assert "SLOWDNS" in str(exc)
+
+
+def test_admin_can_revoke_unused_code(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    code = services.issue_activation_code("TEST:REVOKE", "24h")
+    ok, message = admin_ops.revoke_activation_code(code)
+    assert ok is True
+    assert "désactiv" in message.lower()
+
+    success, message, access = services.redeem_activation_code(
+        "device-revoked-abcdef", code
+    )
+    assert success is False
+    assert "désactiv" in message.lower()
+    assert access["allowed"] is False
+
+
+def test_app_update_is_server_controlled(tmp_path):
+    load_modules(tmp_path)
+    import app.app_updates as app_updates
+    importlib.reload(app_updates)
+
+    initial = app_updates.get_app_update_for_client(1)
+    assert initial["update_available"] is False
+    assert initial["force_update"] is False
+
+    saved = app_updates.upsert_app_update({
+        "enabled": True,
+        "latest_version_code": 7,
+        "latest_version_name": "1.7.0",
+        "apk_url": "https://downloads.example.test/BarkaTunnel.apk",
+        "message": "Mise à jour de sécurité.",
+        "mandatory": True,
+    })
+    assert saved["mandatory"] is True
+
+    old_client = app_updates.get_app_update_for_client(6)
+    assert old_client["update_available"] is True
+    assert old_client["force_update"] is True
+    assert old_client["apk_url"].startswith("https://")
+
+    current_client = app_updates.get_app_update_for_client(7)
+    assert current_client["update_available"] is False
+    assert current_client["force_update"] is False
+    assert current_client["apk_url"] == ""
+
+
+def test_admin_code_listing_reconstructs_manual_code(tmp_path):
+    load_modules(tmp_path)
+    import app.services as services
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    code = services.issue_activation_code("MANUAL:LIST-TEST", "1w")
+    items = admin_ops.list_activation_codes(10)
+    assert items
+    assert items[0]["code"] == code
+    assert items[0]["source_type"] == "MANUEL"
+    assert items[0]["status"] == "issued"

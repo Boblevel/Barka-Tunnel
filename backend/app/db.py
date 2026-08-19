@@ -91,6 +91,17 @@ def init_db() -> None:
 
                 CREATE INDEX IF NOT EXISTS idx_vpn_profiles_enabled
                 ON vpn_profiles(enabled, priority, network_id);
+
+                CREATE TABLE IF NOT EXISTS app_update(
+                    id INTEGER PRIMARY KEY CHECK(id=1),
+                    enabled INTEGER NOT NULL DEFAULT 0,
+                    latest_version_code INTEGER NOT NULL DEFAULT 1,
+                    latest_version_name TEXT NOT NULL DEFAULT '1.0.0',
+                    apk_url TEXT NOT NULL DEFAULT '',
+                    message TEXT NOT NULL DEFAULT 'Une nouvelle version de Barka Tunnel est disponible.',
+                    mandatory INTEGER NOT NULL DEFAULT 0,
+                    updated_at INTEGER NOT NULL
+                );
                 """
             )
 
@@ -109,6 +120,16 @@ def init_db() -> None:
                 """,
                 [(network_id, display_name, protocol, now)
                  for network_id, display_name, protocol in defaults],
+            )
+            cx.execute(
+                """
+                INSERT OR IGNORE INTO app_update(
+                    id, enabled, latest_version_code, latest_version_name,
+                    apk_url, message, mandatory, updated_at
+                ) VALUES(1,0,1,'1.0.0','',
+                         'Une nouvelle version de Barka Tunnel est disponible.',0,?)
+                """,
+                (now,),
             )
         finally:
             cx.close()
