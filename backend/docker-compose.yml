@@ -1,6 +1,8 @@
 services:
   barka-backend:
-    build: .
+    build:
+      context: .
+      network: host
     container_name: barka-backend
     restart: unless-stopped
     env_file:
