@@ -1,6 +1,6 @@
 package com.barkatunnel.app
 
-// BARKA_HOME_RUNTIME_V4_NO_LOGIN_LOGS
+// BARKA_HOME_RUNTIME_V5_FINAL_NAV_NO_LOGIN
 
 import android.app.AlertDialog
 import android.app.Dialog
@@ -14,12 +14,15 @@ import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.barkatunnel.app.guide.GuideActivity
 import com.barkatunnel.app.ipfinder.IpFinderActivity
 import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.journal.JournalActivity
 import com.barkatunnel.app.networkinfo.MoovIpValidator
 import com.barkatunnel.app.networkinfo.NetworkIpProvider
 import com.barkatunnel.app.settings.SettingsActivity
+import com.barkatunnel.app.subscription.ActivationActivity
+import com.barkatunnel.app.subscription.SubscriptionActivity
 import com.barkatunnel.app.ui.home.HomeConnectionState
 import com.barkatunnel.app.ui.home.HomeController
 import com.barkatunnel.app.ui.home.HomeControllerResult
@@ -31,7 +34,7 @@ import com.google.android.material.button.MaterialButton
 
 class MainActivity : AppCompatActivity() {
 
-    private var selectedNetwork: NetworkOption? = null
+    private var selectedNetwork: NetworkOption? = NetworkOption.ALL.firstOrNull()
     private var homeController: HomeController? = null
 
     private lateinit var networkIpValue: TextView
@@ -247,7 +250,13 @@ class MainActivity : AppCompatActivity() {
         )
 
         homeController = HomeController(runtime)
-        accessStatus.text = "Aucun temps actif"
+        accessStatus.text = "En attente d’activation"
+
+        val defaultNetwork = NetworkOption.ALL.firstOrNull()
+        if (defaultNetwork != null && homeController?.currentState()?.selectedNetwork == null) {
+            handleHomeResult(homeController!!.selectNetwork(defaultNetwork))
+        }
+
         refreshHomeState()
     }
 
@@ -383,8 +392,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             HomeControllerResult.LoginRequired -> {
-                AppLogStore.add(this, "Ancienne demande de compte ignorée.")
-                initializeHomeRuntime()
+                AppLogStore.add(this, "Accès non actif : essai ou abonnement requis.")
+                accessRemainingTime.text = "00:00:00"
+                accessStatus.text = "Active l’essai 1H ou un abonnement"
+                Toast.makeText(
+                    this,
+                    "Active l’essai 1H ou un abonnement pour continuer.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -412,35 +427,19 @@ class MainActivity : AppCompatActivity() {
         dialog.findViewById<android.view.View>(R.id.menuGuide)
             .setOnClickListener {
                 dialog.dismiss()
-                AlertDialog.Builder(this)
-                    .setTitle("Guide d’utilisation")
-                    .setMessage(
-                        "1. Choisis ton réseau.\n" +
-                            "2. Ouvre l’IP Finder en touchant l’IP du réseau si nécessaire.\n" +
-                            "3. Active ton essai ou ton abonnement.\n" +
-                            "4. Appuie sur le bouton central pour connecter le VPN.\n" +
-                            "5. Consulte le Journal en cas d’erreur."
-                    )
-                    .setPositiveButton("COMPRIS", null)
-                    .show()
+                startActivity(Intent(this, GuideActivity::class.java))
             }
 
         dialog.findViewById<android.view.View>(R.id.menuSubscription)
             .setOnClickListener {
                 dialog.dismiss()
-                openOptionalScreen(
-                    "com.barkatunnel.app.subscription.SubscriptionActivity",
-                    "L’écran Abonnement n’est pas encore raccordé."
-                )
+                startActivity(Intent(this, SubscriptionActivity::class.java))
             }
 
         dialog.findViewById<android.view.View>(R.id.menuActivation)
             .setOnClickListener {
                 dialog.dismiss()
-                openOptionalScreen(
-                    "com.barkatunnel.app.subscription.ActivationActivity",
-                    "L’écran Code d’activation n’est pas encore raccordé."
-                )
+                startActivity(Intent(this, ActivationActivity::class.java))
             }
 
         dialog.findViewById<android.view.View>(R.id.menuJournal)
@@ -488,26 +487,6 @@ class MainActivity : AppCompatActivity() {
             (resources.displayMetrics.widthPixels * 0.82).toInt(),
             WindowManager.LayoutParams.MATCH_PARENT
         )
-    }
-
-    private fun openOptionalScreen(
-        className: String,
-        fallbackMessage: String
-    ) {
-        try {
-            startActivity(
-                Intent().setClassName(
-                    packageName,
-                    className
-                )
-            )
-        } catch (_: Exception) {
-            Toast.makeText(
-                this,
-                fallbackMessage,
-                Toast.LENGTH_SHORT
-            ).show()
-        }
     }
 
     private fun refreshNetworkIp() {
