@@ -55,6 +55,8 @@ class VpnProfileRepository(
             throw BarkaBackendException("Configuration VPN incohérente pour ce réseau.")
         }
 
+        VpnProfileConfigParser.validate(protocol, remote.configJson)
+
         val profile = VpnProfile(
             networkId = remote.meta.networkId,
             displayName = remote.meta.displayName,
