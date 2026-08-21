@@ -5,6 +5,7 @@ import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.core.AppContainer
 import com.barkatunnel.app.vpn.ProtectedVpnController
 import com.barkatunnel.app.vpn.VpnController
+import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 
 object HomeRuntimeFactory {
 
@@ -28,7 +29,7 @@ object HomeRuntimeFactory {
                 serverManager = container.vpnServerManager
             ),
             vpnCoordinator = HomeVpnCoordinator(
-                serverManager = container.vpnServerManager,
+                profileRepository = VpnProfileRepository(backendClient),
                 protectedVpnController = protectedVpnController
             )
         )

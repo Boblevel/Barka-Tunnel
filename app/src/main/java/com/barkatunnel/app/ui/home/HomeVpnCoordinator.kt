@@ -1,13 +1,14 @@
 package com.barkatunnel.app.ui.home
 
-import com.barkatunnel.app.network.ApiResult
+import com.barkatunnel.app.backend.BarkaBackendException
 import com.barkatunnel.app.server.VpnServer
-import com.barkatunnel.app.server.VpnServerManager
 import com.barkatunnel.app.vpn.ProtectedVpnController
 import com.barkatunnel.app.vpn.VpnAccessResult
+import com.barkatunnel.app.vpnprofile.VpnProfileProtocol
+import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 
 class HomeVpnCoordinator(
-    private val serverManager: VpnServerManager,
+    private val profileRepository: VpnProfileRepository,
     private val protectedVpnController: ProtectedVpnController
 ) {
 
@@ -16,36 +17,26 @@ class HomeVpnCoordinator(
         servers: List<VpnServer>
     ): HomeVpnResult {
 
-        val server = NetworkServerResolver.resolve(
-            network = network,
-            servers = servers
-        ) ?: return HomeVpnResult.Error(
-            "Aucun serveur disponible pour ${network.displayName}"
-        )
+        val profile = try {
+            profileRepository.loadForConnection(network.id)
+        } catch (e: BarkaBackendException) {
+            return HomeVpnResult.Error(
+                e.message ?: "Profil VPN indisponible pour ${network.displayName}"
+            )
+        }
 
-        return when (val configResult = serverManager.getConfig(server.id)) {
-            is ApiResult.Success -> {
-                when (
-                    val result = protectedVpnController.connect(
-                        configResult.data.config
-                    )
-                ) {
-                    is VpnAccessResult.Connected ->
-                        HomeVpnResult.Connected(network.displayName)
+        // C4.1 : le chemin de connexion utilise désormais le profil dynamique du panel.
+        // Les moteurs natifs SLOWDNS/VLESS/UDP sont branchés dans l'étape core suivante ;
+        // on ne retombe plus silencieusement sur l'ancien catalogue WireGuard.
+        return when (profile.protocol) {
+            VpnProfileProtocol.SLOWDNS ->
+                HomeVpnResult.Error("Profil SlowDNS reçu. Moteur SlowDNS requis pour établir le tunnel.")
 
-                    is VpnAccessResult.Disconnected ->
-                        HomeVpnResult.Disconnected
+            VpnProfileProtocol.VLESS ->
+                HomeVpnResult.Error("Profil VLESS reçu. Moteur VLESS requis pour établir le tunnel.")
 
-                    is VpnAccessResult.AccessDenied ->
-                        HomeVpnResult.AccessDenied
-
-                    is VpnAccessResult.Error ->
-                        HomeVpnResult.Error(result.message)
-                }
-            }
-
-            is ApiResult.Error ->
-                HomeVpnResult.Error(configResult.message)
+            VpnProfileProtocol.UDP ->
+                HomeVpnResult.Error("Profil UDP reçu. Moteur UDP/UDPGW requis pour établir le tunnel.")
         }
     }
 
