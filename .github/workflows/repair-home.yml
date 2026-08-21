@@ -8,6 +8,10 @@ permissions:
 
 jobs:
   repair-home:
+    # C4.2: ancien workflow de réparation conservé pour historique, mais désactivé.
+    # Il réécrivait HomeVpnCoordinator avec l'ancien routage WireGuard et pouvait
+    # annuler les profils VPN dynamiques après un push réussi.
+    if: ${{ false }}
     runs-on: ubuntu-latest
 
     steps:

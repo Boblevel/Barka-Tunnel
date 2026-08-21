@@ -71,8 +71,7 @@ class HomeController(
 
         return when (
             val result = runtime.vpnCoordinator.connect(
-                network = network,
-                servers = servers
+                network = network
             )
         ) {
             is HomeVpnResult.Connected -> {

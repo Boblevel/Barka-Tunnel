@@ -1,7 +1,6 @@
 package com.barkatunnel.app.ui.home
 
 import com.barkatunnel.app.backend.BarkaBackendException
-import com.barkatunnel.app.server.VpnServer
 import com.barkatunnel.app.vpn.ProtectedVpnController
 import com.barkatunnel.app.vpn.VpnAccessResult
 import com.barkatunnel.app.vpnprofile.VpnProfileProtocol
@@ -13,8 +12,7 @@ class HomeVpnCoordinator(
 ) {
 
     fun connect(
-        network: NetworkOption,
-        servers: List<VpnServer>
+        network: NetworkOption
     ): HomeVpnResult {
 
         val profile = try {
