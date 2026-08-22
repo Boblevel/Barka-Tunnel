@@ -2,26 +2,20 @@ package com.barkatunnel.app
 
 // BARKA_HOME_RUNTIME_V5_FINAL_NAV_NO_LOGIN
 
-import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.net.Uri
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.guide.GuideActivity
 import com.barkatunnel.app.ipfinder.IpFinderActivity
 import com.barkatunnel.app.journal.AppLogStore
@@ -30,6 +24,7 @@ import com.barkatunnel.app.networkinfo.NetworkIpProvider
 import com.barkatunnel.app.settings.SettingsActivity
 import com.barkatunnel.app.subscription.ActivationActivity
 import com.barkatunnel.app.subscription.SubscriptionActivity
+import com.barkatunnel.app.support.SupportActivity
 import com.barkatunnel.app.ui.home.HomeConnectionState
 import com.barkatunnel.app.ui.home.HomeController
 import com.barkatunnel.app.ui.home.HomeControllerResult
@@ -39,7 +34,6 @@ import com.barkatunnel.app.ui.home.HomeUiBinder
 import com.barkatunnel.app.ui.home.NetworkOption
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.update.AppUpdateCoordinator
-import com.barkatunnel.app.vpn.VpnPermissionHelper
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.google.android.material.button.MaterialButton
 
@@ -62,25 +56,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
     private lateinit var updateCoordinator: AppUpdateCoordinator
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
-    private var pendingVpnPermissionAction: (() -> Unit)? = null
-
-    private val vpnPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val action = pendingVpnPermissionAction
-        pendingVpnPermissionAction = null
-        if (result.resultCode == Activity.RESULT_OK) {
-            action?.invoke()
-        } else {
-            AppLogStore.add(this, "Autorisation VPN refusée par Android.")
-            Toast.makeText(
-                this,
-                "Autorisation VPN nécessaire pour se connecter.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
 
     private val vpnProfileRepository by lazy {
         VpnProfileRepository(BarkaBackendClient(this))
@@ -89,6 +64,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        applySystemBars()
         updateCoordinator = AppUpdateCoordinator(this)
 
         val networkSelector = findViewById<android.view.View>(R.id.networkSelector)
@@ -98,6 +74,7 @@ class MainActivity : AppCompatActivity() {
 
         val buttonFreeTrial = findViewById<android.view.View>(R.id.buttonFreeTrial)
         val buttonRefresh = findViewById<android.view.View>(R.id.buttonRefresh)
+        val addAccessButton = findViewById<android.view.View>(R.id.addAccessButton)
         connectButton = findViewById(R.id.connectButton)
         val powerButton = findViewById<TextView>(R.id.powerButton)
 
@@ -110,14 +87,6 @@ class MainActivity : AppCompatActivity() {
         }
         networkIpValue.setOnClickListener { openIpFinder() }
         networkIpStatus.setOnClickListener { openIpFinder() }
-        findViewById<android.view.View>(R.id.buttonCopyIp).setOnClickListener {
-            val ip = networkIpValue.text.toString().trim()
-            if (ip.isNotBlank() && ip != "Indisponible") {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("IP Barka Tunnel", ip))
-                Toast.makeText(this, "IP copiée.", Toast.LENGTH_SHORT).show()
-            }
-        }
 
         accessRemainingTime = findViewById(R.id.accessRemainingTime)
         accessStatus = findViewById(R.id.accessStatus)
@@ -154,7 +123,6 @@ class MainActivity : AppCompatActivity() {
         AppLogStore.add(this, "Barka Tunnel démarré.")
         refreshNetworkIp()
         initializeHomeRuntime()
-        registerNetworkCallback()
 
         networkSelector.setOnClickListener {
             showNetworkDialog()
@@ -170,11 +138,6 @@ class MainActivity : AppCompatActivity() {
                     timerController.syncAccessRemaining(
                         result.value.access.remainingSeconds
                     )
-                    val message = result.value.access.label
-                    AppLogStore.add(this, "Essai 1H • $message")
-                    runOnUiThread {
-                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                    }
                 }
 
                 result
@@ -203,6 +166,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        addAccessButton.setOnClickListener {
+            startActivity(Intent(this, SubscriptionActivity::class.java))
+        }
+
         val connectAction = connectAction@{
             if (updateCoordinator.showBlockingIfNeeded()) {
                 return@connectAction
@@ -228,13 +195,6 @@ class MainActivity : AppCompatActivity() {
 
                         result
                     } else {
-                        val permissionIntent = VpnPermissionHelper.prepare(this)
-                        if (permissionIntent != null) {
-                            pendingVpnPermissionAction = { connectButton.performClick() }
-                            runOnUiThread { vpnPermissionLauncher.launch(permissionIntent) }
-                            return@runHomeAction HomeControllerResult.State(controller.currentState())
-                        }
-
                         val selected = controller.currentState().selectedNetwork
                         AppLogStore.add(
                             this,
@@ -289,6 +249,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
 
         if (::networkIpValue.isInitialized) {
+            applySystemBars()
             refreshNetworkIp()
             initializeHomeRuntime()
             if (::updateCoordinator.isInitialized) {
@@ -301,7 +262,7 @@ class MainActivity : AppCompatActivity() {
         if (::timerController.isInitialized) {
             timerController.stop()
         }
-        unregisterNetworkCallback()
+
         super.onDestroy()
     }
 
@@ -316,9 +277,9 @@ class MainActivity : AppCompatActivity() {
         homeController = HomeController(runtime)
         accessStatus.text = "En attente d’activation"
 
-        val networkToRestore = selectedNetwork ?: NetworkOption.ALL.firstOrNull()
-        if (networkToRestore != null && homeController?.currentState()?.selectedNetwork == null) {
-            handleHomeResult(homeController!!.selectNetwork(networkToRestore))
+        val defaultNetwork = NetworkOption.ALL.firstOrNull()
+        if (defaultNetwork != null && homeController?.currentState()?.selectedNetwork == null) {
+            handleHomeResult(homeController!!.selectNetwork(defaultNetwork))
         }
 
         refreshHomeState()
@@ -559,19 +520,12 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
+        dialog.findViewById<TextView>(R.id.menuVersion).text = "Version ${BuildConfig.VERSION_NAME}"
+
         dialog.findViewById<android.view.View>(R.id.menuSupport)
             .setOnClickListener {
                 dialog.dismiss()
-                try {
-                    val uri = Uri.parse("https://wa.me/message/XUBALKJE5J2CB1")
-                    startActivity(Intent(Intent.ACTION_VIEW, uri))
-                } catch (_: Exception) {
-                    Toast.makeText(
-                        this,
-                        "Impossible d’ouvrir le support pour le moment.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                startActivity(Intent(this, SupportActivity::class.java))
             }
 
         dialog.show()
@@ -580,6 +534,15 @@ class MainActivity : AppCompatActivity() {
             (resources.displayMetrics.widthPixels * 0.82).toInt(),
             WindowManager.LayoutParams.MATCH_PARENT
         )
+    }
+
+    private fun applySystemBars() {
+        window.statusBarColor = ContextCompat.getColor(this, R.color.barka_background)
+        window.navigationBarColor = ContextCompat.getColor(this, R.color.barka_background)
+        WindowCompat.getInsetsController(window, window.decorView)?.apply {
+            isAppearanceLightStatusBars = true
+            isAppearanceLightNavigationBars = true
+        }
     }
 
     private fun refreshVpnServices() {
@@ -608,49 +571,6 @@ class MainActivity : AppCompatActivity() {
         networkIpValue.text = info.ip
         networkIpStatus.text =
             "${info.transport} • IP actuelle"
-
-        findViewById<ImageView>(R.id.buttonCopyIp).setImageResource(
-            if (info.transport.contains("Wi-Fi", ignoreCase = true)) {
-                R.drawable.ic_wifi_barka
-            } else {
-                R.drawable.ic_mobile_barka
-            }
-        )
-    }
-
-    private fun registerNetworkCallback() {
-        if (networkCallback != null) return
-        val manager = getSystemService(ConnectivityManager::class.java)
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) = refreshFromNetworkCallback()
-            override fun onLost(network: Network) = refreshFromNetworkCallback()
-            override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) =
-                refreshFromNetworkCallback()
-        }
-        networkCallback = callback
-        try {
-            manager.registerDefaultNetworkCallback(callback)
-        } catch (_: Exception) {
-            networkCallback = null
-        }
-    }
-
-    private fun unregisterNetworkCallback() {
-        val callback = networkCallback ?: return
-        try {
-            getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(callback)
-        } catch (_: Exception) {
-        } finally {
-            networkCallback = null
-        }
-    }
-
-    private fun refreshFromNetworkCallback() {
-        runOnUiThread {
-            if (!isFinishing && ::networkIpValue.isInitialized) {
-                refreshNetworkIp()
-            }
-        }
     }
 
     private fun updateSelectedNetworkLogo(

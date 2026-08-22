@@ -3,12 +3,12 @@
     <item>
         <shape android:shape="oval">
             <solid android:color="@color/white" />
-            <stroke android:width="5dp" android:color="@color/barka_blue" />
+            <stroke android:width="6dp" android:color="@color/barka_blue" />
         </shape>
     </item>
     <item
-        android:width="62dp"
-        android:height="62dp"
-        android:gravity="center"
-        android:drawable="@drawable/ic_power_barka" />
+        android:width="70dp"
+        android:height="70dp"
+        android:drawable="@drawable/ic_power_barka"
+        android:gravity="center" />
 </layer-list>
