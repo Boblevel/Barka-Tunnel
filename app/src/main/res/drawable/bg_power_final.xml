@@ -7,8 +7,8 @@
         </shape>
     </item>
     <item
-        android:width="56dp"
-        android:height="56dp"
+        android:width="62dp"
+        android:height="62dp"
         android:gravity="center"
         android:drawable="@drawable/ic_power_barka" />
 </layer-list>
