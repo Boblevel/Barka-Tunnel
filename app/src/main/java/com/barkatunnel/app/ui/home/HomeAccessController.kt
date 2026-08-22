@@ -1,5 +1,6 @@
 package com.barkatunnel.app.ui.home
 
+import android.content.Context
 import com.barkatunnel.app.access.AccessCoordinator
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.network.ApiResult
@@ -56,11 +57,11 @@ class HomeAccessController private constructor(
         }
     )
 
-    constructor(backendClient: BarkaBackendClient) : this(
+    constructor(context: Context, backendClient: BarkaBackendClient) : this(
         refreshAction = {
             try {
                 val access = backendClient.checkAccess()
-                HomeAccessState(
+                val state = HomeAccessState(
                     allowed = access.allowed,
                     remainingSeconds = access.remainingSeconds,
                     label = when {
@@ -69,8 +70,10 @@ class HomeAccessController private constructor(
                         else -> "Aucun temps actif"
                     }
                 )
+                HomeAccessSnapshotStore.save(context, state)
+                state
             } catch (e: Exception) {
-                HomeAccessState(
+                HomeAccessSnapshotStore.restore(context) ?: HomeAccessState(
                     allowed = false,
                     remainingSeconds = 0L,
                     label = e.message ?: "Serveur indisponible"
@@ -80,7 +83,7 @@ class HomeAccessController private constructor(
         trialAction = {
             try {
                 val trial = backendClient.startTrial()
-                HomeAccessState(
+                val state = HomeAccessState(
                     allowed = trial.access.allowed,
                     remainingSeconds = trial.access.remainingSeconds,
                     label = when {
@@ -89,8 +92,10 @@ class HomeAccessController private constructor(
                         else -> trial.message
                     }
                 )
+                HomeAccessSnapshotStore.save(context, state)
+                state
             } catch (e: Exception) {
-                HomeAccessState(
+                HomeAccessSnapshotStore.restore(context) ?: HomeAccessState(
                     allowed = false,
                     remainingSeconds = 0L,
                     label = e.message ?: "Serveur indisponible"

@@ -23,6 +23,7 @@ object HomeRuntimeFactory {
 
         return HomeRuntime(
             accessController = HomeAccessController(
+                context = context,
                 backendClient = backendClient
             ),
             serverController = HomeServerController(

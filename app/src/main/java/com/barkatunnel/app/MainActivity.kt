@@ -5,9 +5,15 @@ package com.barkatunnel.app
 import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.view.Gravity
 import android.view.WindowManager
@@ -56,6 +62,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
     private lateinit var updateCoordinator: AppUpdateCoordinator
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var pendingVpnPermissionAction: (() -> Unit)? = null
 
     private val vpnPermissionLauncher = registerForActivityResult(
@@ -103,6 +110,14 @@ class MainActivity : AppCompatActivity() {
         }
         networkIpValue.setOnClickListener { openIpFinder() }
         networkIpStatus.setOnClickListener { openIpFinder() }
+        findViewById<android.view.View>(R.id.buttonCopyIp).setOnClickListener {
+            val ip = networkIpValue.text.toString().trim()
+            if (ip.isNotBlank() && ip != "Indisponible") {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("IP Barka Tunnel", ip))
+                Toast.makeText(this, "IP copiée.", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         accessRemainingTime = findViewById(R.id.accessRemainingTime)
         accessStatus = findViewById(R.id.accessStatus)
@@ -139,6 +154,7 @@ class MainActivity : AppCompatActivity() {
         AppLogStore.add(this, "Barka Tunnel démarré.")
         refreshNetworkIp()
         initializeHomeRuntime()
+        registerNetworkCallback()
 
         networkSelector.setOnClickListener {
             showNetworkDialog()
@@ -285,7 +301,7 @@ class MainActivity : AppCompatActivity() {
         if (::timerController.isInitialized) {
             timerController.stop()
         }
-
+        unregisterNetworkCallback()
         super.onDestroy()
     }
 
@@ -300,9 +316,9 @@ class MainActivity : AppCompatActivity() {
         homeController = HomeController(runtime)
         accessStatus.text = "En attente d’activation"
 
-        val defaultNetwork = NetworkOption.ALL.firstOrNull()
-        if (defaultNetwork != null && homeController?.currentState()?.selectedNetwork == null) {
-            handleHomeResult(homeController!!.selectNetwork(defaultNetwork))
+        val networkToRestore = selectedNetwork ?: NetworkOption.ALL.firstOrNull()
+        if (networkToRestore != null && homeController?.currentState()?.selectedNetwork == null) {
+            handleHomeResult(homeController!!.selectNetwork(networkToRestore))
         }
 
         refreshHomeState()
@@ -592,6 +608,41 @@ class MainActivity : AppCompatActivity() {
         networkIpValue.text = info.ip
         networkIpStatus.text =
             "${info.transport} • IP actuelle"
+    }
+
+    private fun registerNetworkCallback() {
+        if (networkCallback != null) return
+        val manager = getSystemService(ConnectivityManager::class.java)
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) = refreshFromNetworkCallback()
+            override fun onLost(network: Network) = refreshFromNetworkCallback()
+            override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) =
+                refreshFromNetworkCallback()
+        }
+        networkCallback = callback
+        try {
+            manager.registerDefaultNetworkCallback(callback)
+        } catch (_: Exception) {
+            networkCallback = null
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        val callback = networkCallback ?: return
+        try {
+            getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(callback)
+        } catch (_: Exception) {
+        } finally {
+            networkCallback = null
+        }
+    }
+
+    private fun refreshFromNetworkCallback() {
+        runOnUiThread {
+            if (!isFinishing && ::networkIpValue.isInitialized) {
+                refreshNetworkIp()
+            }
+        }
     }
 
     private fun updateSelectedNetworkLogo(
