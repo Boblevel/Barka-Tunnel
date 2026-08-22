@@ -52,6 +52,28 @@ jobs:
           gradle-version: '8.9'
           cache-disabled: true
 
+
+      - name: Configurer la signature Android stable
+        shell: bash
+        env:
+          BARKA_KEYSTORE_BASE64: ${{ secrets.BARKA_KEYSTORE_BASE64 }}
+          BARKA_KEY_ALIAS_SECRET: ${{ secrets.BARKA_KEY_ALIAS }}
+          BARKA_STORE_PASSWORD_SECRET: ${{ secrets.BARKA_STORE_PASSWORD }}
+          BARKA_KEY_PASSWORD_SECRET: ${{ secrets.BARKA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$BARKA_KEYSTORE_BASE64" || { echo "Secret BARKA_KEYSTORE_BASE64 manquant"; exit 1; }
+          test -n "$BARKA_KEY_ALIAS_SECRET" || { echo "Secret BARKA_KEY_ALIAS manquant"; exit 1; }
+          test -n "$BARKA_STORE_PASSWORD_SECRET" || { echo "Secret BARKA_STORE_PASSWORD manquant"; exit 1; }
+          test -n "$BARKA_KEY_PASSWORD_SECRET" || { echo "Secret BARKA_KEY_PASSWORD manquant"; exit 1; }
+          KEYSTORE_PATH="$RUNNER_TEMP/barka-tunnel-release.jks"
+          printf '%s' "$BARKA_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$BARKA_STORE_PASSWORD_SECRET" -alias "$BARKA_KEY_ALIAS_SECRET" >/dev/null
+          echo "BARKA_SIGNING_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "BARKA_SIGNING_STORE_PASSWORD=$BARKA_STORE_PASSWORD_SECRET" >> "$GITHUB_ENV"
+          echo "BARKA_SIGNING_KEY_ALIAS=$BARKA_KEY_ALIAS_SECRET" >> "$GITHUB_ENV"
+          echo "BARKA_SIGNING_KEY_PASSWORD=$BARKA_KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
+
       - name: Nettoyer totalement le projet
         shell: bash
         run: |

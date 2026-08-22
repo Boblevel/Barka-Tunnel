@@ -11,13 +11,20 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingStart="14dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="48dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <View
+                android:layout_width="44dp"
+                android:layout_height="44dp" />
 
             <TextView
                 android:layout_width="0dp"
@@ -26,16 +33,22 @@
                 android:gravity="center"
                 android:text="JOURNAL"
                 android:textColor="@color/barka_blue"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/clearJournalButton"
-                android:layout_width="48dp"
+                android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:text="×"
-                android:textSize="22sp"
-                app:backgroundTint="@color/barka_card"
+                android:contentDescription="Effacer le journal"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:text="⌫"
+                android:textColor="@color/barka_text"
+                android:textSize="16sp"
+                app:backgroundTint="@color/white"
                 app:cornerRadius="12dp"
                 app:strokeColor="@color/barka_border"
                 app:strokeWidth="1dp" />
@@ -44,28 +57,24 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Activité VPN, réseau et IP Finder"
-            android:textColor="@color/barka_text_secondary"
-            android:textSize="13sp" />
+            android:layout_marginTop="3dp"
+            android:text="AUJOURD’HUI"
+            android:textColor="@color/barka_blue"
+            android:textSize="9sp"
+            android:textStyle="bold" />
 
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_network_selected"
             android:fillViewport="true">
 
-            <TextView
-                android:id="@+id/journalContent"
+            <LinearLayout
+                android:id="@+id/journalList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:textColor="@color/barka_text"
-                android:textIsSelectable="true"
-                android:textSize="14sp"
-                android:lineSpacingExtra="7dp" />
+                android:orientation="vertical" />
         </ScrollView>
     </LinearLayout>
 
@@ -76,7 +85,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="68dp"
+        android:layout_height="58dp"
         android:background="@color/white"
         android:gravity="center"
         android:orientation="horizontal">
@@ -88,21 +97,8 @@
             android:layout_weight="1"
             android:gravity="center"
             android:orientation="vertical">
-
-            <ImageView
-                android:layout_width="23dp"
-                android:layout_height="23dp"
-                android:contentDescription="Accueil"
-                android:src="@drawable/ic_nav_home" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:text="Accueil"
-                android:textColor="@color/barka_text_secondary"
-                android:textSize="12sp"
-                android:textStyle="normal" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Accueil" android:src="@drawable/ic_nav_home" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Accueil" android:textColor="@color/barka_text_secondary" android:textSize="10sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -112,21 +108,8 @@
             android:layout_weight="1"
             android:gravity="center"
             android:orientation="vertical">
-
-            <ImageView
-                android:layout_width="23dp"
-                android:layout_height="23dp"
-                android:contentDescription="Journal"
-                android:src="@drawable/ic_nav_journal_active" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:text="Journal"
-                android:textColor="@color/barka_blue"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Journal" android:src="@drawable/ic_nav_journal_active" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Journal" android:textColor="@color/barka_blue" android:textSize="10sp" android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

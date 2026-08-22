@@ -608,6 +608,14 @@ class MainActivity : AppCompatActivity() {
         networkIpValue.text = info.ip
         networkIpStatus.text =
             "${info.transport} • IP actuelle"
+
+        findViewById<ImageView>(R.id.buttonCopyIp).setImageResource(
+            if (info.transport.contains("Wi-Fi", ignoreCase = true)) {
+                R.drawable.ic_wifi_barka
+            } else {
+                R.drawable.ic_mobile_barka
+            }
+        )
     }
 
     private fun registerNetworkCallback() {
