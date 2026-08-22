@@ -27,14 +27,15 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <TextView
+                <ImageView
                     android:id="@+id/buttonMenu"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
-                    android:gravity="center"
-                    android:text="☰"
-                    android:textColor="@color/barka_text"
-                    android:textSize="30sp" />
+                    android:clickable="true"
+                    android:contentDescription="Ouvrir le menu"
+                    android:focusable="true"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_menu_barka" />
 
                 <ImageView
                     android:layout_width="42dp"
@@ -52,25 +53,55 @@
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
-                <TextView
+                <LinearLayout
                     android:id="@+id/buttonFreeTrial"
                     android:layout_width="52dp"
                     android:layout_height="52dp"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center"
-                    android:text="🎁&#10;1H"
-                    android:textColor="@color/barka_blue"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical">
 
-                <TextView
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="Essai gratuit 1 heure"
+                        android:src="@drawable/ic_gift_barka" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="1H"
+                        android:textColor="@color/barka_blue"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:id="@+id/buttonRefresh"
                     android:layout_width="70dp"
                     android:layout_height="52dp"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center"
-                    android:text="↻&#10;Mise à jour"
-                    android:textColor="@color/barka_text"
-                    android:textSize="9sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="Vérifier les mises à jour"
+                        android:src="@drawable/ic_refresh_barka" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Mise à jour"
+                        android:textColor="@color/barka_text"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </LinearLayout>
 
             <LinearLayout
@@ -116,13 +147,12 @@
                         android:textSize="12sp" />
                 </LinearLayout>
 
-                <TextView
-                    android:layout_width="38dp"
-                    android:layout_height="38dp"
-                    android:gravity="center"
-                    android:text="📶"
-                    android:textColor="@color/barka_blue"
-                    android:textSize="20sp" />
+                <ImageView
+                    android:id="@+id/networkTransportIcon"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:contentDescription="Type de réseau"
+                    android:src="@drawable/ic_wifi_barka" />
             </LinearLayout>
 
             <TextView
@@ -168,15 +198,29 @@
                         android:textSize="11sp"
                         android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/networkName"
+                    <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
-                        android:text="MOOV-AFRICA BF 🇧🇫"
-                        android:textColor="@color/barka_text"
-                        android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/networkName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="MOOV-AFRICA BF"
+                            android:textColor="@color/barka_text"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="8dp"
+                            android:contentDescription="Burkina Faso"
+                            android:src="@drawable/ic_flag_bf" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/networkSubtitle"
@@ -239,13 +283,12 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
 
-                <TextView
-                    android:layout_width="58dp"
-                    android:layout_height="58dp"
-                    android:gravity="center"
-                    android:text="◷"
-                    android:textColor="@color/barka_blue"
-                    android:textSize="38sp" />
+                <ImageView
+                    android:layout_width="68dp"
+                    android:layout_height="68dp"
+                    android:contentDescription="Temps restant"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_clock_barka" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -274,12 +317,10 @@
 
                     <TextView
                         android:id="@+id/accessStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Aucun temps actif"
-                        android:textColor="@color/barka_text_secondary"
-                        android:textSize="13sp" />
+                        android:layout_width="1dp"
+                        android:layout_height="1dp"
+                        android:text=""
+                        android:visibility="gone" />
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -309,7 +350,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="70dp"
-        android:background="@color/white"
+        android:background="@color/barka_card"
         android:gravity="center"
         android:orientation="horizontal">
 

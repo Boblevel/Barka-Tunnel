@@ -1,1 +1,8 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="@color/barka_text" android:pathData="M3,6h18v2H3zM3,11h18v2H3zM3,16h18v2H3z"/></vector>
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="30dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path android:fillColor="@android:color/transparent" android:pathData="M4,6 H20 M4,12 H20 M4,18 H20" android:strokeColor="@color/barka_text" android:strokeLineCap="round" android:strokeWidth="2.2"/>
+</vector>

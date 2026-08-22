@@ -4,6 +4,10 @@ package com.barkatunnel.app
 
 import android.app.Dialog
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -45,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var networkIpValue: TextView
     private lateinit var networkIpStatus: TextView
     private lateinit var networkLogo: ImageView
+    private lateinit var networkTransportIcon: ImageView
     private lateinit var networkName: TextView
     private lateinit var networkSubtitle: TextView
     private lateinit var accessRemainingTime: TextView
@@ -56,6 +61,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
     private lateinit var updateCoordinator: AppUpdateCoordinator
+    private var networkCallbackRegistered = false
+    private var autoConnectAttempted = false
+
+    private val connectivityManager by lazy {
+        getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = refreshNetworkIpAsync()
+        override fun onLost(network: Network) = refreshNetworkIpAsync()
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) = refreshNetworkIpAsync()
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = refreshNetworkIpAsync()
+    }
 
     private val vpnProfileRepository by lazy {
         VpnProfileRepository(BarkaBackendClient(this))
@@ -80,6 +98,7 @@ class MainActivity : AppCompatActivity() {
 
         networkIpValue = findViewById(R.id.networkIpValue)
         networkIpStatus = findViewById(R.id.networkIpStatus)
+        networkTransportIcon = findViewById(R.id.networkTransportIcon)
 
         val openIpFinder = {
             AppLogStore.add(this, "Ouverture de l’IP Finder.")
@@ -243,6 +262,24 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.buttonMenu).setOnClickListener {
             showSideMenu()
         }
+
+        maybeAutoConnect(powerButton)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!networkCallbackRegistered) {
+            connectivityManager.registerDefaultNetworkCallback(networkCallback)
+            networkCallbackRegistered = true
+        }
+    }
+
+    override fun onStop() {
+        if (networkCallbackRegistered) {
+            runCatching { connectivityManager.unregisterNetworkCallback(networkCallback) }
+            networkCallbackRegistered = false
+        }
+        super.onStop()
     }
 
     override fun onResume() {
@@ -277,9 +314,11 @@ class MainActivity : AppCompatActivity() {
         homeController = HomeController(runtime)
         accessStatus.text = "En attente d’activation"
 
-        val defaultNetwork = NetworkOption.ALL.firstOrNull()
-        if (defaultNetwork != null && homeController?.currentState()?.selectedNetwork == null) {
-            handleHomeResult(homeController!!.selectNetwork(defaultNetwork))
+        val initialNetwork = preferredNetworkFromSettings()
+            ?: selectedNetwork
+            ?: NetworkOption.ALL.firstOrNull()
+        if (initialNetwork != null && homeController?.currentState()?.selectedNetwork == null) {
+            handleHomeResult(homeController!!.selectNetwork(initialNetwork))
         }
 
         refreshHomeState()
@@ -539,10 +578,27 @@ class MainActivity : AppCompatActivity() {
     private fun applySystemBars() {
         window.statusBarColor = ContextCompat.getColor(this, R.color.barka_background)
         window.navigationBarColor = ContextCompat.getColor(this, R.color.barka_background)
+        val nightMode = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        val lightIcons = nightMode != android.content.res.Configuration.UI_MODE_NIGHT_YES
         WindowCompat.getInsetsController(window, window.decorView)?.apply {
-            isAppearanceLightStatusBars = true
-            isAppearanceLightNavigationBars = true
+            isAppearanceLightStatusBars = lightIcons
+            isAppearanceLightNavigationBars = lightIcons
         }
+    }
+
+    private fun preferredNetworkFromSettings(): NetworkOption? {
+        val protocol = getSharedPreferences("barka_settings", MODE_PRIVATE)
+            .getString("protocol", "Auto")
+            ?: "Auto"
+
+        val networkId = when (protocol) {
+            "SlowDNS" -> "moov_bf"
+            "VLESS" -> "orange_bf"
+            "UDP" -> "telecel_bf"
+            else -> return null
+        }
+
+        return NetworkOption.ALL.firstOrNull { it.id == networkId }
     }
 
     private fun refreshVpnServices() {
@@ -569,8 +625,34 @@ class MainActivity : AppCompatActivity() {
         val info = NetworkIpProvider.getCurrent(this)
 
         networkIpValue.text = info.ip
-        networkIpStatus.text =
-            "${info.transport} • IP actuelle"
+        networkIpStatus.text = "${info.transport} • IP actuelle"
+
+        if (::networkTransportIcon.isInitialized) {
+            val icon = when (info.transport) {
+                "Données mobiles" -> R.drawable.ic_mobile_barka
+                else -> R.drawable.ic_wifi_barka
+            }
+            networkTransportIcon.setImageResource(icon)
+        }
+    }
+
+    private fun refreshNetworkIpAsync() {
+        if (!::networkIpValue.isInitialized) return
+        runOnUiThread { refreshNetworkIp() }
+    }
+
+    private fun maybeAutoConnect(powerButton: android.view.View) {
+        if (autoConnectAttempted) return
+        val enabled = getSharedPreferences("barka_settings", MODE_PRIVATE)
+            .getBoolean("auto_vpn", false)
+        if (!enabled) return
+
+        autoConnectAttempted = true
+        powerButton.postDelayed({
+            if (!isFinishing && !isDestroyed) {
+                powerButton.performClick()
+            }
+        }, 700L)
     }
 
     private fun updateSelectedNetworkLogo(

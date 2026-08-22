@@ -24,14 +24,13 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <TextView
+                <ImageView
                     android:id="@+id/backButton"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:gravity="center"
-                    android:text="‹"
-                    android:textColor="@color/barka_text"
-                    android:textSize="34sp" />
+                    android:contentDescription="Retour"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_back_barka" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -229,7 +228,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="68dp"
-        android:background="@color/white"
+        android:background="@color/barka_card"
         android:gravity="center"
         android:orientation="horizontal">
 

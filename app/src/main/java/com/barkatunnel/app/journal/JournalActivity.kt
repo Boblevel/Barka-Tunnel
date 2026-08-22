@@ -21,6 +21,8 @@ class JournalActivity : AppCompatActivity() {
 
         journalList = findViewById(R.id.journalList)
 
+        findViewById<android.view.View>(R.id.journalBackButton).setOnClickListener { finish() }
+
         findViewById<MaterialButton>(R.id.clearJournalButton).setOnClickListener {
             AppLogStore.clear(this)
             refreshLogs()

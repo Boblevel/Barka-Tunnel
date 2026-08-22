@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/barka_card"
     android:fillViewport="true">
 
     <LinearLayout
@@ -19,37 +19,30 @@
             android:paddingHorizontal="26dp">
 
             <ImageView
-                android:layout_width="62dp"
-                android:layout_height="62dp"
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:background="@drawable/bg_logo_white_circle"
                 android:contentDescription="Logo Barka Tunnel"
-                android:src="@drawable/ic_barka_logo_white" />
+                android:padding="7dp"
+                android:src="@drawable/ic_barka_logo" />
 
-            <LinearLayout
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginTop="8dp"
+                android:text="BARKA TUNNEL"
+                android:textColor="@color/barka_card"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="BARKA TUNNEL"
-                    android:textColor="@color/white"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/menuVersion"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:background="@android:color/transparent"
-                    android:text="Version 1.0"
-                    android:textColor="#D8E8FF"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+            <TextView
+                android:id="@+id/menuVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Version 1.0"
+                android:textColor="#D8E8FF"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -64,32 +57,38 @@
             <TextView
                 android:id="@+id/menuHome"
                 style="@style/BarkaMenuItem"
-                android:text="⌂   Accueil" />
+                android:drawableStart="@drawable/ic_menu_home_line"
+                android:text="Accueil" />
 
             <TextView
                 android:id="@+id/menuGuide"
                 style="@style/BarkaMenuItem"
-                android:text="☰   Guide d’utilisation" />
+                android:drawableStart="@drawable/ic_menu_book_line"
+                android:text="Guide d’utilisation" />
 
             <TextView
                 android:id="@+id/menuSubscription"
                 style="@style/BarkaMenuItem"
-                android:text="▣   Abonnement" />
+                android:drawableStart="@drawable/ic_menu_card_line"
+                android:text="Abonnement" />
 
             <TextView
                 android:id="@+id/menuActivation"
                 style="@style/BarkaMenuItem"
-                android:text="⚿   Code d’activation" />
+                android:drawableStart="@drawable/ic_menu_key_line"
+                android:text="Code d’activation" />
 
             <TextView
                 android:id="@+id/menuSettings"
                 style="@style/BarkaMenuItem"
-                android:text="⚙   Paramètres" />
+                android:drawableStart="@drawable/ic_menu_settings_line"
+                android:text="Paramètres" />
 
             <TextView
                 android:id="@+id/menuSupport"
                 style="@style/BarkaMenuItem"
-                android:text="\?   Contacter le support" />
+                android:drawableStart="@drawable/ic_menu_support_line"
+                android:text="Contacter le support" />
 
             <View
                 android:id="@+id/menuJournal"

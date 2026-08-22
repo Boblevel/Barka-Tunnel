@@ -6,9 +6,9 @@ data class NetworkOption(
 ) {
     companion object {
         val ALL = listOf(
-            NetworkOption("moov_bf", "MOOV-AFRICA BF 🇧🇫"),
-            NetworkOption("orange_bf", "ORANGE BF 🇧🇫"),
-            NetworkOption("telecel_bf", "TELECEL BF 🇧🇫")
+            NetworkOption("moov_bf", "MOOV-AFRICA BF"),
+            NetworkOption("orange_bf", "ORANGE BF"),
+            NetworkOption("telecel_bf", "TELECEL BF")
         )
     }
 }

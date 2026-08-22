@@ -38,9 +38,11 @@ class SupportActivity : AppCompatActivity() {
     private fun applySystemBars() {
         window.statusBarColor = ContextCompat.getColor(this, R.color.barka_background)
         window.navigationBarColor = ContextCompat.getColor(this, R.color.barka_background)
+        val nightMode = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        val lightIcons = nightMode != android.content.res.Configuration.UI_MODE_NIGHT_YES
         WindowCompat.getInsetsController(window, window.decorView)?.apply {
-            isAppearanceLightStatusBars = true
-            isAppearanceLightNavigationBars = true
+            isAppearanceLightStatusBars = lightIcons
+            isAppearanceLightNavigationBars = lightIcons
         }
     }
 }

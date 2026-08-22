@@ -21,6 +21,8 @@ class ActivationActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_activation)
 
+        findViewById<android.view.View>(R.id.activationBackButton).setOnClickListener { finish() }
+
         val codeInput = findViewById<EditText>(R.id.activationCodeInput)
         val activateButton = findViewById<MaterialButton>(R.id.activateButton)
         val help = findViewById<TextView>(R.id.activationHelp)

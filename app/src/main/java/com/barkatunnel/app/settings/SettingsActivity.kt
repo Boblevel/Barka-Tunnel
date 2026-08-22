@@ -1,13 +1,20 @@
 package com.barkatunnel.app.settings
 
+import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -24,6 +31,19 @@ class SettingsActivity : AppCompatActivity() {
 
     private val prefsName = "barka_settings"
     private lateinit var updateCoordinator: AppUpdateCoordinator
+    private lateinit var settingsIpValue: TextView
+    private var networkCallbackRegistered = false
+
+    private val connectivityManager by lazy {
+        getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = refreshIpAsync()
+        override fun onLost(network: Network) = refreshIpAsync()
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) = refreshIpAsync()
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = refreshIpAsync()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +62,11 @@ class SettingsActivity : AppCompatActivity() {
         val themeButton = findViewById<MaterialButton>(R.id.themeButton)
         val protocolButton = findViewById<MaterialButton>(R.id.protocolButton)
         val portButton = findViewById<MaterialButton>(R.id.portButton)
-        val settingsIpValue = findViewById<TextView>(R.id.settingsIpValue)
+        settingsIpValue = findViewById(R.id.settingsIpValue)
+
+        findViewById<android.view.View>(R.id.settingsBackButton).setOnClickListener {
+            finish()
+        }
 
         notificationsSwitch.isChecked = prefs.getBoolean("notifications", true)
         autoLaunchSwitch.isChecked = prefs.getBoolean("auto_launch", false)
@@ -50,12 +74,27 @@ class SettingsActivity : AppCompatActivity() {
 
         notificationsSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean("notifications", checked).apply()
+            if (checked && Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2001)
+            }
         }
         autoLaunchSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean("auto_launch", checked).apply()
+            Toast.makeText(
+                this,
+                if (checked) "Démarrage automatique activé." else "Démarrage automatique désactivé.",
+                Toast.LENGTH_SHORT
+            ).show()
         }
         autoVpnSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean("auto_vpn", checked).apply()
+            Toast.makeText(
+                this,
+                if (checked) "Connexion VPN automatique activée." else "Connexion VPN automatique désactivée.",
+                Toast.LENGTH_SHORT
+            ).show()
         }
 
         fun refreshDynamicLabels() {
@@ -75,6 +114,12 @@ class SettingsActivity : AppCompatActivity() {
                 selected = prefs.getString("theme", "Clair") ?: "Clair"
             ) { value ->
                 prefs.edit().putString("theme", value).apply()
+                val mode = when (value) {
+                    "Sombre" -> AppCompatDelegate.MODE_NIGHT_YES
+                    "Système" -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                    else -> AppCompatDelegate.MODE_NIGHT_NO
+                }
+                AppCompatDelegate.setDefaultNightMode(mode)
                 refreshDynamicLabels()
             }
         }
@@ -82,7 +127,7 @@ class SettingsActivity : AppCompatActivity() {
         protocolButton.setOnClickListener {
             showSingleChoiceDialog(
                 title = "Choisir le protocole",
-                values = arrayOf("Auto", "WireGuard", "SlowDNS", "UDP Custom"),
+                values = arrayOf("Auto", "SlowDNS", "VLESS", "UDP"),
                 selected = prefs.getString("protocol", "Auto") ?: "Auto"
             ) { value ->
                 prefs.edit().putString("protocol", value).apply()
@@ -154,11 +199,50 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (!networkCallbackRegistered) {
+            connectivityManager.registerDefaultNetworkCallback(networkCallback)
+            networkCallbackRegistered = true
+        }
+    }
+
+    override fun onStop() {
+        if (networkCallbackRegistered) {
+            runCatching { connectivityManager.unregisterNetworkCallback(networkCallback) }
+            networkCallbackRegistered = false
+        }
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
         applySystemBars()
-        findViewById<TextView>(R.id.settingsIpValue).text =
-            "Adresse IP : ${NetworkIpProvider.getCurrent(this).ip}"
+        refreshIpAsync()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 2001 && grantResults.firstOrNull() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            getSharedPreferences(prefsName, MODE_PRIVATE)
+                .edit()
+                .putBoolean("notifications", false)
+                .apply()
+            findViewById<SwitchCompat>(R.id.notificationsSwitch).isChecked = false
+            Toast.makeText(this, "Notifications non autorisées.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun refreshIpAsync() {
+        if (!::settingsIpValue.isInitialized) return
+        runOnUiThread {
+            val info = NetworkIpProvider.getCurrent(this)
+            settingsIpValue.text = "Adresse IP : ${info.ip} • ${info.transport}"
+        }
     }
 
     private fun showSingleChoiceDialog(
@@ -184,9 +268,11 @@ class SettingsActivity : AppCompatActivity() {
     private fun applySystemBars() {
         window.statusBarColor = ContextCompat.getColor(this, R.color.barka_background)
         window.navigationBarColor = ContextCompat.getColor(this, R.color.barka_background)
+        val nightMode = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        val lightIcons = nightMode != android.content.res.Configuration.UI_MODE_NIGHT_YES
         WindowCompat.getInsetsController(window, window.decorView)?.apply {
-            isAppearanceLightStatusBars = true
-            isAppearanceLightNavigationBars = true
+            isAppearanceLightStatusBars = lightIcons
+            isAppearanceLightNavigationBars = lightIcons
         }
     }
 }

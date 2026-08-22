@@ -7,8 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,12 +21,12 @@ class SubscriptionActivity : AppCompatActivity() {
     private var selectedAmount: Int = 300
     private lateinit var payButton: MaterialButton
     @Volatile private var checkingPayment = false
-    private val paymentHandler = Handler(Looper.getMainLooper())
-    private var paymentPolls = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_subscription)
+
+        findViewById<android.view.View>(R.id.subscriptionBackButton).setOnClickListener { finish() }
 
         val plansGroup = findViewById<RadioGroup>(R.id.plansGroup)
         payButton = findViewById(R.id.payButton)
@@ -51,13 +49,7 @@ class SubscriptionActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        paymentPolls = 0
         checkPendingPayment()
-    }
-
-    override fun onPause() {
-        paymentHandler.removeCallbacksAndMessages(null)
-        super.onPause()
     }
 
     private fun startPayment() {
@@ -111,17 +103,19 @@ class SubscriptionActivity : AppCompatActivity() {
                 runOnUiThread {
                     when (status.status) {
                         "paid" -> {
+                            PendingPaymentStore.clear(this)
                             AppLogStore.add(this, "Paiement • Confirmation reçue.")
                             val code = status.activationCode
                             if (code.isNullOrBlank()) {
-                                schedulePaymentCheck()
+                                Toast.makeText(
+                                    this,
+                                    "Paiement confirmé. Le code est en préparation.",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             } else {
-                                PendingPaymentStore.clear(this)
                                 showActivationCode(code)
                             }
                         }
-
-                        "pending", "creating" -> schedulePaymentCheck()
 
                         "failed", "error" -> {
                             PendingPaymentStore.clear(this)
@@ -136,12 +130,6 @@ class SubscriptionActivity : AppCompatActivity() {
                 checkingPayment = false
             }
         }.start()
-    }
-
-    private fun schedulePaymentCheck() {
-        if (paymentPolls >= 30 || isFinishing) return
-        paymentPolls += 1
-        paymentHandler.postDelayed({ checkPendingPayment() }, 4_000L)
     }
 
     private fun showActivationCode(code: String) {

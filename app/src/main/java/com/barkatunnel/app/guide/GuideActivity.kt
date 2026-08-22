@@ -12,6 +12,8 @@ class GuideActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_guide)
 
+        findViewById<View>(R.id.guideBackButton).setOnClickListener { finish() }
+
         bindToggle(R.id.guide1, R.id.guide1Details)
         bindToggle(R.id.guide2, R.id.guide2Details)
         bindToggle(R.id.guide3, R.id.guide3Details)

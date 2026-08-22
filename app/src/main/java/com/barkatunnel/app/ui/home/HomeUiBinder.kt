@@ -18,7 +18,7 @@ class HomeUiBinder(
         if (network == null) {
             networkName.text = "CHOISIR LE RÉSEAU"
             networkSubtitle.text =
-                "MOOV-AFRICA BF 🇧🇫  •  ORANGE BF 🇧🇫  •  TELECEL BF 🇧🇫"
+                "MOOV-AFRICA BF  •  ORANGE BF  •  TELECEL BF"
             return
         }
 

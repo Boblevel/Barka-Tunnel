@@ -11,8 +11,32 @@ android {
         applicationId = "com.barkatunnel.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.2"
+        versionCode = 53
+        versionName = "1.1.3-c5.3"
+    }
+
+    val stableStoreFile = System.getenv("BARKA_SIGNING_STORE_FILE")
+    val stableStorePassword = System.getenv("BARKA_SIGNING_STORE_PASSWORD")
+    val stableKeyAlias = System.getenv("BARKA_SIGNING_KEY_ALIAS")
+    val stableKeyPassword = System.getenv("BARKA_SIGNING_KEY_PASSWORD")
+
+    signingConfigs {
+        create("stable") {
+            if (!stableStoreFile.isNullOrBlank()) {
+                storeFile = file(stableStoreFile)
+                storePassword = stableStorePassword
+                keyAlias = stableKeyAlias
+                keyPassword = stableKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            if (!stableStoreFile.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("stable")
+            }
+        }
     }
 
     compileOptions {

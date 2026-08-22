@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="barka_blue">#5B9CFF</color>
+    <color name="barka_blue_light">#17233A</color>
+    <color name="barka_background">#0F172A</color>
+    <color name="barka_card">#172033</color>
+    <color name="barka_text">#F8FAFC</color>
+    <color name="barka_text_secondary">#AAB7CC</color>
+    <color name="barka_border">#334155</color>
+    <color name="barka_green">#22C55E</color>
+    <color name="barka_red">#F87171</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>
