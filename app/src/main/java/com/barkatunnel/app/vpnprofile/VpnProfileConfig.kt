@@ -70,9 +70,15 @@ object VpnProfileConfigParser {
             sshPort = requiredPort(json, "ssh_port"),
             username = requiredString(json, "username"),
             password = requiredString(json, "password"),
-            dns = requiredString(json, "dns"),
-            nameServer = requiredString(json, "nameserver"),
-            publicKey = requiredString(json, "dns_public_key")
+            dns = requiredStringAny(json, "dns", "dns_server"),
+            nameServer = requiredStringAny(json, "nameserver", "name_server", "ns"),
+            publicKey = requiredStringAny(
+                json,
+                "dns_public_key",
+                "dnstt_public_key",
+                "public_key",
+                "publicKey"
+            )
         )
 
     private fun parseVless(json: JSONObject): VpnProfileConfig.Vless {
@@ -123,6 +129,14 @@ object VpnProfileConfigParser {
         json.optString(key).trim().ifBlank {
             throw BarkaBackendException("Champ VPN manquant : $key")
         }
+
+    private fun requiredStringAny(json: JSONObject, vararg keys: String): String {
+        for (key in keys) {
+            val value = json.optString(key).trim()
+            if (value.isNotBlank()) return value
+        }
+        throw BarkaBackendException("Champ VPN manquant : ${keys.first()}")
+    }
 
     private fun requiredPort(json: JSONObject, key: String): Int {
         val value = json.optInt(key, -1)

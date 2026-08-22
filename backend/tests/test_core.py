@@ -63,6 +63,23 @@ def test_activation_code_is_single_use_and_extends(tmp_path):
     assert access2["remaining_seconds"] > access1["remaining_seconds"]
 
 
+def test_manual_code_is_universal_for_first_user(tmp_path):
+    _, services = load_modules(tmp_path)
+    code = services.issue_activation_code("MANUAL:UNIVERSAL", "24h")
+
+    first_device = "device-any-user-abcdefgh"
+    second_device = "device-other-user-ijklmnop"
+
+    ok_first, _, access_first = services.redeem_activation_code(first_device, code)
+    assert ok_first is True
+    assert access_first["access_type"] == "SUBSCRIPTION"
+
+    ok_second, message_second, access_second = services.redeem_activation_code(second_device, code)
+    assert ok_second is False
+    assert "déjà été utilisé" in message_second
+    assert access_second["allowed"] is False
+
+
 def test_payment_code_is_deterministic(tmp_path):
     _, services = load_modules(tmp_path)
     device = "device-payment-abcdefgh"

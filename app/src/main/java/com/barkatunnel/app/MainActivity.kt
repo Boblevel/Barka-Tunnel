@@ -2,6 +2,7 @@ package com.barkatunnel.app
 
 // BARKA_HOME_RUNTIME_V5_FINAL_NAV_NO_LOGIN
 
+import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
@@ -13,6 +14,7 @@ import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.barkatunnel.app.guide.GuideActivity
 import com.barkatunnel.app.ipfinder.IpFinderActivity
@@ -31,6 +33,7 @@ import com.barkatunnel.app.ui.home.HomeUiBinder
 import com.barkatunnel.app.ui.home.NetworkOption
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.update.AppUpdateCoordinator
+import com.barkatunnel.app.vpn.VpnPermissionHelper
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.google.android.material.button.MaterialButton
 
@@ -53,6 +56,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
     private lateinit var updateCoordinator: AppUpdateCoordinator
+    private var pendingVpnPermissionAction: (() -> Unit)? = null
+
+    private val vpnPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val action = pendingVpnPermissionAction
+        pendingVpnPermissionAction = null
+        if (result.resultCode == Activity.RESULT_OK) {
+            action?.invoke()
+        } else {
+            AppLogStore.add(this, "Autorisation VPN refusée par Android.")
+            Toast.makeText(
+                this,
+                "Autorisation VPN nécessaire pour se connecter.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     private val vpnProfileRepository by lazy {
         VpnProfileRepository(BarkaBackendClient(this))
@@ -133,6 +154,11 @@ class MainActivity : AppCompatActivity() {
                     timerController.syncAccessRemaining(
                         result.value.access.remainingSeconds
                     )
+                    val message = result.value.access.label
+                    AppLogStore.add(this, "Essai 1H • $message")
+                    runOnUiThread {
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    }
                 }
 
                 result
@@ -186,6 +212,13 @@ class MainActivity : AppCompatActivity() {
 
                         result
                     } else {
+                        val permissionIntent = VpnPermissionHelper.prepare(this)
+                        if (permissionIntent != null) {
+                            pendingVpnPermissionAction = { connectButton.performClick() }
+                            runOnUiThread { vpnPermissionLauncher.launch(permissionIntent) }
+                            return@runHomeAction HomeControllerResult.State(controller.currentState())
+                        }
+
                         val selected = controller.currentState().selectedNetwork
                         AppLogStore.add(
                             this,

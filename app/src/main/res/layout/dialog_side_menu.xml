@@ -12,41 +12,34 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="104dp"
-            android:background="@color/white"
+            android:layout_height="150dp"
+            android:background="@drawable/bg_menu_header"
             android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="22dp">
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp">
 
             <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
                 android:contentDescription="Logo Barka Tunnel"
                 android:src="@drawable/ic_barka_logo" />
 
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:layout_marginTop="7dp"
+                android:text="BARKA TUNNEL"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="BARKA TUNNEL"
-                    android:textColor="@color/barka_text"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Version 1.0.0"
-                    android:textColor="@color/barka_text_secondary"
-                    android:textSize="10sp" />
-            </LinearLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Version 1.0.3"
+                android:textColor="#D8E8FF"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -88,17 +81,15 @@
                 style="@style/BarkaMenuItem"
                 android:text="◉   Contacter le support" />
 
-            <View
-                android:id="@+id/menuJournal"
-                android:layout_width="1dp"
-                android:layout_height="1dp"
-                android:visibility="gone" />
-
-            <View
+            <TextView
                 android:id="@+id/menuIpFinder"
-                android:layout_width="1dp"
-                android:layout_height="1dp"
-                android:visibility="gone" />
+                style="@style/BarkaMenuItem"
+                android:text="⌕   IP Finder" />
+
+            <TextView
+                android:id="@+id/menuJournal"
+                style="@style/BarkaMenuItem"
+                android:text="▤   Journal" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
