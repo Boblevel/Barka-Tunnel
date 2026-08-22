@@ -502,7 +502,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundDrawable(
                 ColorDrawable(Color.TRANSPARENT)
             )
-            setGravity(Gravity.START)
+            setGravity(Gravity.END)
             setLayout(
                 (resources.displayMetrics.widthPixels * 0.82).toInt(),
                 WindowManager.LayoutParams.MATCH_PARENT

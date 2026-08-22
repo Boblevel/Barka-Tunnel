@@ -35,39 +35,41 @@
                     android:orientation="horizontal">
 
                     <ImageView
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
                         android:contentDescription="Logo Barka Tunnel"
                         android:src="@drawable/ic_barka_logo" />
 
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
+                        android:layout_marginStart="6dp"
                         android:orientation="horizontal">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="BARKA"
+                            android:text="Barka"
                             android:textColor="@color/barka_text"
-                            android:textSize="18sp"
+                            android:textSize="16sp"
+                            android:singleLine="true"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="4dp"
-                            android:text="TUNNEL"
+                            android:layout_marginStart="3dp"
+                            android:text="Tunnel"
                             android:textColor="@color/barka_blue"
-                            android:textSize="18sp"
+                            android:textSize="16sp"
+                            android:singleLine="true"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/buttonFreeTrial"
-                    android:layout_width="60dp"
+                    android:layout_width="48dp"
                     android:layout_height="60dp"
                     android:clickable="true"
                     android:focusable="true"
@@ -75,8 +77,8 @@
                     android:orientation="vertical">
 
                     <ImageView
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
                         android:contentDescription="Essai gratuit 1 heure"
                         android:src="@drawable/ic_gift_barka"
                         android:tint="@color/barka_red" />
@@ -93,7 +95,7 @@
 
                 <LinearLayout
                     android:id="@+id/buttonRefresh"
-                    android:layout_width="84dp"
+                    android:layout_width="64dp"
                     android:layout_height="60dp"
                     android:clickable="true"
                     android:focusable="true"
@@ -101,8 +103,8 @@
                     android:orientation="vertical">
 
                     <ImageView
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
                         android:contentDescription="Vérifier les mises à jour"
                         android:src="@drawable/ic_refresh_barka" />
 
@@ -118,7 +120,7 @@
 
                 <ImageView
                     android:id="@+id/buttonMenu"
-                    android:layout_width="50dp"
+                    android:layout_width="44dp"
                     android:layout_height="50dp"
                     android:clickable="true"
                     android:contentDescription="Ouvrir le menu"
