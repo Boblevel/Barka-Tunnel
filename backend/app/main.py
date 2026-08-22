@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import FileResponse, HTMLResponse
 
-from .admin_ops import admin_stats_extended, list_activation_codes, revoke_activation_code
+from .admin_ops import admin_stats_extended, delete_activation_code, list_activation_codes, revoke_activation_code
 from .admin_panel import ADMIN_PANEL_HTML
 from .app_updates import (
     get_app_update_admin,
@@ -354,6 +354,16 @@ def admin_codes_list(limit: int = 100):
 )
 def admin_code_revoke(body: AdminCodeRevokeRequest):
     success, message = revoke_activation_code(body.code)
+    return AdminCodeRevokeResponse(success=success, message=message)
+
+
+@app.post(
+    "/v1/admin/codes/delete",
+    response_model=AdminCodeRevokeResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_code_delete(body: AdminCodeRevokeRequest):
+    success, message = delete_activation_code(body.code)
     return AdminCodeRevokeResponse(success=success, message=message)
 
 

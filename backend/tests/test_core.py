@@ -208,3 +208,36 @@ def test_admin_code_listing_reconstructs_manual_code(tmp_path):
     assert items[0]["code"] == code
     assert items[0]["source_type"] == "MANUEL"
     assert items[0]["status"] == "issued"
+
+def test_admin_can_delete_unused_manual_code(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    code = services.issue_activation_code("MANUAL:DELETE-ME", "24h")
+    ok, message = admin_ops.delete_activation_code(code)
+    assert ok is True
+    assert "supprim" in message.lower()
+    assert all(item["code"] != code for item in admin_ops.list_activation_codes(20))
+
+
+def test_admin_cannot_delete_redeemed_or_payment_code(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    manual = services.issue_activation_code("MANUAL:USED", "24h")
+    ok, _, _ = services.redeem_activation_code("device-delete-used-abcdef", manual)
+    assert ok is True
+    deleted, message = admin_ops.delete_activation_code(manual)
+    assert deleted is False
+    assert "historique" in message.lower()
+
+    payment_reference = services.create_payment_record("device-payment-audit-abcdef", "24h")
+    payment = services.issue_activation_code(
+        f"PAYMENT:{payment_reference}", "24h", payment_reference
+    )
+    deleted_payment, payment_message = admin_ops.delete_activation_code(payment)
+    assert deleted_payment is False
+    assert "manuellement" in payment_message.lower()
+

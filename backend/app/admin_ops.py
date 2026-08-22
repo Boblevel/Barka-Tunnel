@@ -59,6 +59,23 @@ def revoke_activation_code(code: str) -> tuple[bool, str]:
     return True, "Code désactivé."
 
 
+def delete_activation_code(code: str) -> tuple[bool, str]:
+    hashed = code_hash(code)
+    with transaction() as cx:
+        row = cx.execute(
+            "SELECT id, source_ref, status FROM activation_codes WHERE code_hash=?",
+            (hashed,),
+        ).fetchone()
+        if not row:
+            return False, "Code introuvable."
+        if not str(row["source_ref"]).startswith("MANUAL:"):
+            return False, "Seuls les codes créés manuellement peuvent être supprimés."
+        if row["status"] == "redeemed":
+            return False, "Un code déjà utilisé est conservé dans l'historique."
+        cx.execute("DELETE FROM activation_codes WHERE id=?", (row["id"],))
+    return True, "Code supprimé définitivement."
+
+
 def admin_stats_extended() -> dict:
     now = now_ts()
     cx = connect()
