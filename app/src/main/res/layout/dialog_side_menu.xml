@@ -89,7 +89,7 @@
             <TextView
                 android:id="@+id/menuSupport"
                 style="@style/BarkaMenuItem"
-                android:text="?   Contacter le support" />
+                android:text="\?   Contacter le support" />
 
             <View
                 android:id="@+id/menuJournal"

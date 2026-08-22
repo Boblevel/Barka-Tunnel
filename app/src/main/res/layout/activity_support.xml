@@ -57,7 +57,7 @@
                 android:layout_height="92dp"
                 android:background="@drawable/bg_support_icon"
                 android:gravity="center"
-                android:text="?"
+                android:text="\?"
                 android:textColor="@color/barka_blue"
                 android:textSize="44sp"
                 android:textStyle="bold" />
