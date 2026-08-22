@@ -4,7 +4,10 @@
     android:layout_height="match_parent"
     android:background="@color/barka_background"
     android:orientation="vertical"
-    android:padding="20dp">
+    android:paddingStart="20dp"
+    android:paddingTop="30dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="20dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -50,7 +53,7 @@
             android:layout_height="58dp"
             android:contentDescription="Moov Africa"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_operator_moov" />
+            android:src="@drawable/moov_africa_official" />
 
         <TextView
             android:layout_width="0dp"

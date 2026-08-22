@@ -62,7 +62,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var timerController: HomeTimerController
     private lateinit var updateCoordinator: AppUpdateCoordinator
     private var networkCallbackRegistered = false
-    private var autoConnectAttempted = false
 
     private val connectivityManager by lazy {
         getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -263,7 +262,6 @@ class MainActivity : AppCompatActivity() {
             showSideMenu()
         }
 
-        maybeAutoConnect(powerButton)
     }
 
     override fun onStart() {
@@ -314,8 +312,7 @@ class MainActivity : AppCompatActivity() {
         homeController = HomeController(runtime)
         accessStatus.text = "En attente d’activation"
 
-        val initialNetwork = preferredNetworkFromSettings()
-            ?: selectedNetwork
+        val initialNetwork = selectedNetwork
             ?: NetworkOption.ALL.firstOrNull()
         if (initialNetwork != null && homeController?.currentState()?.selectedNetwork == null) {
             handleHomeResult(homeController!!.selectNetwork(initialNetwork))
@@ -586,21 +583,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun preferredNetworkFromSettings(): NetworkOption? {
-        val protocol = getSharedPreferences("barka_settings", MODE_PRIVATE)
-            .getString("protocol", "Auto")
-            ?: "Auto"
-
-        val networkId = when (protocol) {
-            "SlowDNS" -> "moov_bf"
-            "VLESS" -> "orange_bf"
-            "UDP" -> "telecel_bf"
-            else -> return null
-        }
-
-        return NetworkOption.ALL.firstOrNull { it.id == networkId }
-    }
-
     private fun refreshVpnServices() {
         Thread {
             when (val result = vpnProfileRepository.refreshCatalog()) {
@@ -641,27 +623,13 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread { refreshNetworkIp() }
     }
 
-    private fun maybeAutoConnect(powerButton: android.view.View) {
-        if (autoConnectAttempted) return
-        val enabled = getSharedPreferences("barka_settings", MODE_PRIVATE)
-            .getBoolean("auto_vpn", false)
-        if (!enabled) return
-
-        autoConnectAttempted = true
-        powerButton.postDelayed({
-            if (!isFinishing && !isDestroyed) {
-                powerButton.performClick()
-            }
-        }, 700L)
-    }
-
     private fun updateSelectedNetworkLogo(
         network: NetworkOption?
     ) {
         val drawable = when (network?.id) {
             "orange_bf" -> R.drawable.ic_operator_orange
             "telecel_bf" -> R.drawable.ic_operator_telecel
-            else -> R.drawable.ic_operator_moov
+            else -> R.drawable.moov_africa_official
         }
 
         networkLogo.setImageResource(drawable)

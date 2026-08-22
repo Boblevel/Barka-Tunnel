@@ -11,8 +11,8 @@ android {
         applicationId = "com.barkatunnel.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 53
-        versionName = "1.1.3-c5.3"
+        versionCode = 54
+        versionName = "1.1.4-c5.4"
     }
 
     val stableStoreFile = System.getenv("BARKA_SIGNING_STORE_FILE")

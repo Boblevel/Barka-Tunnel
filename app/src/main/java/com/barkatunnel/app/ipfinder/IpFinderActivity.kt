@@ -39,11 +39,7 @@ class IpFinderActivity : AppCompatActivity() {
         val ipInput = findViewById<EditText>(R.id.ipInput)
         val portsInput = findViewById<EditText>(R.id.portsInput)
 
-        val preferredPort = getSharedPreferences("barka_settings", Context.MODE_PRIVATE)
-            .getString("default_port", "443")
-            ?: "443"
-        val standardPorts = listOf(preferredPort, "443", "80", "8080", "53")
-            .distinct()
+        val standardPorts = listOf("443", "80", "8080", "53")
             .joinToString(", ")
         portsInput.setText(standardPorts)
 
