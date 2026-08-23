@@ -18,10 +18,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updatePadding
 import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.guide.GuideActivity
 import com.barkatunnel.app.ipfinder.IpFinderActivity
@@ -498,37 +495,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSideMenu() {
-        val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+        val dialog = Dialog(this)
         dialog.setContentView(R.layout.dialog_side_menu)
 
         dialog.window?.apply {
             setBackgroundDrawable(
                 ColorDrawable(Color.TRANSPARENT)
             )
-            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            attributes = attributes.apply {
-                dimAmount = 0.35f
-            }
+            setGravity(Gravity.END)
             setLayout(
-                WindowManager.LayoutParams.MATCH_PARENT,
+                (resources.displayMetrics.widthPixels * 0.82).toInt(),
                 WindowManager.LayoutParams.MATCH_PARENT
             )
-        }
-
-        dialog.findViewById<android.view.View>(R.id.sideMenuRoot)
-            .setOnClickListener {
-                dialog.dismiss()
-            }
-
-        val sideMenuPanel = dialog.findViewById<android.view.View>(R.id.sideMenuPanel)
-        val sideMenuHeader = dialog.findViewById<android.view.View>(R.id.sideMenuHeader)
-        val sideMenuContent = dialog.findViewById<android.view.View>(R.id.sideMenuContent)
-
-        sideMenuPanel.setOnClickListener { }
-        sideMenuPanel.layoutParams = sideMenuPanel.layoutParams.apply {
-            width = (resources.displayMetrics.widthPixels * 0.82).toInt()
-            height = WindowManager.LayoutParams.MATCH_PARENT
         }
 
         dialog.findViewById<android.view.View>(R.id.menuHome)
@@ -588,18 +566,12 @@ class MainActivity : AppCompatActivity() {
 
         dialog.show()
 
-        dialog.window?.let { window ->
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            window.decorView.setPadding(0, 0, 0, 0)
-            window.statusBarColor = Color.TRANSPARENT
-            window.navigationBarColor = Color.TRANSPARENT
-            ViewCompat.setOnApplyWindowInsetsListener(sideMenuPanel) { _, insets ->
-                val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-                sideMenuHeader.updatePadding(top = systemBars.top + 22, bottom = 18)
-                sideMenuContent.updatePadding(bottom = systemBars.bottom + 22)
-                insets
-            }
-            ViewCompat.requestApplyInsets(sideMenuPanel)
+        dialog.window?.apply {
+            navigationBarColor = ContextCompat.getColor(this@MainActivity, R.color.barka_card)
+            setLayout(
+                (resources.displayMetrics.widthPixels * 0.82).toInt(),
+                WindowManager.LayoutParams.MATCH_PARENT
+            )
         }
     }
 
