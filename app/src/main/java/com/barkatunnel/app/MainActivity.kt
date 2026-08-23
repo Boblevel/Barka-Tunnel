@@ -566,10 +566,13 @@ class MainActivity : AppCompatActivity() {
 
         dialog.show()
 
-        dialog.window?.setLayout(
-            (resources.displayMetrics.widthPixels * 0.82).toInt(),
-            WindowManager.LayoutParams.MATCH_PARENT
-        )
+        dialog.window?.apply {
+            navigationBarColor = ContextCompat.getColor(this@MainActivity, R.color.barka_card)
+            setLayout(
+                (resources.displayMetrics.widthPixels * 0.82).toInt(),
+                WindowManager.LayoutParams.MATCH_PARENT
+            )
+        }
     }
 
     private fun applySystemBars() {
