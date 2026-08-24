@@ -15,24 +15,40 @@ class XrayVlessEngine(
     override val socksAddress: String = "127.0.0.1:$socksPort"
     private var process: Process? = null
     private var configFile: File? = null
+    private var logFile: File? = null
 
     override fun start() {
         val xray = NativeCoreLocator.xray(context)
+        if (!xray.canExecute() && !xray.setExecutable(true, false)) {
+            throw IllegalStateException("Le moteur VLESS Android n’est pas exécutable.")
+        }
+
         val file = File(context.cacheDir, "c6_xray_${System.nanoTime()}.json")
         file.writeText(buildConfig().toString())
         configFile = file
+        val output = File(context.cacheDir, "c6_xray_${System.nanoTime()}.log")
+        logFile = output
 
-        process = ProcessBuilder(xray.absolutePath, "run", "-c", file.absolutePath)
+        process = ProcessBuilder(xray.absolutePath, "run", "-config", file.absolutePath)
             .redirectErrorStream(true)
+            .redirectOutput(ProcessBuilder.Redirect.appendTo(output))
             .start()
 
         if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 12_000)) {
+            val detail = xrayFailureDetail()
             stop()
-            throw IllegalStateException("VLESS n’a pas ouvert son proxy local.")
+            throw IllegalStateException(
+                if (detail.isBlank()) "VLESS n’a pas ouvert son proxy local."
+                else "VLESS n’a pas ouvert son proxy local : $detail"
+            )
         }
         if (process?.isAlive != true) {
+            val detail = xrayFailureDetail()
             stop()
-            throw IllegalStateException("Le moteur VLESS s’est arrêté prématurément.")
+            throw IllegalStateException(
+                if (detail.isBlank()) "Le moteur VLESS s’est arrêté prématurément."
+                else "Le moteur VLESS s’est arrêté : $detail"
+            )
         }
     }
 
@@ -43,6 +59,21 @@ class XrayVlessEngine(
         process = null
         configFile?.delete()
         configFile = null
+        logFile?.delete()
+        logFile = null
+    }
+
+    private fun xrayFailureDetail(): String {
+        val output = logFile?.takeIf { it.isFile }?.readText().orEmpty()
+        if (output.isBlank()) return ""
+        return output
+            .replace(config.uuid, "[uuid masqué]", ignoreCase = true)
+            .lineSequence()
+            .filter { it.isNotBlank() }
+            .toList()
+            .takeLast(3)
+            .joinToString(" | ")
+            .take(300)
     }
 
     private fun buildConfig(): JSONObject {
@@ -66,12 +97,12 @@ class XrayVlessEngine(
             .put("wsSettings", wsSettings)
 
         if (config.security == "tls") {
-            stream.put(
-                "tlsSettings",
-                JSONObject()
-                    .put("serverName", config.sni)
-                    .put("allowInsecure", config.allowInsecure)
-            )
+            val tlsSettings = JSONObject()
+                .put("serverName", config.sni)
+            config.fingerprint?.takeIf { it.isNotBlank() }?.let {
+                tlsSettings.put("fingerprint", it)
+            }
+            stream.put("tlsSettings", tlsSettings)
         }
 
         val inbound = JSONObject()

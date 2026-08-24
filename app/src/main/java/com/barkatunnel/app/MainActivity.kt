@@ -11,7 +11,11 @@ import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.ImageView
@@ -59,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var connectionTime: TextView
     private lateinit var vpnStatus: TextView
     private lateinit var connectButton: MaterialButton
+    private lateinit var powerButton: TextView
 
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
@@ -108,7 +113,7 @@ class MainActivity : AppCompatActivity() {
         val buttonRefresh = findViewById<android.view.View>(R.id.buttonRefresh)
         val addAccessButton = findViewById<android.view.View>(R.id.addAccessButton)
         connectButton = findViewById(R.id.connectButton)
-        val powerButton = findViewById<TextView>(R.id.powerButton)
+        powerButton = findViewById(R.id.powerButton)
 
         networkIpValue = findViewById(R.id.networkIpValue)
         networkIpStatus = findViewById(R.id.networkIpStatus)
@@ -242,6 +247,10 @@ class MainActivity : AppCompatActivity() {
                             this,
                             "Tentative de connexion${selected?.let { " • ${it.displayName}" } ?: ""}."
                         )
+                        runOnUiThread {
+                            uiBinder.showConnection(HomeConnectionState.Connecting)
+                            updatePowerButtonState(HomeConnectionState.Connecting)
+                        }
 
                         val result = controller.connect()
 
@@ -250,6 +259,7 @@ class MainActivity : AppCompatActivity() {
                             result.value.connection is HomeConnectionState.Connected
                         ) {
                             timerController.startConnectionTimer()
+                            vibrateOnce(CONNECTED_VIBRATION_MS)
                             AppLogStore.add(
                                 this,
                                 "VPN connecté • ${(result.value.connection as HomeConnectionState.Connected).networkName}."
@@ -262,8 +272,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        connectButton.setOnClickListener { connectAction() }
-        powerButton.setOnClickListener { connectAction() }
+        connectButton.setOnClickListener {
+            vibrateOnce(PRESS_VIBRATION_MS)
+            connectAction()
+        }
+        powerButton.setOnClickListener {
+            vibrateOnce(PRESS_VIBRATION_MS)
+            connectAction()
+        }
 
         findViewById<android.view.View>(R.id.navHome).setOnClickListener {
             refreshNetworkIp()
@@ -494,9 +510,14 @@ class MainActivity : AppCompatActivity() {
                 uiBinder.showConnection(
                     result.value.connection
                 )
+                updatePowerButtonState(result.value.connection)
             }
 
             is HomeControllerResult.Message -> {
+                homeController?.currentState()?.connection?.let { connection ->
+                    uiBinder.showConnection(connection)
+                    updatePowerButtonState(connection)
+                }
                 AppLogStore.add(this, "Échec / information : ${result.text}")
                 Toast.makeText(
                     this,
@@ -514,6 +535,39 @@ class MainActivity : AppCompatActivity() {
                     "Active l’essai 1H ou un abonnement pour continuer.",
                     Toast.LENGTH_LONG
                 ).show()
+            }
+        }
+    }
+
+    private fun updatePowerButtonState(state: HomeConnectionState) {
+        if (!::powerButton.isInitialized) return
+        powerButton.setBackgroundResource(
+            if (state is HomeConnectionState.Connected) {
+                R.drawable.bg_power_connected
+            } else {
+                R.drawable.bg_power_final
+            }
+        )
+    }
+
+    private fun vibrateOnce(durationMs: Long) {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val manager = getSystemService(VibratorManager::class.java)
+                manager.defaultVibrator.vibrate(
+                    VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(
+                        VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE)
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(durationMs)
+                }
             }
         }
     }
@@ -676,5 +730,10 @@ class MainActivity : AppCompatActivity() {
             minutes,
             seconds
         )
+    }
+
+    companion object {
+        private const val PRESS_VIBRATION_MS = 45L
+        private const val CONNECTED_VIBRATION_MS = 90L
     }
 }

@@ -28,6 +28,7 @@ sealed interface VpnProfileConfig {
         val security: String,
         val host: String,
         val sni: String,
+        val fingerprint: String?,
         val allowInsecure: Boolean
     ) : VpnProfileConfig
 
@@ -115,6 +116,7 @@ object VpnProfileConfigParser {
             security = security,
             host = requiredString(json, "host"),
             sni = requiredString(json, "sni"),
+            fingerprint = json.optString("fingerprint").trim().ifBlank { null },
             allowInsecure = json.optBoolean("allow_insecure", false)
         )
     }
@@ -162,6 +164,7 @@ object VpnProfileConfigParser {
             security = security,
             host = host,
             sni = sni,
+            fingerprint = (query["fp"] ?: query["fingerprint"])?.trim()?.ifBlank { null },
             allowInsecure = booleanQuery(query["allowInsecure"] ?: query["insecure"])
         )
     }

@@ -11,7 +11,7 @@ android {
         applicationId = "com.barkatunnel.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 62
+        versionCode = 63
         versionName = "1.1.7"
     }
 
