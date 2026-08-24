@@ -8,6 +8,7 @@ import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.VpnService
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -16,6 +17,7 @@ import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -61,7 +63,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
     private lateinit var updateCoordinator: AppUpdateCoordinator
+    private lateinit var connectAction: () -> Unit
     private var networkCallbackRegistered = false
+
+    private val vpnPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            AppLogStore.add(this, "Permission VPN Android accordée.")
+            if (::connectAction.isInitialized) connectAction()
+        } else {
+            AppLogStore.add(this, "Permission VPN Android refusée.")
+            Toast.makeText(this, "Permission VPN requise pour se connecter.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     private val connectivityManager by lazy {
         getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -188,7 +203,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SubscriptionActivity::class.java))
         }
 
-        val connectAction = connectAction@{
+        connectAction = connectAction@{
             if (updateCoordinator.showBlockingIfNeeded()) {
                 return@connectAction
             }
@@ -198,6 +213,15 @@ class MainActivity : AppCompatActivity() {
             if (controller != null) {
                 val currentConnection =
                     controller.currentState().connection
+
+                if (currentConnection !is HomeConnectionState.Connected) {
+                    val permissionIntent = VpnService.prepare(this)
+                    if (permissionIntent != null) {
+                        AppLogStore.add(this, "Demande de permission VPN Android.")
+                        vpnPermissionLauncher.launch(permissionIntent)
+                        return@connectAction
+                    }
+                }
 
                 runHomeAction {
                     if (currentConnection is HomeConnectionState.Connected) {

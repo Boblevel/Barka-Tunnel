@@ -52,6 +52,16 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += setOf(
+                "**/libbarka_xray.so",
+                "**/libbarka_dnstt.so"
+            )
+        }
+    }
 }
 
 dependencies {
@@ -60,5 +70,6 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
 
     implementation("com.wireguard.android:tunnel:1.0.20260102")
+    implementation("com.github.mwiede:jsch:0.2.24")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
 }

@@ -3,8 +3,7 @@ package com.barkatunnel.app.ui.home
 import android.content.Context
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.core.AppContainer
-import com.barkatunnel.app.vpn.ProtectedVpnController
-import com.barkatunnel.app.vpn.VpnController
+import com.barkatunnel.app.vpnc6.C6VpnController
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 
 object HomeRuntimeFactory {
@@ -16,10 +15,7 @@ object HomeRuntimeFactory {
 
         val backendClient = BarkaBackendClient(context)
 
-        val protectedVpnController = ProtectedVpnController(
-            vpnController = VpnController(context),
-            backendClient = backendClient
-        )
+        val c6VpnController = C6VpnController(context)
 
         return HomeRuntime(
             accessController = HomeAccessController(
@@ -31,7 +27,7 @@ object HomeRuntimeFactory {
             ),
             vpnCoordinator = HomeVpnCoordinator(
                 profileRepository = VpnProfileRepository(backendClient),
-                protectedVpnController = protectedVpnController
+                c6VpnController = c6VpnController
             )
         )
     }
