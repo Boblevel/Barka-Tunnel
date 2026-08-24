@@ -28,9 +28,8 @@ git clone https://www.bamsoftware.com/git/dnstt.git "$TMP/dnstt"
 (
   cd "$TMP/dnstt"
   GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -o "$JNI/arm64-v8a/libbarka_dnstt.so" ./dnstt-client
-  GOOS=android GOARCH=arm GOARM=7 CGO_ENABLED=0 go build -trimpath -o "$JNI/armeabi-v7a/libbarka_dnstt.so" ./dnstt-client
 )
-chmod 0755 "$JNI"/*/libbarka_dnstt.so
+chmod 0755 "$JNI/arm64-v8a/libbarka_dnstt.so"
 
 # BadVPN tun2socks + UDPGW JNI. Le wrapper Java est copié depuis la même source,
 # ce qui garantit la correspondance des symboles JNI.
