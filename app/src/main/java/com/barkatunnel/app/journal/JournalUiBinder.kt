@@ -2,7 +2,9 @@ package com.barkatunnel.app.journal
 
 import android.content.Context
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.barkatunnel.app.R
@@ -19,7 +21,7 @@ class JournalUiBinder(
                 .lines()
                 .filter { it.isNotBlank() }
                 .mapNotNull(::toJournalEvent)
-        ).takeLast(MAX_VISIBLE_EVENTS).asReversed()
+        ).takeLast(MAX_VISIBLE_EVENTS)
 
         if (events.isEmpty()) {
             val empty = TextView(context).apply {
@@ -33,6 +35,9 @@ class JournalUiBinder(
         }
 
         events.forEach(::addEventRow)
+        journalList.post {
+            (journalList.parent as? ScrollView)?.fullScroll(View.FOCUS_DOWN)
+        }
     }
 
     private fun compactEvents(events: List<JournalEvent>): List<JournalEvent> {

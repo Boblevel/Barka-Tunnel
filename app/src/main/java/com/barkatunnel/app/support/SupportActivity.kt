@@ -19,7 +19,11 @@ class SupportActivity : AppCompatActivity() {
 
         findViewById<MaterialButton>(R.id.contactSupportButton).setOnClickListener {
             try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/message/XUBALKJE5J2CB1")))
+                val supportUri = Uri.parse(SUPPORT_URL)
+                    .buildUpon()
+                    .appendQueryParameter("text", SUPPORT_MESSAGE)
+                    .build()
+                startActivity(Intent(Intent.ACTION_VIEW, supportUri))
             } catch (_: Exception) {
                 Toast.makeText(this, "Impossible d’ouvrir le support.", Toast.LENGTH_SHORT).show()
             }
@@ -44,5 +48,11 @@ class SupportActivity : AppCompatActivity() {
             isAppearanceLightStatusBars = lightIcons
             isAppearanceLightNavigationBars = lightIcons
         }
+    }
+
+    companion object {
+        private const val SUPPORT_URL = "https://wa.me/message/XUBALKJE5J2CB1"
+        private const val SUPPORT_MESSAGE =
+            "Bonjour, je souhaite signaler un problème avec Barka Tunnel."
     }
 }
