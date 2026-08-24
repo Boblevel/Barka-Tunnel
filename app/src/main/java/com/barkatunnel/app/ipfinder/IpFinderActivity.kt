@@ -19,7 +19,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.barkatunnel.app.MainActivity
 import com.barkatunnel.app.R
 import com.barkatunnel.app.ipfinder.assistant.BarkaAssistantService
 import com.barkatunnel.app.journal.AppLogStore
@@ -54,6 +53,9 @@ class IpFinderActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         refreshAssistantState()
+        if (!BarkaAssistantService.isSelected(this)) {
+            openAssistantSettingsFallback()
+        }
     }
 
     private val cycleReceiver = object : BroadcastReceiver() {
@@ -100,20 +102,6 @@ class IpFinderActivity : AppCompatActivity() {
 
         findViewById<android.view.View>(R.id.backButton).setOnClickListener {
             finish()
-        }
-
-        findViewById<android.view.View>(R.id.navHome).setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
-        }
-
-        findViewById<android.view.View>(R.id.navJournal).setOnClickListener {
-            startActivity(
-                Intent().setClassName(
-                    packageName,
-                    "com.barkatunnel.app.journal.JournalActivity"
-                )
-            )
         }
 
         stopButton.setOnClickListener {
@@ -166,35 +154,48 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     private fun requestAssistantSelection() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val roleManager = getSystemService(RoleManager::class.java)
-            if (!roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
-                Toast.makeText(
-                    this,
-                    R.string.ip_finder_assistant_unavailable,
-                    Toast.LENGTH_LONG
-                ).show()
-                return
-            }
-            if (roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
-                refreshAssistantState()
-                return
-            }
-            roleRequestLauncher.launch(
-                roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
-            )
+        if (BarkaAssistantService.isSelected(this)) {
+            refreshAssistantState()
             return
         }
 
-        runCatching {
-            roleRequestLauncher.launch(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
-        }.onFailure {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(RoleManager::class.java)
+            if (roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
+                val roleIntent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
+                if (roleIntent.resolveActivity(packageManager) != null) {
+                    runCatching { roleRequestLauncher.launch(roleIntent) }
+                        .onFailure { openAssistantSettingsFallback() }
+                    return
+                }
+            }
+        }
+
+        openAssistantSettingsFallback()
+    }
+
+    private fun openAssistantSettingsFallback() {
+        val intents = listOf(
+            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+            Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS)
+        )
+        val target = intents.firstOrNull { it.resolveActivity(packageManager) != null }
+        if (target == null) {
             Toast.makeText(
                 this,
                 R.string.ip_finder_assistant_unavailable,
                 Toast.LENGTH_LONG
             ).show()
+            return
         }
+
+        Toast.makeText(
+            this,
+            R.string.ip_finder_assistant_settings_hint,
+            Toast.LENGTH_LONG
+        ).show()
+        startActivity(target)
     }
 
     private fun refreshAssistantState() {
@@ -280,21 +281,13 @@ class IpFinderActivity : AppCompatActivity() {
 
     private fun requestNextCycle() {
         if (!searching) return
-        if (attempts >= MAX_ATTEMPTS) {
-            stopSearch(
-                getString(R.string.ip_finder_no_match, attempts),
-                R.color.barka_red
-            )
-            return
-        }
 
         attempts += 1
         cycleRequestRetries = 0
         statusText.setText(R.string.ip_finder_searching)
         progressText.text = getString(
             R.string.ip_finder_attempt_format,
-            attempts,
-            MAX_ATTEMPTS
+            attempts
         )
         requestAirplaneCycleWithRetry()
     }
@@ -446,7 +439,6 @@ class IpFinderActivity : AppCompatActivity() {
         private const val PREFERENCES_NAME = "barka_ipfinder"
         private const val KEY_SEARCH_PATTERN = "search_pattern"
         private const val KEY_LAST_FOUND_IP = "last_found_ip"
-        private const val MAX_ATTEMPTS = 30
         private const val MAX_NETWORK_POLLS = 15
         private const val MAX_SERVICE_READY_RETRIES = 6
         private const val DISCONNECT_SETTLE_DELAY_MS = 900L

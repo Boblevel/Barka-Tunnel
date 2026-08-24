@@ -146,7 +146,7 @@ class SettingsActivity : AppCompatActivity() {
                 selected = if (currentLanguage == "en") english else french
             ) { value ->
                 val language = if (value == english) "en" else "fr"
-                prefs.edit().putString("language", language).apply()
+                prefs.edit().putString("language", language).commit()
                 AppCompatDelegate.setApplicationLocales(
                     LocaleListCompat.forLanguageTags(language)
                 )

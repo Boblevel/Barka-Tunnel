@@ -99,6 +99,7 @@ class XrayVlessEngine(
         if (config.security == "tls") {
             val tlsSettings = JSONObject()
                 .put("serverName", config.sni)
+                .put("allowInsecure", config.allowInsecure)
             config.fingerprint?.takeIf { it.isNotBlank() }?.let {
                 tlsSettings.put("fingerprint", it)
             }

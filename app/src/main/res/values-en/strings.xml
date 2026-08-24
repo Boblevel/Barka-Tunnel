@@ -81,7 +81,7 @@
     <string name="ip_finder_find">FIND AN IP</string>
     <string name="ip_finder_stop">STOP</string>
     <string name="ip_finder_searching">Searching…</string>
-    <string name="ip_finder_attempt_format">Attempt %1$d of %2$d</string>
+    <string name="ip_finder_attempt_format">Attempt %1$d</string>
     <string name="ip_finder_waiting_for_network">Restarting mobile network…</string>
     <string name="ip_finder_found">Compatible IP found</string>
     <string name="ip_finder_found_detail">New IP: %1$s</string>
@@ -90,6 +90,7 @@
     <string name="ip_finder_turn_off_wifi">Turn off Wi‑Fi first.</string>
     <string name="ip_finder_select_assistant">Select Barka Tunnel as the digital assistant to allow IP changes.</string>
     <string name="ip_finder_assistant_unavailable">The digital assistant is not available on this device.</string>
+    <string name="ip_finder_assistant_settings_hint">In Default apps, open Digital assistant app and choose Barka Tunnel.</string>
     <string name="ip_finder_cycle_failed">Android did not allow the IP change. Check that Barka Tunnel is the digital assistant.</string>
     <string name="ip_finder_cellular_unavailable">The mobile network is unavailable. Enable the SIM and mobile data.</string>
     <string name="ip_finder_log_started">IP Finder • search started.</string>
@@ -185,7 +186,7 @@
     <string name="subscription_after_payment">After payment, you will receive an activation code to copy.</string>
     <string name="payment_confirmed">Payment confirmed</string>
     <string name="payment_code_ready">Your activation code is ready:</string>
-    <string name="payment_code_format">Your activation code:\n\n%1$s</string>
+    <string name="payment_code_format">Payment confirmed.\n\nTap COPY CODE to copy your activation code and do not share it with anyone.\n\n%1$s</string>
     <string name="payment_activate_now">ACTIVATE NOW</string>
     <string name="payment_code_preparing">Payment confirmed. The code is being prepared.</string>
     <string name="payment_unavailable">Payment is currently unavailable.</string>

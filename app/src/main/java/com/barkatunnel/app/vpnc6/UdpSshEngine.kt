@@ -11,7 +11,7 @@ class UdpSshEngine(
 
     override fun start() {
         sshProxy = SshSocksProxy(
-            sshHost = config.sshDomain ?: config.host,
+            sshHost = config.host,
             sshPort = config.port,
             username = config.username,
             password = config.password,

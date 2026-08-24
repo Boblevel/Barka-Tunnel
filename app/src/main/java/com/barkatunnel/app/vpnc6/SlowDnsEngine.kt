@@ -16,6 +16,9 @@ class SlowDnsEngine(
 
     override fun start() {
         val dnstt = NativeCoreLocator.dnstt(context)
+        if (!dnstt.canExecute() && !dnstt.setExecutable(true, false)) {
+            throw IllegalStateException("Le moteur SlowDNS Android n’est pas exécutable.")
+        }
         val dnsttPort = 22_220
         dnsttProcess = ProcessBuilder(
             dnstt.absolutePath,
@@ -25,7 +28,7 @@ class SlowDnsEngine(
             "127.0.0.1:$dnsttPort"
         ).redirectErrorStream(true).start()
 
-        if (!PortWaiter.waitUntilOpen("127.0.0.1", dnsttPort, 15_000)) {
+        if (!PortWaiter.waitUntilOpen("127.0.0.1", dnsttPort, 25_000)) {
             stop()
             throw IllegalStateException("DNSTT n’a pas établi son relais local.")
         }

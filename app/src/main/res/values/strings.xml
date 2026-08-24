@@ -89,7 +89,7 @@
     <string name="ip_finder_find">TROUVER UNE IP</string>
     <string name="ip_finder_stop">ARRÊTER</string>
     <string name="ip_finder_searching">Recherche en cours…</string>
-    <string name="ip_finder_attempt_format">Tentative %1$d sur %2$d</string>
+    <string name="ip_finder_attempt_format">Tentative %1$d</string>
     <string name="ip_finder_waiting_for_network">Redémarrage du réseau mobile…</string>
     <string name="ip_finder_found">IP compatible trouvée</string>
     <string name="ip_finder_found_detail">Nouvelle IP : %1$s</string>
@@ -98,6 +98,7 @@
     <string name="ip_finder_turn_off_wifi">Désactivez d’abord le Wi‑Fi.</string>
     <string name="ip_finder_select_assistant">Sélectionnez Barka Tunnel comme assistant numérique pour autoriser le changement d’IP.</string>
     <string name="ip_finder_assistant_unavailable">L’assistant numérique n’est pas disponible sur cet appareil.</string>
+    <string name="ip_finder_assistant_settings_hint">Dans Applications par défaut, ouvrez Assistant numérique puis choisissez Barka Tunnel.</string>
     <string name="ip_finder_cycle_failed">Android n’a pas autorisé le changement d’IP. Vérifiez que Barka Tunnel est l’assistant numérique.</string>
     <string name="ip_finder_cellular_unavailable">Le réseau mobile n’est pas disponible. Activez la SIM et les données mobiles.</string>
     <string name="ip_finder_log_started">IP Finder • recherche démarrée.</string>
@@ -115,7 +116,7 @@
     <string name="settings_language_format">Langue • %1$s</string>
     <string name="settings_choose_language">Choisir la langue</string>
     <string name="language_french">Français</string>
-    <string name="language_english">Anglais</string>
+    <string name="language_english">English</string>
     <string name="settings_connection">CONNEXION</string>
     <string name="settings_ip_format">Adresse IP : %1$s • %2$s</string>
     <string name="settings_ip_unavailable">Adresse IP : Indisponible</string>
@@ -193,7 +194,7 @@
     <string name="subscription_after_payment">Après paiement, vous recevrez votre code d’activation à copier.</string>
     <string name="payment_confirmed">Paiement confirmé</string>
     <string name="payment_code_ready">Votre code d’activation est prêt :</string>
-    <string name="payment_code_format">Votre code d’activation :\n\n%1$s</string>
+    <string name="payment_code_format">Paiement confirmé.\n\nCliquez sur COPIER CODE pour copier votre code d’activation et ne le partagez à personne.\n\n%1$s</string>
     <string name="payment_activate_now">ACTIVER MAINTENANT</string>
     <string name="payment_code_preparing">Paiement confirmé. Le code est en préparation.</string>
     <string name="payment_unavailable">Paiement indisponible pour le moment.</string>

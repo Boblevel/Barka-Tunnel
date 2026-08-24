@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -20,7 +22,9 @@ class SubscriptionActivity : AppCompatActivity() {
     private var selectedPlanId: String = "24h"
     private var selectedAmount: Int = 300
     private lateinit var payButton: MaterialButton
+    private val paymentHandler = Handler(Looper.getMainLooper())
     @Volatile private var checkingPayment = false
+    private var paymentPollAttempts = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,7 +53,18 @@ class SubscriptionActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        paymentPollAttempts = 0
         checkPendingPayment()
+    }
+
+    override fun onPause() {
+        paymentHandler.removeCallbacksAndMessages(null)
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        paymentHandler.removeCallbacksAndMessages(null)
+        super.onDestroy()
     }
 
     private fun startPayment() {
@@ -103,7 +118,6 @@ class SubscriptionActivity : AppCompatActivity() {
                 runOnUiThread {
                     when (status.status) {
                         "paid" -> {
-                            PendingPaymentStore.clear(this)
                             AppLogStore.add(this, "Paiement • Confirmation reçue.")
                             val code = status.activationCode
                             if (code.isNullOrBlank()) {
@@ -112,10 +126,14 @@ class SubscriptionActivity : AppCompatActivity() {
                                     R.string.payment_code_preparing,
                                     Toast.LENGTH_LONG
                                 ).show()
+                                schedulePaymentCheck()
                             } else {
+                                PendingPaymentStore.clear(this)
                                 showActivationCode(code)
                             }
                         }
+
+                        "pending", "creating" -> schedulePaymentCheck()
 
                         "failed", "error" -> {
                             PendingPaymentStore.clear(this)
@@ -125,11 +143,21 @@ class SubscriptionActivity : AppCompatActivity() {
                     }
                 }
             } catch (_: Exception) {
-                // Le paiement reste mémorisé : une nouvelle vérification sera faite au prochain retour.
+                // Le paiement reste mémorisé et la vérification reprend automatiquement.
+                schedulePaymentCheck()
             } finally {
                 checkingPayment = false
             }
         }.start()
+    }
+
+    private fun schedulePaymentCheck() {
+        if (paymentPollAttempts >= MAX_PAYMENT_POLL_ATTEMPTS) return
+        paymentPollAttempts += 1
+        paymentHandler.postDelayed(
+            { checkPendingPayment() },
+            PAYMENT_POLL_DELAY_MS
+        )
     }
 
     private fun showActivationCode(code: String) {
@@ -154,5 +182,10 @@ class SubscriptionActivity : AppCompatActivity() {
     private fun select(planId: String, amount: Int) {
         selectedPlanId = planId
         selectedAmount = amount
+    }
+
+    companion object {
+        private const val PAYMENT_POLL_DELAY_MS = 2_000L
+        private const val MAX_PAYMENT_POLL_ATTEMPTS = 30
     }
 }

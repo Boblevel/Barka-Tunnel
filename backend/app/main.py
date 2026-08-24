@@ -200,7 +200,7 @@ async def payment_status(body: PaymentStatusRequest):
             pass
 
     code = (
-        activation_code_for_payment(body.payment_reference)
+        mark_payment_paid(body.payment_reference)
         if current_status == "paid"
         else None
     )
