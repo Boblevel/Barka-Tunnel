@@ -1,13 +1,11 @@
 package com.barkatunnel.app.journal
 
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.barkatunnel.app.MainActivity
 import com.barkatunnel.app.R
 import com.google.android.material.button.MaterialButton
 
@@ -29,7 +27,6 @@ class JournalActivity : AppCompatActivity() {
         }
 
         findViewById<android.view.View>(R.id.navHome).setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
             finish()
         }
 

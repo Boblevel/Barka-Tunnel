@@ -17,6 +17,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
@@ -46,11 +47,15 @@ import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.update.AppUpdateCoordinator
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.google.android.material.button.MaterialButton
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
-    private var selectedNetwork: NetworkOption? = NetworkOption.ALL.firstOrNull()
+    private var selectedNetwork: NetworkOption? = null
     private var homeController: HomeController? = null
+    private var swipeStartX = 0f
+    private var swipeStartY = 0f
+    private var journalOpening = false
 
     private lateinit var networkIpValue: TextView
     private lateinit var networkIpStatus: TextView
@@ -103,6 +108,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         applySystemBars()
         updateCoordinator = AppUpdateCoordinator(this)
+        selectedNetwork = loadSelectedNetwork()
 
         val networkSelector = findViewById<android.view.View>(R.id.networkSelector)
         networkLogo = findViewById(R.id.networkLogo)
@@ -291,7 +297,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<android.view.View>(R.id.navJournal).setOnClickListener {
-            startActivity(Intent(this, JournalActivity::class.java))
+            openJournal()
         }
 
         findViewById<android.view.View>(R.id.navSettings).setOnClickListener {
@@ -320,13 +326,37 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        var openJournalAfterDispatch = false
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                swipeStartX = event.x
+                swipeStartY = event.y
+            }
+
+            MotionEvent.ACTION_UP -> {
+                val deltaX = event.x - swipeStartX
+                val deltaY = event.y - swipeStartY
+                val minimumDistance = SWIPE_MIN_DISTANCE_DP * resources.displayMetrics.density
+                openJournalAfterDispatch =
+                    abs(deltaX) >= minimumDistance &&
+                        abs(deltaX) > abs(deltaY) * SWIPE_DIRECTION_RATIO
+            }
+        }
+
+        val handled = super.dispatchTouchEvent(event)
+        if (openJournalAfterDispatch) openJournal()
+        return handled
+    }
+
     override fun onResume() {
         super.onResume()
 
         if (::networkIpValue.isInitialized) {
+            journalOpening = false
             applySystemBars()
             refreshNetworkIp()
-            initializeHomeRuntime()
+            refreshHomeState()
             if (::updateCoordinator.isInitialized) {
                 updateCoordinator.check(showNoUpdate = false)
             }
@@ -401,6 +431,7 @@ class MainActivity : AppCompatActivity() {
                 ?: return
 
             selectedNetwork = network
+            saveSelectedNetwork(network)
             AppLogStore.add(
                 this,
                 "Réseau sélectionné • ${network.displayName}."
@@ -511,12 +542,14 @@ class MainActivity : AppCompatActivity() {
                     result.value.connection
                 )
                 updatePowerButtonState(result.value.connection)
+                stopConnectionTimerIfInactive(result.value.connection)
             }
 
             is HomeControllerResult.Message -> {
                 homeController?.currentState()?.connection?.let { connection ->
                     uiBinder.showConnection(connection)
                     updatePowerButtonState(connection)
+                    stopConnectionTimerIfInactive(connection)
                 }
                 AppLogStore.add(this, "Échec / information : ${result.text}")
                 Toast.makeText(
@@ -551,25 +584,56 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun vibrateOnce(durationMs: Long) {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getSystemService(VibratorManager::class.java).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(VIBRATOR_SERVICE) as Vibrator
+        }
+
+        if (!vibrator.hasVibrator()) {
+            AppLogStore.add(this, "Vibration indisponible sur cet appareil.")
+            return
+        }
+
         runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val manager = getSystemService(VibratorManager::class.java)
-                manager.defaultVibrator.vibrate(
-                    VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(
+                    VibrationEffect.createOneShot(durationMs, MAX_VIBRATION_AMPLITUDE)
                 )
             } else {
                 @Suppress("DEPRECATION")
-                val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator.vibrate(
-                        VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE)
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    vibrator.vibrate(durationMs)
-                }
+                vibrator.vibrate(durationMs)
             }
+        }.onFailure {
+            AppLogStore.add(this, "Vibration impossible • ${it.message ?: "erreur Android"}.")
         }
+    }
+
+    private fun stopConnectionTimerIfInactive(state: HomeConnectionState) {
+        if (state !is HomeConnectionState.Connected && state !is HomeConnectionState.Connecting) {
+            timerController.stopConnectionTimer()
+        }
+    }
+
+    private fun openJournal() {
+        if (journalOpening) return
+        journalOpening = true
+        startActivity(Intent(this, JournalActivity::class.java))
+    }
+
+    private fun loadSelectedNetwork(): NetworkOption {
+        val savedId = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+            .getString(PREF_SELECTED_NETWORK, null)
+        return NetworkOption.ALL.firstOrNull { it.id == savedId }
+            ?: NetworkOption.ALL.first()
+    }
+
+    private fun saveSelectedNetwork(network: NetworkOption) {
+        getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+            .edit()
+            .putString(PREF_SELECTED_NETWORK, network.id)
+            .apply()
     }
 
     private fun showSideMenu() {
@@ -733,7 +797,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val PRESS_VIBRATION_MS = 45L
-        private const val CONNECTED_VIBRATION_MS = 90L
+        private const val PREFERENCES_NAME = "barka_home_preferences"
+        private const val PREF_SELECTED_NETWORK = "selected_network_id"
+        private const val PRESS_VIBRATION_MS = 80L
+        private const val CONNECTED_VIBRATION_MS = 160L
+        private const val MAX_VIBRATION_AMPLITUDE = 255
+        private const val SWIPE_MIN_DISTANCE_DP = 96f
+        private const val SWIPE_DIRECTION_RATIO = 1.25f
     }
 }
