@@ -9,18 +9,19 @@ mkdir -p "$TMP" "$JNI/arm64-v8a" "$JNI/armeabi-v7a"
 
 # Xray/VLESS - version épinglée pour un build reproductible.
 XRAY_TAG="v26.7.28"
-for item in "arm64-v8a:Xray-android-arm64-v8a.zip" "armeabi-v7a:Xray-android-arm32-v7a.zip"; do
-  abi="${item%%:*}"
-  asset="${item#*:}"
-  url="https://github.com/XTLS/Xray-core/releases/download/${XRAY_TAG}/${asset}"
-  curl -fL --retry 3 "$url" -o "$TMP/$asset"
-  mkdir -p "$TMP/xray-$abi"
-  unzip -q "$TMP/$asset" -d "$TMP/xray-$abi"
-  xray_bin="$(find "$TMP/xray-$abi" -type f -name xray | head -1)"
-  test -n "$xray_bin"
-  cp "$xray_bin" "$JNI/$abi/libbarka_xray.so"
-  chmod 0755 "$JNI/$abi/libbarka_xray.so"
-done
+# Les releases Android officielles Xray publient arm64-v8a, mais pas arm32-v7a.
+# C6 embarque donc Xray/VLESS pour arm64-v8a uniquement au lieu d'appeler
+# un asset inexistant qui provoque un HTTP 404 dans GitHub Actions.
+abi="arm64-v8a"
+asset="Xray-android-arm64-v8a.zip"
+url="https://github.com/XTLS/Xray-core/releases/download/${XRAY_TAG}/${asset}"
+curl -fL --retry 3 "$url" -o "$TMP/$asset"
+mkdir -p "$TMP/xray-$abi"
+unzip -q "$TMP/$asset" -d "$TMP/xray-$abi"
+xray_bin="$(find "$TMP/xray-$abi" -type f -name xray | head -1)"
+test -n "$xray_bin"
+cp "$xray_bin" "$JNI/$abi/libbarka_xray.so"
+chmod 0755 "$JNI/$abi/libbarka_xray.so"
 
 # DNSTT client - compilé depuis la source officielle pour Android.
 git clone --depth 1 https://www.bamsoftware.com/git/dnstt.git "$TMP/dnstt"
