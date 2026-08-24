@@ -24,7 +24,7 @@ cp "$xray_bin" "$JNI/$abi/libbarka_xray.so"
 chmod 0755 "$JNI/$abi/libbarka_xray.so"
 
 # DNSTT client - compilé depuis la source officielle pour Android.
-git clone --depth 1 https://www.bamsoftware.com/git/dnstt.git "$TMP/dnstt"
+git clone https://www.bamsoftware.com/git/dnstt.git "$TMP/dnstt"
 (
   cd "$TMP/dnstt"
   GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -o "$JNI/arm64-v8a/libbarka_dnstt.so" ./dnstt-client
