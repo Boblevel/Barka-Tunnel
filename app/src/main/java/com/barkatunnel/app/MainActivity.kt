@@ -4,6 +4,8 @@ package com.barkatunnel.app
 
 import android.Manifest
 import android.app.Dialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
@@ -21,20 +23,21 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
-import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.viewpager2.widget.ViewPager2
 import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.guide.GuideActivity
 import com.barkatunnel.app.ipfinder.IpFinderActivity
 import com.barkatunnel.app.journal.AppLogStore
-import com.barkatunnel.app.journal.JournalActivity
+import com.barkatunnel.app.journal.JournalUiBinder
 import com.barkatunnel.app.networkinfo.NetworkIpProvider
 import com.barkatunnel.app.settings.SettingsActivity
 import com.barkatunnel.app.subscription.ActivationActivity
@@ -47,21 +50,19 @@ import com.barkatunnel.app.ui.home.HomeRuntimeFactory
 import com.barkatunnel.app.ui.home.HomeTimerController
 import com.barkatunnel.app.ui.home.HomeUiBinder
 import com.barkatunnel.app.ui.home.NetworkOption
+import com.barkatunnel.app.ui.pager.StaticPageAdapter
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.update.AppUpdateCoordinator
 import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.google.android.material.button.MaterialButton
-import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
     private var selectedNetwork: NetworkOption? = null
     private var homeController: HomeController? = null
-    private var swipeStartX = 0f
-    private var swipeStartY = 0f
-    private var swipeStartTimeMs = 0L
-    private var journalOpening = false
+    private lateinit var homeJournalPager: ViewPager2
+    private lateinit var journalUiBinder: JournalUiBinder
 
     private lateinit var networkIpValue: TextView
     private lateinit var networkIpStatus: TextView
@@ -127,37 +128,41 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_home_journal_pager)
+        val homePage = layoutInflater.inflate(R.layout.activity_main, null, false)
+        val journalPage = layoutInflater.inflate(R.layout.activity_journal, null, false)
+        homeJournalPager = findViewById(R.id.homeJournalPager)
+        homeJournalPager.adapter = StaticPageAdapter(listOf(homePage, journalPage))
+        homeJournalPager.offscreenPageLimit = 1
+        homeJournalPager.setCurrentItem(PAGE_HOME, false)
         applySystemBars()
         updateCoordinator = AppUpdateCoordinator(this)
         selectedNetwork = loadSelectedNetwork()
 
-        val networkSelector = findViewById<android.view.View>(R.id.networkSelector)
-        networkLogo = findViewById(R.id.networkLogo)
-        networkName = findViewById(R.id.networkName)
-        networkSubtitle = findViewById(R.id.networkSubtitle)
+        val networkSelector = homePage.findViewById<android.view.View>(R.id.networkSelector)
+        networkLogo = homePage.findViewById(R.id.networkLogo)
+        networkName = homePage.findViewById(R.id.networkName)
+        networkSubtitle = homePage.findViewById(R.id.networkSubtitle)
 
-        val buttonFreeTrial = findViewById<android.view.View>(R.id.buttonFreeTrial)
-        val buttonRefresh = findViewById<android.view.View>(R.id.buttonRefresh)
-        val addAccessButton = findViewById<android.view.View>(R.id.addAccessButton)
-        connectButton = findViewById(R.id.connectButton)
-        powerButton = findViewById(R.id.powerButton)
+        val buttonFreeTrial = homePage.findViewById<android.view.View>(R.id.buttonFreeTrial)
+        val buttonRefresh = homePage.findViewById<android.view.View>(R.id.buttonRefresh)
+        val addAccessButton = homePage.findViewById<android.view.View>(R.id.addAccessButton)
+        connectButton = homePage.findViewById(R.id.connectButton)
+        powerButton = homePage.findViewById(R.id.powerButton)
 
-        networkIpValue = findViewById(R.id.networkIpValue)
-        networkIpStatus = findViewById(R.id.networkIpStatus)
-        networkTransportIcon = findViewById(R.id.networkTransportIcon)
+        networkIpValue = homePage.findViewById(R.id.networkIpValue)
+        networkIpStatus = homePage.findViewById(R.id.networkIpStatus)
+        networkTransportIcon = homePage.findViewById(R.id.networkTransportIcon)
 
-        val openIpFinder = {
-            AppLogStore.add(this, "Ouverture de l’IP Finder.")
-            startActivity(Intent(this, IpFinderActivity::class.java))
-        }
-        networkIpValue.setOnClickListener { openIpFinder() }
-        networkIpStatus.setOnClickListener { openIpFinder() }
+        networkIpValue.setOnClickListener { copyNetworkIp() }
+        networkIpStatus.setOnClickListener { copyNetworkIp() }
+        homePage.findViewById<android.view.View>(R.id.networkIpCard)
+            .setOnClickListener { copyNetworkIp() }
 
-        accessRemainingTime = findViewById(R.id.accessRemainingTime)
-        accessStatus = findViewById(R.id.accessStatus)
-        connectionTime = findViewById(R.id.connectionTime)
-        vpnStatus = findViewById(R.id.vpnStatus)
+        accessRemainingTime = homePage.findViewById(R.id.accessRemainingTime)
+        accessStatus = homePage.findViewById(R.id.accessStatus)
+        connectionTime = homePage.findViewById(R.id.connectionTime)
+        vpnStatus = homePage.findViewById(R.id.vpnStatus)
 
         uiBinder = HomeUiBinder(
             networkName = networkName,
@@ -311,6 +316,10 @@ class MainActivity : AppCompatActivity() {
                             finalConnection is HomeConnectionState.Connecting ||
                             finalConnection is HomeConnectionState.Error
                         ) {
+                            AppLogStore.add(
+                                this,
+                                "Connexion refusée${selected?.let { " • ${it.displayName}" } ?: ""}."
+                            )
                             BarkaVpnService.showWaitingNotification(this)
                         } else {
                             BarkaVpnService.cancelConnectingNotification(this)
@@ -331,26 +340,65 @@ class MainActivity : AppCompatActivity() {
             connectAction()
         }
 
-        findViewById<android.view.View>(R.id.navHome).setOnClickListener {
+        homePage.findViewById<android.view.View>(R.id.navHome).setOnClickListener {
             refreshNetworkIp()
             refreshHomeState()
         }
 
-        findViewById<android.view.View>(R.id.navIpFinder).setOnClickListener {
+        homePage.findViewById<android.view.View>(R.id.navIpFinder).setOnClickListener {
             startActivity(Intent(this, IpFinderActivity::class.java))
         }
 
-        findViewById<android.view.View>(R.id.navJournal).setOnClickListener {
+        homePage.findViewById<android.view.View>(R.id.navJournal).setOnClickListener {
             openJournal()
         }
 
-        findViewById<android.view.View>(R.id.navSettings).setOnClickListener {
+        homePage.findViewById<android.view.View>(R.id.navSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
-        findViewById<android.view.View>(R.id.buttonMenu).setOnClickListener {
+        homePage.findViewById<android.view.View>(R.id.buttonMenu).setOnClickListener {
             showSideMenu()
         }
+
+        journalUiBinder = JournalUiBinder(
+            this,
+            journalPage.findViewById(R.id.journalList)
+        )
+        journalPage.findViewById<android.view.View>(R.id.journalBackButton)
+            .setOnClickListener { openHome() }
+        journalPage.findViewById<MaterialButton>(R.id.clearJournalButton)
+            .setOnClickListener {
+                AppLogStore.clear(this)
+                journalUiBinder.refresh()
+            }
+        journalPage.findViewById<android.view.View>(R.id.navHome)
+            .setOnClickListener { openHome() }
+        journalPage.findViewById<android.view.View>(R.id.navJournal)
+            .setOnClickListener { journalUiBinder.refresh() }
+
+        homeJournalPager.registerOnPageChangeCallback(
+            object : ViewPager2.OnPageChangeCallback() {
+                override fun onPageSelected(position: Int) {
+                    if (position == PAGE_JOURNAL) {
+                        journalUiBinder.refresh()
+                    }
+                }
+            }
+        )
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (homeJournalPager.currentItem == PAGE_JOURNAL) {
+                        openHome()
+                    } else {
+                        finish()
+                    }
+                }
+            }
+        )
+        journalUiBinder.refresh()
 
     }
 
@@ -370,44 +418,16 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
-    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        var openJournalAfterDispatch = false
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                swipeStartX = event.x
-                swipeStartY = event.y
-                swipeStartTimeMs = event.eventTime
-            }
-
-            MotionEvent.ACTION_UP -> {
-                val deltaX = event.x - swipeStartX
-                val deltaY = event.y - swipeStartY
-                val density = resources.displayMetrics.density
-                val distance = abs(deltaX)
-                val durationMs = (event.eventTime - swipeStartTimeMs).coerceAtLeast(1L)
-                val minimumDistance = SWIPE_MIN_DISTANCE_DP * density
-                val quickFlickDistance = SWIPE_QUICK_FLICK_DISTANCE_DP * density
-                openJournalAfterDispatch =
-                    deltaX < 0f &&
-                        (distance >= minimumDistance ||
-                            (distance >= quickFlickDistance && durationMs <= SWIPE_QUICK_FLICK_MAX_MS)) &&
-                        abs(deltaX) > abs(deltaY) * SWIPE_DIRECTION_RATIO
-            }
-        }
-
-        val handled = super.dispatchTouchEvent(event)
-        if (openJournalAfterDispatch) openJournal()
-        return handled
-    }
-
     override fun onResume() {
         super.onResume()
 
         if (::networkIpValue.isInitialized) {
-            journalOpening = false
             applySystemBars()
             refreshNetworkIp()
             refreshHomeState()
+            if (::journalUiBinder.isInitialized && homeJournalPager.currentItem == PAGE_JOURNAL) {
+                journalUiBinder.refresh()
+            }
             if (::updateCoordinator.isInitialized) {
                 updateCoordinator.check(showNoUpdate = false)
             }
@@ -597,20 +617,26 @@ class MainActivity : AppCompatActivity() {
             }
 
             is HomeControllerResult.Message -> {
-                homeController?.currentState()?.let { currentState ->
-                    uiBinder.showAccess(currentState.access)
-                    timerController.syncAccessRemaining(currentState.access.remainingSeconds)
-                    uiBinder.showConnection(currentState.connection)
-                    updatePowerButtonState(currentState.connection)
-                    stopConnectionTimerIfInactive(currentState.connection)
+                val currentState = homeController?.currentState()
+                currentState?.let {
+                    uiBinder.showAccess(it.access)
+                    timerController.syncAccessRemaining(it.access.remainingSeconds)
+                    uiBinder.showConnection(it.connection)
+                    updatePowerButtonState(it.connection)
+                    stopConnectionTimerIfInactive(it.connection)
                 }
                 val userMessage = userFacingMessage(result.text)
-                AppLogStore.add(this, "Information • $userMessage")
-                Toast.makeText(
-                    this,
-                    userMessage,
-                    Toast.LENGTH_LONG
-                ).show()
+                val pendingConnection =
+                    currentState?.connection is HomeConnectionState.Connecting &&
+                        userMessage.startsWith("Connexion en cours")
+                if (!pendingConnection) {
+                    AppLogStore.add(this, "Information • $userMessage")
+                    Toast.makeText(
+                        this,
+                        userMessage,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
 
             HomeControllerResult.LoginRequired -> {
@@ -697,10 +723,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openJournal() {
-        if (journalOpening) return
-        journalOpening = true
-        startActivity(Intent(this, JournalActivity::class.java))
-        overridePendingTransition(R.anim.slide_in_right_fast, R.anim.slide_out_left_fast)
+        journalUiBinder.refresh()
+        homeJournalPager.setCurrentItem(PAGE_JOURNAL, true)
+    }
+
+    private fun openHome() {
+        homeJournalPager.setCurrentItem(PAGE_HOME, true)
+    }
+
+    private fun copyNetworkIp() {
+        val ipAddress = networkIpValue.text.toString().trim()
+        if (
+            ipAddress.isBlank() ||
+            ipAddress.equals("Indisponible", ignoreCase = true) ||
+            ipAddress == "—"
+        ) {
+            Toast.makeText(this, "Adresse IP indisponible.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard.setPrimaryClip(
+            ClipData.newPlainText("Adresse IP du réseau", ipAddress)
+        )
+        AppLogStore.add(this, "Adresse IP copiée.")
+        Toast.makeText(this, "Adresse IP copiée.", Toast.LENGTH_SHORT).show()
     }
 
     private fun userFacingMessage(value: String): String {
@@ -891,10 +938,8 @@ class MainActivity : AppCompatActivity() {
         private const val PRESS_VIBRATION_MS = 80L
         private const val CONNECTED_VIBRATION_MS = 160L
         private const val MAX_VIBRATION_AMPLITUDE = 255
-        private const val SWIPE_MIN_DISTANCE_DP = 48f
-        private const val SWIPE_QUICK_FLICK_DISTANCE_DP = 24f
-        private const val SWIPE_QUICK_FLICK_MAX_MS = 260L
-        private const val SWIPE_DIRECTION_RATIO = 1.08f
+        private const val PAGE_HOME = 0
+        private const val PAGE_JOURNAL = 1
         private val TECHNICAL_CONNECTION_TERMS = Regex(
             "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
         )

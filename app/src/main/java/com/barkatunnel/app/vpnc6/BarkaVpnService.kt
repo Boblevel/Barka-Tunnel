@@ -78,17 +78,14 @@ class BarkaVpnService : VpnService() {
             val configJson = intent.getStringExtra(EXTRA_CONFIG_JSON).orEmpty()
             val profileConfig = VpnProfileConfigParser.parse(protocol, configJson)
 
-            AppLogStore.add(this, "Configuration de connexion récupérée.")
             val protocolEngine = createEngine(protocol, profileConfig)
             engine = protocolEngine
 
-            AppLogStore.add(this, "Démarrage de la connexion sécurisée.")
             protocolEngine.start()
 
             if (!SocksProbe.connectThrough("127.0.0.1", socksPort(protocol))) {
                 throw IllegalStateException("Le tunnel ${protocol.name} n’a pas validé le passage TCP réel.")
             }
-            AppLogStore.add(this, "Connexion sécurisée validée.")
 
             val dns = when (profileConfig) {
                 is VpnProfileConfig.SlowDns -> profileConfig.dns
@@ -109,7 +106,6 @@ class BarkaVpnService : VpnService() {
                 else -> DEFAULT_UDPGW
             }
 
-            AppLogStore.add(this, "Activation de la connexion sécurisée sur Android.")
             tun2SocksRunner = Tun2SocksRunner(this).also { runner ->
                 runner.start(
                     vpnDescriptor = descriptor,
@@ -122,13 +118,12 @@ class BarkaVpnService : VpnService() {
             }
 
             connected = true
-            updateNotification("VPN connecté • Connexion sécurisée")
-            AppLogStore.add(this, "Connexion sécurisée établie.")
+            updateNotification("VPN connecté")
             C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
         } catch (e: Exception) {
             val technicalMessage = sanitizeError(e.message ?: "Échec interne de la connexion.")
             Log.e(TAG, "Connection failure: $technicalMessage", e)
-            AppLogStore.add(this, "Connexion en cours • vérification du réseau nécessaire.")
+            AppLogStore.add(this, "Connexion refusée.")
             stopTunnel()
             C6VpnRuntime.complete(requestId, C6VpnResult.Error(CONNECTION_PENDING_MESSAGE))
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -138,10 +133,9 @@ class BarkaVpnService : VpnService() {
 
     private fun disconnect(requestId: String?) {
         stopping = true
-        AppLogStore.add(this, "Déconnexion demandée.")
         stopTunnel()
         C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
-        AppLogStore.add(this, "Barka Tunnel déconnecté proprement.")
+        AppLogStore.add(this, "VPN déconnecté.")
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
