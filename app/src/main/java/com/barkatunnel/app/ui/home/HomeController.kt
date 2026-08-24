@@ -85,27 +85,23 @@ class HomeController(
 
             is HomeVpnResult.Disconnected -> {
                 state = state.copy(
-                    connection = HomeConnectionState.Disconnected
+                    connection = HomeConnectionState.Connecting
                 )
-                HomeControllerResult.State(state)
+                HomeControllerResult.Message(CONNECTION_PENDING_MESSAGE)
             }
 
             is HomeVpnResult.AccessDenied -> {
                 state = state.copy(
-                    connection = HomeConnectionState.Disconnected
+                    connection = HomeConnectionState.Connecting
                 )
-                HomeControllerResult.Message(
-                    "Accès refusé par le serveur."
-                )
+                HomeControllerResult.Message(CONNECTION_PENDING_MESSAGE)
             }
 
             is HomeVpnResult.Error -> {
                 state = state.copy(
-                    connection = HomeConnectionState.Error(
-                        result.message
-                    )
+                    connection = HomeConnectionState.Connecting
                 )
-                HomeControllerResult.Message(result.message)
+                HomeControllerResult.Message(CONNECTION_PENDING_MESSAGE)
             }
         }
     }
@@ -132,5 +128,10 @@ class HomeController(
             is HomeVpnResult.Error ->
                 HomeControllerResult.Message(result.message)
         }
+    }
+
+    companion object {
+        private const val CONNECTION_PENDING_MESSAGE =
+            "Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie."
     }
 }

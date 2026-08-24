@@ -1,6 +1,7 @@
 package com.barkatunnel.app.ui.home
 
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import com.barkatunnel.app.R
 import com.google.android.material.button.MaterialButton
 
@@ -38,21 +39,33 @@ class HomeUiBinder(
             HomeConnectionState.Disconnected -> {
                 vpnStatus.text = "NON CONNECTÉ"
                 connectButton.text = "SE CONNECTER"
+                vpnStatus.setTextColor(
+                    ContextCompat.getColor(vpnStatus.context, R.color.barka_text)
+                )
             }
 
             HomeConnectionState.Connecting -> {
-                vpnStatus.text = "CONNEXION..."
-                connectButton.text = "CONNEXION..."
+                vpnStatus.text = "CONNEXION…"
+                connectButton.text = "SE DÉCONNECTER"
+                vpnStatus.setTextColor(
+                    ContextCompat.getColor(vpnStatus.context, R.color.barka_blue)
+                )
             }
 
             is HomeConnectionState.Connected -> {
                 vpnStatus.text = "CONNECTÉ"
                 connectButton.text = "SE DÉCONNECTER"
+                vpnStatus.setTextColor(
+                    ContextCompat.getColor(vpnStatus.context, R.color.barka_green)
+                )
             }
 
             is HomeConnectionState.Error -> {
-                vpnStatus.text = "ERREUR"
-                connectButton.text = "RÉESSAYER"
+                vpnStatus.text = "CONNEXION…"
+                connectButton.text = "SE DÉCONNECTER"
+                vpnStatus.setTextColor(
+                    ContextCompat.getColor(vpnStatus.context, R.color.barka_blue)
+                )
             }
         }
     }

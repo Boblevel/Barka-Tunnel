@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.barkatunnel.app.MainActivity
@@ -77,17 +78,17 @@ class BarkaVpnService : VpnService() {
             val configJson = intent.getStringExtra(EXTRA_CONFIG_JSON).orEmpty()
             val profileConfig = VpnProfileConfigParser.parse(protocol, configJson)
 
-            AppLogStore.add(this, "C6 • profil récupéré • protocole ${protocol.name}.")
+            AppLogStore.add(this, "Configuration de connexion récupérée.")
             val protocolEngine = createEngine(protocol, profileConfig)
             engine = protocolEngine
 
-            AppLogStore.add(this, "C6 • démarrage du moteur ${protocol.name}.")
+            AppLogStore.add(this, "Démarrage de la connexion sécurisée.")
             protocolEngine.start()
 
             if (!SocksProbe.connectThrough("127.0.0.1", socksPort(protocol))) {
                 throw IllegalStateException("Le tunnel ${protocol.name} n’a pas validé le passage TCP réel.")
             }
-            AppLogStore.add(this, "C6 • transport ${protocol.name} validé.")
+            AppLogStore.add(this, "Connexion sécurisée validée.")
 
             val dns = when (profileConfig) {
                 is VpnProfileConfig.SlowDns -> profileConfig.dns
@@ -108,7 +109,7 @@ class BarkaVpnService : VpnService() {
                 else -> DEFAULT_UDPGW
             }
 
-            AppLogStore.add(this, "C6 • interface TUN créée, démarrage tun2socks.")
+            AppLogStore.add(this, "Activation de la connexion sécurisée sur Android.")
             tun2SocksRunner = Tun2SocksRunner(this).also { runner ->
                 runner.start(
                     vpnDescriptor = descriptor,
@@ -121,14 +122,15 @@ class BarkaVpnService : VpnService() {
             }
 
             connected = true
-            updateNotification("VPN connecté • ${protocol.name}")
-            AppLogStore.add(this, "C6 • CONNECTÉ • ${protocol.name}.")
+            updateNotification("VPN connecté • Connexion sécurisée")
+            AppLogStore.add(this, "Connexion sécurisée établie.")
             C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
         } catch (e: Exception) {
-            val message = sanitizeError(e.message ?: "Échec du tunnel C6.")
-            AppLogStore.add(this, "C6 • ERREUR • $message")
+            val technicalMessage = sanitizeError(e.message ?: "Échec interne de la connexion.")
+            Log.e(TAG, "Connection failure: $technicalMessage", e)
+            AppLogStore.add(this, "Connexion en cours • vérification du réseau nécessaire.")
             stopTunnel()
-            C6VpnRuntime.complete(requestId, C6VpnResult.Error(message))
+            C6VpnRuntime.complete(requestId, C6VpnResult.Error(CONNECTION_PENDING_MESSAGE))
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -136,10 +138,10 @@ class BarkaVpnService : VpnService() {
 
     private fun disconnect(requestId: String?) {
         stopping = true
-        AppLogStore.add(this, "C6 • déconnexion demandée.")
+        AppLogStore.add(this, "Déconnexion demandée.")
         stopTunnel()
         C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
-        AppLogStore.add(this, "C6 • VPN déconnecté proprement.")
+        AppLogStore.add(this, "Barka Tunnel déconnecté proprement.")
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -205,6 +207,14 @@ class BarkaVpnService : VpnService() {
             )
         }
 
+        fun showWaitingNotification(context: Context) {
+            val appContext = context.applicationContext
+            appContext.getSystemService(NotificationManager::class.java).notify(
+                NOTIFICATION_ID,
+                buildNotification(appContext, "Connexion en cours • vérification du réseau…")
+            )
+        }
+
         fun cancelConnectingNotification(context: Context) {
             context.applicationContext
                 .getSystemService(NotificationManager::class.java)
@@ -230,9 +240,8 @@ class BarkaVpnService : VpnService() {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)
-                .setSilent(true)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setColor(ContextCompat.getColor(context, R.color.barka_blue))
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -244,17 +253,22 @@ class BarkaVpnService : VpnService() {
             val manager = context.getSystemService(NotificationManager::class.java)
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Connexion VPN Barka Tunnel",
-                NotificationManager.IMPORTANCE_LOW
+                "État de la connexion Barka Tunnel",
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Affiche l’état de la connexion Barka Tunnel"
+                setSound(null, null)
+                enableVibration(false)
                 setShowBadge(false)
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
             manager.createNotificationChannel(channel)
         }
 
-        private const val CHANNEL_ID = "barka_vpn"
+        private const val TAG = "BarkaVpnService"
+        private const val CONNECTION_PENDING_MESSAGE =
+            "Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie."
+        private const val CHANNEL_ID = "barka_vpn_status_v2"
         private const val NOTIFICATION_ID = 6001
         private const val VPN_MTU = 1500
         private const val VPN_ADDRESS = "10.10.0.2"

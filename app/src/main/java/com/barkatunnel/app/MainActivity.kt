@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity() {
     private var homeController: HomeController? = null
     private var swipeStartX = 0f
     private var swipeStartY = 0f
+    private var swipeStartTimeMs = 0L
     private var journalOpening = false
 
     private lateinit var networkIpValue: TextView
@@ -242,8 +243,12 @@ class MainActivity : AppCompatActivity() {
             if (controller != null) {
                 val currentConnection =
                     controller.currentState().connection
+                val shouldDisconnect =
+                    currentConnection is HomeConnectionState.Connected ||
+                        currentConnection is HomeConnectionState.Connecting ||
+                        currentConnection is HomeConnectionState.Error
 
-                if (currentConnection !is HomeConnectionState.Connected) {
+                if (!shouldDisconnect) {
                     if (
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                         ContextCompat.checkSelfPermission(
@@ -267,7 +272,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 runHomeAction {
-                    if (currentConnection is HomeConnectionState.Connected) {
+                    if (shouldDisconnect) {
                         val result = controller.disconnect()
 
                         if (
@@ -293,6 +298,7 @@ class MainActivity : AppCompatActivity() {
                         val result = controller.connect()
                         val connectedState =
                             (result as? HomeControllerResult.State)?.value?.connection
+                        val finalConnection = controller.currentState().connection
 
                         if (connectedState is HomeConnectionState.Connected) {
                             timerController.startConnectionTimer()
@@ -301,6 +307,11 @@ class MainActivity : AppCompatActivity() {
                                 this,
                                 "VPN connecté • ${connectedState.networkName}."
                             )
+                        } else if (
+                            finalConnection is HomeConnectionState.Connecting ||
+                            finalConnection is HomeConnectionState.Error
+                        ) {
+                            BarkaVpnService.showWaitingNotification(this)
                         } else {
                             BarkaVpnService.cancelConnectingNotification(this)
                         }
@@ -365,14 +376,21 @@ class MainActivity : AppCompatActivity() {
             MotionEvent.ACTION_DOWN -> {
                 swipeStartX = event.x
                 swipeStartY = event.y
+                swipeStartTimeMs = event.eventTime
             }
 
             MotionEvent.ACTION_UP -> {
                 val deltaX = event.x - swipeStartX
                 val deltaY = event.y - swipeStartY
-                val minimumDistance = SWIPE_MIN_DISTANCE_DP * resources.displayMetrics.density
+                val density = resources.displayMetrics.density
+                val distance = abs(deltaX)
+                val durationMs = (event.eventTime - swipeStartTimeMs).coerceAtLeast(1L)
+                val minimumDistance = SWIPE_MIN_DISTANCE_DP * density
+                val quickFlickDistance = SWIPE_QUICK_FLICK_DISTANCE_DP * density
                 openJournalAfterDispatch =
-                    abs(deltaX) >= minimumDistance &&
+                    deltaX < 0f &&
+                        (distance >= minimumDistance ||
+                            (distance >= quickFlickDistance && durationMs <= SWIPE_QUICK_FLICK_MAX_MS)) &&
                         abs(deltaX) > abs(deltaY) * SWIPE_DIRECTION_RATIO
             }
         }
@@ -586,10 +604,11 @@ class MainActivity : AppCompatActivity() {
                     updatePowerButtonState(currentState.connection)
                     stopConnectionTimerIfInactive(currentState.connection)
                 }
-                AppLogStore.add(this, "Échec / information : ${result.text}")
+                val userMessage = userFacingMessage(result.text)
+                AppLogStore.add(this, "Information • $userMessage")
                 Toast.makeText(
                     this,
-                    result.text,
+                    userMessage,
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -681,6 +700,17 @@ class MainActivity : AppCompatActivity() {
         if (journalOpening) return
         journalOpening = true
         startActivity(Intent(this, JournalActivity::class.java))
+        overridePendingTransition(R.anim.slide_in_right_fast, R.anim.slide_out_left_fast)
+    }
+
+    private fun userFacingMessage(value: String): String {
+        val hasTechnicalConnectionDetail = TECHNICAL_CONNECTION_TERMS.containsMatchIn(value) ||
+            value.contains("out of range", ignoreCase = true)
+        return if (hasTechnicalConnectionDetail) {
+            "Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie."
+        } else {
+            value
+        }
     }
 
     private fun loadSelectedNetwork(): NetworkOption {
@@ -738,9 +768,7 @@ class MainActivity : AppCompatActivity() {
         dialog.findViewById<android.view.View>(R.id.menuJournal)
             .setOnClickListener {
                 dialog.dismiss()
-                startActivity(
-                    Intent(this, JournalActivity::class.java)
-                )
+                openJournal()
             }
 
         dialog.findViewById<android.view.View>(R.id.menuIpFinder)
@@ -863,7 +891,12 @@ class MainActivity : AppCompatActivity() {
         private const val PRESS_VIBRATION_MS = 80L
         private const val CONNECTED_VIBRATION_MS = 160L
         private const val MAX_VIBRATION_AMPLITUDE = 255
-        private const val SWIPE_MIN_DISTANCE_DP = 96f
-        private const val SWIPE_DIRECTION_RATIO = 1.25f
+        private const val SWIPE_MIN_DISTANCE_DP = 48f
+        private const val SWIPE_QUICK_FLICK_DISTANCE_DP = 24f
+        private const val SWIPE_QUICK_FLICK_MAX_MS = 260L
+        private const val SWIPE_DIRECTION_RATIO = 1.08f
+        private val TECHNICAL_CONNECTION_TERMS = Regex(
+            "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
+        )
     }
 }

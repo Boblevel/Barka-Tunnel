@@ -16,6 +16,7 @@ class JournalActivity : AppCompatActivity() {
     private lateinit var journalList: LinearLayout
     private var swipeStartX = 0f
     private var swipeStartY = 0f
+    private var swipeStartTimeMs = 0L
     private var closingJournal = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,7 +25,9 @@ class JournalActivity : AppCompatActivity() {
 
         journalList = findViewById(R.id.journalList)
 
-        findViewById<android.view.View>(R.id.journalBackButton).setOnClickListener { finish() }
+        findViewById<android.view.View>(R.id.journalBackButton).setOnClickListener {
+            closeJournal()
+        }
 
         findViewById<MaterialButton>(R.id.clearJournalButton).setOnClickListener {
             AppLogStore.clear(this)
@@ -32,7 +35,7 @@ class JournalActivity : AppCompatActivity() {
         }
 
         findViewById<android.view.View>(R.id.navHome).setOnClickListener {
-            finish()
+            closeJournal()
         }
 
         findViewById<android.view.View>(R.id.navJournal).setOnClickListener {
@@ -48,22 +51,28 @@ class JournalActivity : AppCompatActivity() {
             MotionEvent.ACTION_DOWN -> {
                 swipeStartX = event.x
                 swipeStartY = event.y
+                swipeStartTimeMs = event.eventTime
             }
 
             MotionEvent.ACTION_UP -> {
                 val deltaX = event.x - swipeStartX
                 val deltaY = event.y - swipeStartY
-                val minimumDistance = SWIPE_MIN_DISTANCE_DP * resources.displayMetrics.density
+                val density = resources.displayMetrics.density
+                val distance = abs(deltaX)
+                val durationMs = (event.eventTime - swipeStartTimeMs).coerceAtLeast(1L)
+                val minimumDistance = SWIPE_MIN_DISTANCE_DP * density
+                val quickFlickDistance = SWIPE_QUICK_FLICK_DISTANCE_DP * density
                 closeAfterDispatch =
-                    abs(deltaX) >= minimumDistance &&
+                    deltaX > 0f &&
+                        (distance >= minimumDistance ||
+                            (distance >= quickFlickDistance && durationMs <= SWIPE_QUICK_FLICK_MAX_MS)) &&
                         abs(deltaX) > abs(deltaY) * SWIPE_DIRECTION_RATIO
             }
         }
 
         val handled = super.dispatchTouchEvent(event)
         if (closeAfterDispatch && !closingJournal) {
-            closingJournal = true
-            finish()
+            closeJournal()
         }
         return handled
     }
@@ -101,7 +110,8 @@ class JournalActivity : AppCompatActivity() {
 
         val time = Regex("^\\[([^]]+)]\\s*(.*)$").find(line)
         val clock = time?.groupValues?.getOrNull(1).orEmpty()
-        val message = time?.groupValues?.getOrNull(2)?.trim().orEmpty().ifBlank { line }
+        val rawMessage = time?.groupValues?.getOrNull(2)?.trim().orEmpty().ifBlank { line }
+        val message = userFacingMessage(rawMessage)
         val category = categoryFor(message)
 
         row.findViewById<TextView>(R.id.eventDot).setTextColor(category.color)
@@ -111,12 +121,44 @@ class JournalActivity : AppCompatActivity() {
         journalList.addView(row)
     }
 
+    private fun userFacingMessage(message: String): String {
+        val value = message.lowercase()
+        val containsTechnicalDetail = TECHNICAL_CONNECTION_TERMS.containsMatchIn(message) ||
+            value.contains("out of range")
+        if (!containsTechnicalDetail) return message
+
+        return when {
+            value.contains("erreur") || value.contains("échec") || value.contains("out of range") ->
+                "Connexion en cours • vérification du réseau nécessaire."
+            value.contains("profil récupéré") ->
+                "Configuration de connexion récupérée."
+            value.contains("démarrage") ->
+                "Démarrage de la connexion sécurisée."
+            value.contains("transport") || value.contains("validé") ->
+                "Connexion sécurisée validée."
+            value.contains("interface") ->
+                "Activation de la connexion sécurisée sur Android."
+            value.contains("connecté") ->
+                "Connexion sécurisée établie."
+            value.contains("déconnexion") || value.contains("déconnecté") ->
+                "Barka Tunnel déconnecté proprement."
+            else -> "Mise à jour de la connexion sécurisée."
+        }
+    }
+
+    private fun closeJournal() {
+        if (closingJournal) return
+        closingJournal = true
+        finish()
+        overridePendingTransition(R.anim.slide_in_left_fast, R.anim.slide_out_right_fast)
+    }
+
     private fun categoryFor(message: String): EventCategory {
         val value = message.lowercase()
         return when {
             value.contains("échec") || value.contains("refus") || value.contains("impossible") || value.contains("erreur") ->
                 EventCategory("Erreur", Color.rgb(220, 38, 38))
-            value.contains("connecté") || value.contains("succès") || value.contains("confirmation reçue") ->
+            value.contains("connecté") || value.contains("succès") || value.contains("établie") || value.contains("confirmation reçue") ->
                 EventCategory("Succès", Color.rgb(22, 163, 74))
             value.contains("tentative") || value.contains("connexion") || value.contains("paiement") ->
                 EventCategory("Tentative", Color.rgb(245, 158, 11))
@@ -129,7 +171,12 @@ class JournalActivity : AppCompatActivity() {
     private data class EventCategory(val title: String, val color: Int)
 
     companion object {
-        private const val SWIPE_MIN_DISTANCE_DP = 96f
-        private const val SWIPE_DIRECTION_RATIO = 1.25f
+        private const val SWIPE_MIN_DISTANCE_DP = 48f
+        private const val SWIPE_QUICK_FLICK_DISTANCE_DP = 24f
+        private const val SWIPE_QUICK_FLICK_MAX_MS = 260L
+        private const val SWIPE_DIRECTION_RATIO = 1.08f
+        private val TECHNICAL_CONNECTION_TERMS = Regex(
+            "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
+        )
     }
 }
