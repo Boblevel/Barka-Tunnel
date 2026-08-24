@@ -15,7 +15,7 @@ class HomeVpnCoordinator(
     ): HomeVpnResult {
 
         val profile = try {
-            profileRepository.loadForConnection(network.id)
+            profileRepository.loadForConnection(connectionProfileId(network.id))
         } catch (e: BarkaBackendException) {
             return HomeVpnResult.Error(
                 e.message ?: "Profil VPN indisponible pour ${network.displayName}"
@@ -23,10 +23,15 @@ class HomeVpnCoordinator(
         }
 
         return when (val result = c6VpnController.connect(profile)) {
-            is C6VpnResult.Connected -> HomeVpnResult.Connected(profile.displayName)
+            is C6VpnResult.Connected -> HomeVpnResult.Connected(network.displayName)
             is C6VpnResult.Disconnected -> HomeVpnResult.Disconnected
             is C6VpnResult.Error -> HomeVpnResult.Error(result.message)
         }
+    }
+
+    private fun connectionProfileId(networkId: String): String = when (networkId) {
+        "moov_bf", "telecel_bf" -> "orange_bf"
+        else -> networkId
     }
 
     fun disconnect(): HomeVpnResult {

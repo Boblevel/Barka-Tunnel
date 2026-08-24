@@ -1,5 +1,6 @@
 package com.barkatunnel.app.journal
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.MotionEvent
 import android.widget.LinearLayout
@@ -12,6 +13,7 @@ class JournalActivity : AppCompatActivity() {
 
     private lateinit var journalList: LinearLayout
     private lateinit var journalUiBinder: JournalUiBinder
+    private var journalLogListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var swipeStartX = 0f
     private var swipeStartY = 0f
     private var swipeStartTimeMs = 0L
@@ -42,6 +44,25 @@ class JournalActivity : AppCompatActivity() {
         }
 
         refreshLogs()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (journalLogListener == null) {
+            journalLogListener = AppLogStore.registerChangeListener(this) {
+                runOnUiThread {
+                    if (::journalUiBinder.isInitialized) refreshLogs()
+                }
+            }
+        }
+    }
+
+    override fun onStop() {
+        journalLogListener?.let {
+            AppLogStore.unregisterChangeListener(this, it)
+        }
+        journalLogListener = null
+        super.onStop()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {

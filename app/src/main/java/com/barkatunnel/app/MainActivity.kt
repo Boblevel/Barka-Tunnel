@@ -7,6 +7,7 @@ import android.app.Dialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.net.ConnectivityManager
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
     private var homeController: HomeController? = null
     private lateinit var homeJournalPager: ViewPager2
     private lateinit var journalUiBinder: JournalUiBinder
+    private var journalLogListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     private lateinit var networkIpValue: TextView
     private lateinit var networkIpStatus: TextView
@@ -462,6 +464,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        if (journalLogListener == null) {
+            journalLogListener = AppLogStore.registerChangeListener(this) {
+                runOnUiThread {
+                    if (
+                        ::journalUiBinder.isInitialized &&
+                        homeJournalPager.currentItem == PAGE_JOURNAL
+                    ) {
+                        journalUiBinder.refresh()
+                    }
+                }
+            }
+        }
         if (!networkCallbackRegistered) {
             connectivityManager.registerDefaultNetworkCallback(networkCallback)
             networkCallbackRegistered = true
@@ -469,6 +483,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        journalLogListener?.let {
+            AppLogStore.unregisterChangeListener(this, it)
+        }
+        journalLogListener = null
         if (networkCallbackRegistered) {
             runCatching { connectivityManager.unregisterNetworkCallback(networkCallback) }
             networkCallbackRegistered = false
