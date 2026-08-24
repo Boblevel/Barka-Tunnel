@@ -107,7 +107,7 @@ object VpnProfileConfigParser {
 
         return VpnProfileConfig.Vless(
             address = requiredString(json, "address"),
-            ip = json.optString("ip").trim().ifBlank { null },
+            ip = optionalStringAny(json, "ip", "server_ip"),
             port = requiredPort(json, "port"),
             uuid = uuid,
             encryption = json.optString("encryption", "none").trim().ifBlank { "none" },
@@ -155,7 +155,7 @@ object VpnProfileConfigParser {
 
         return VpnProfileConfig.Vless(
             address = address,
-            ip = json.optString("ip").trim().ifBlank { null },
+            ip = optionalStringAny(json, "ip", "server_ip"),
             port = port,
             uuid = uuid,
             encryption = query["encryption"].orEmpty().ifBlank { "none" },

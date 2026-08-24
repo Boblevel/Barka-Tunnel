@@ -94,7 +94,7 @@ class BarkaVpnService : VpnService() {
             val descriptor = Builder()
                 .setSession("Barka Tunnel")
                 .setMtu(VPN_MTU)
-                .addAddress(VPN_ADDRESS, 24)
+                .addAddress(VPN_INTERFACE_ADDRESS, 24)
                 .addRoute("0.0.0.0", 0)
                 .addDnsServer(dns)
                 .addDisallowedApplication(packageName)
@@ -110,7 +110,7 @@ class BarkaVpnService : VpnService() {
                 runner.start(
                     vpnDescriptor = descriptor,
                     mtu = VPN_MTU,
-                    vpnAddress = VPN_ADDRESS,
+                    vpnAddress = TUN2SOCKS_ROUTER_ADDRESS,
                     netmask = VPN_NETMASK,
                     socksAddress = protocolEngine.socksAddress,
                     udpgwAddress = udpgw
@@ -272,7 +272,8 @@ class BarkaVpnService : VpnService() {
         private const val CHANNEL_ID = "barka_vpn_status_v2"
         private const val NOTIFICATION_ID = 6001
         private const val VPN_MTU = 1500
-        private const val VPN_ADDRESS = "10.10.0.2"
+        private const val VPN_INTERFACE_ADDRESS = "10.10.0.1"
+        private const val TUN2SOCKS_ROUTER_ADDRESS = "10.10.0.2"
         private const val VPN_NETMASK = "255.255.255.0"
         private const val DEFAULT_UDPGW = "127.0.0.1:7300"
         private const val SOCKS_VLESS = 10808

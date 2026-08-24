@@ -176,8 +176,8 @@ class IpFinderActivity : AppCompatActivity() {
 
     private fun openAssistantSettingsFallback() {
         val intents = listOf(
-            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
             Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
+            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
             Intent(Settings.ACTION_SETTINGS)
         )
         val target = intents.firstOrNull { it.resolveActivity(packageManager) != null }

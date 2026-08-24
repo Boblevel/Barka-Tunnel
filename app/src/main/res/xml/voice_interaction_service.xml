@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:sessionService="com.barkatunnel.app.ipfinder.assistant.BarkaAssistantSessionService"
+    android:recognitionService="com.barkatunnel.app.ipfinder.assistant.BarkaRecognitionService"
     android:settingsActivity="com.barkatunnel.app.ipfinder.IpFinderActivity"
     android:supportsAssist="true"
     android:supportsLaunchVoiceAssistFromKeyguard="false"
