@@ -40,11 +40,11 @@ jobs:
             -name 'HomeOrchestrator.kt' \
           \) -print
 
-      - name: Installer Java 11 pour tun2socks natif
+      - name: Installer Java 17 pour outils Android natifs
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '11'
+          java-version: '17'
 
       - name: Installer Go pour DNSTT
         uses: actions/setup-go@v5
