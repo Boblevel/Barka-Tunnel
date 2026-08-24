@@ -6,10 +6,18 @@
     android:viewportHeight="24">
 
     <path
-        android:fillColor="@color/barka_blue"
-        android:pathData="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z" />
+        android:fillColor="@android:color/transparent"
+        android:pathData="M20,7 L20,3 L17.2,5.8 C15.75,4.63 13.96,4 12,4 C8.7,4 5.85,5.99 4.62,8.84"
+        android:strokeColor="@color/barka_blue"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.2" />
 
     <path
-        android:fillColor="@color/white"
-        android:pathData="M11,5 L13,5 L13,11.17 L15.59,8.59 L17,10 L12,15 L7,10 L8.41,8.59 L11,11.17 Z M7,17 L17,17 L17,19 L7,19 Z" />
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4,17 L4,21 L6.8,18.2 C8.25,19.37 10.04,20 12,20 C15.3,20 18.15,18.01 19.38,15.16"
+        android:strokeColor="@color/barka_blue"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.2" />
 </vector>

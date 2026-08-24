@@ -4,12 +4,5 @@
     android:height="44dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-
-    <path
-        android:fillColor="@color/barka_blue"
-        android:pathData="M4,4 L20,4 C21.1,4 22,4.9 22,6 L22,15 C22,16.1 21.1,17 20,17 L10,17 L6,20 L6,17 L4,17 C2.9,17 2,16.1 2,15 L2,6 C2,4.9 2.9,4 4,4 Z" />
-
-    <path
-        android:fillColor="@color/white"
-        android:pathData="M7,9.5 C7.83,9.5 8.5,10.17 8.5,11 C8.5,11.83 7.83,12.5 7,12.5 C6.17,12.5 5.5,11.83 5.5,11 C5.5,10.17 6.17,9.5 7,9.5 Z M12,9.5 C12.83,9.5 13.5,10.17 13.5,11 C13.5,11.83 12.83,12.5 12,12.5 C11.17,12.5 10.5,11.83 10.5,11 C10.5,10.17 11.17,9.5 12,9.5 Z M17,9.5 C17.83,9.5 18.5,10.17 18.5,11 C18.5,11.83 17.83,12.5 17,12.5 C16.17,12.5 15.5,11.83 15.5,11 C15.5,10.17 16.17,9.5 17,9.5 Z" />
+    <path android:fillColor="@android:color/transparent" android:pathData="M4,13 V11 C4,6.6 7.6,3 12,3 C16.4,3 20,6.6 20,11 V13 M4,12 H7 V18 H5.5 C4.7,18 4,17.3 4,16.5 Z M20,12 H17 V18 H18.5 C19.3,18 20,17.3 20,16.5 Z M17,18 C16.3,20 14.6,21 12,21" android:strokeColor="@color/barka_blue" android:strokeLineCap="round" android:strokeLineJoin="round" android:strokeWidth="1.8"/>
 </vector>

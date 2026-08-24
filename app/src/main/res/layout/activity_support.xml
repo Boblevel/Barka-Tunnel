@@ -80,31 +80,6 @@
                 android:textColor="@color/barka_text_secondary"
                 android:textSize="14sp" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:background="@drawable/bg_network_selected"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Assistance rapide"
-                    android:textColor="@color/barka_blue"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Cliquez sur le bouton ci-dessous pour ouvrir directement le canal de support officiel."
-                    android:textColor="@color/barka_text"
-                    android:textSize="14sp" />
-            </LinearLayout>
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/contactSupportButton"
                 android:layout_width="match_parent"

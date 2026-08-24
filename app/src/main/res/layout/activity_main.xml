@@ -356,11 +356,13 @@
     </ScrollView>
 
     <View
+        android:id="@+id/pageBottomDivider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="@color/barka_border" />
 
     <LinearLayout
+        android:id="@+id/pageBottomNavigation"
         android:layout_width="match_parent"
         android:layout_height="70dp"
         android:background="@color/barka_card"

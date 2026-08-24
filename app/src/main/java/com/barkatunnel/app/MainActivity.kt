@@ -131,6 +131,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_home_journal_pager)
         val homePage = layoutInflater.inflate(R.layout.activity_main, null, false)
         val journalPage = layoutInflater.inflate(R.layout.activity_journal, null, false)
+        homePage.findViewById<android.view.View>(R.id.pageBottomDivider).visibility =
+            android.view.View.GONE
+        homePage.findViewById<android.view.View>(R.id.pageBottomNavigation).visibility =
+            android.view.View.GONE
+        journalPage.findViewById<android.view.View>(R.id.pageBottomDivider).visibility =
+            android.view.View.GONE
+        journalPage.findViewById<android.view.View>(R.id.pageBottomNavigation).visibility =
+            android.view.View.GONE
         homeJournalPager = findViewById(R.id.homeJournalPager)
         homeJournalPager.adapter = StaticPageAdapter(listOf(homePage, journalPage))
         homeJournalPager.offscreenPageLimit = 1
@@ -340,17 +348,56 @@ class MainActivity : AppCompatActivity() {
             connectAction()
         }
 
-        homePage.findViewById<android.view.View>(R.id.navHome).setOnClickListener {
+        val sharedNavHomeIcon = findViewById<ImageView>(R.id.sharedNavHomeIcon)
+        val sharedNavHomeLabel = findViewById<TextView>(R.id.sharedNavHomeLabel)
+        val sharedNavJournalIcon = findViewById<ImageView>(R.id.sharedNavJournalIcon)
+        val sharedNavJournalLabel = findViewById<TextView>(R.id.sharedNavJournalLabel)
+        var activeBottomPage = -1
+
+        fun updateBottomNavigation(page: Int) {
+            if (activeBottomPage == page) return
+            activeBottomPage = page
+            val homeActive = page == PAGE_HOME
+            sharedNavHomeIcon.setImageResource(
+                if (homeActive) R.drawable.ic_nav_home_active else R.drawable.ic_nav_home
+            )
+            sharedNavJournalIcon.setImageResource(
+                if (homeActive) R.drawable.ic_nav_journal else R.drawable.ic_nav_journal_active
+            )
+            sharedNavHomeLabel.setTextColor(
+                ContextCompat.getColor(
+                    this,
+                    if (homeActive) R.color.barka_blue else R.color.barka_text_secondary
+                )
+            )
+            sharedNavJournalLabel.setTextColor(
+                ContextCompat.getColor(
+                    this,
+                    if (homeActive) R.color.barka_text_secondary else R.color.barka_blue
+                )
+            )
+            sharedNavHomeLabel.setTypeface(
+                null,
+                if (homeActive) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL
+            )
+            sharedNavJournalLabel.setTypeface(
+                null,
+                if (homeActive) android.graphics.Typeface.NORMAL else android.graphics.Typeface.BOLD
+            )
+        }
+
+        findViewById<android.view.View>(R.id.sharedNavHome).setOnClickListener {
+            openHome()
             refreshNetworkIp()
             refreshHomeState()
         }
 
-        homePage.findViewById<android.view.View>(R.id.navIpFinder).setOnClickListener {
-            startActivity(Intent(this, IpFinderActivity::class.java))
+        findViewById<android.view.View>(R.id.sharedNavJournal).setOnClickListener {
+            openJournal()
         }
 
-        homePage.findViewById<android.view.View>(R.id.navJournal).setOnClickListener {
-            openJournal()
+        homePage.findViewById<android.view.View>(R.id.navIpFinder).setOnClickListener {
+            startActivity(Intent(this, IpFinderActivity::class.java))
         }
 
         homePage.findViewById<android.view.View>(R.id.navSettings).setOnClickListener {
@@ -372,20 +419,31 @@ class MainActivity : AppCompatActivity() {
                 AppLogStore.clear(this)
                 journalUiBinder.refresh()
             }
-        journalPage.findViewById<android.view.View>(R.id.navHome)
-            .setOnClickListener { openHome() }
-        journalPage.findViewById<android.view.View>(R.id.navJournal)
-            .setOnClickListener { journalUiBinder.refresh() }
-
         homeJournalPager.registerOnPageChangeCallback(
             object : ViewPager2.OnPageChangeCallback() {
+                override fun onPageScrolled(
+                    position: Int,
+                    positionOffset: Float,
+                    positionOffsetPixels: Int
+                ) {
+                    updateBottomNavigation(
+                        if (position == PAGE_JOURNAL || positionOffset >= 0.5f) {
+                            PAGE_JOURNAL
+                        } else {
+                            PAGE_HOME
+                        }
+                    )
+                }
+
                 override fun onPageSelected(position: Int) {
+                    updateBottomNavigation(position)
                     if (position == PAGE_JOURNAL) {
                         journalUiBinder.refresh()
                     }
                 }
             }
         )
+        updateBottomNavigation(PAGE_HOME)
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
