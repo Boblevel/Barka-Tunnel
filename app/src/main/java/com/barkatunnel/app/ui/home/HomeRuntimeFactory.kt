@@ -26,7 +26,7 @@ object HomeRuntimeFactory {
                 serverManager = container.vpnServerManager
             ),
             vpnCoordinator = HomeVpnCoordinator(
-                profileRepository = VpnProfileRepository(backendClient),
+                profileRepository = VpnProfileRepository(backendClient, context),
                 c6VpnController = c6VpnController
             )
         )

@@ -25,7 +25,7 @@
                 android:id="@+id/supportBackButton"
                 android:layout_width="42dp"
                 android:layout_height="42dp"
-                android:contentDescription="Retour"
+                android:contentDescription="@string/back"
                 android:padding="8dp"
                 android:src="@drawable/ic_back_barka" />
 
@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:text="SUPPORT"
+                android:text="@string/support_title"
                 android:textColor="@color/barka_blue"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -57,7 +57,7 @@
                 android:layout_width="92dp"
                 android:layout_height="92dp"
                 android:background="@drawable/bg_support_icon"
-                android:contentDescription="Support"
+                android:contentDescription="@string/support_description"
                 android:padding="24dp"
                 android:src="@drawable/ic_support_barka" />
 
@@ -66,7 +66,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
                 android:gravity="center"
-                android:text="Besoin d’aide ?"
+                android:text="@string/support_help_title"
                 android:textColor="@color/barka_text"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -76,7 +76,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:gravity="center"
-                android:text="Notre équipe de support est disponible pour vous aider avec l’activation, les abonnements et l’utilisation de Barka Tunnel."
+                android:text="@string/support_help_text"
                 android:textColor="@color/barka_text_secondary"
                 android:textSize="14sp" />
 
@@ -85,7 +85,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="18dp"
-                android:text="CONTACTER"
+                android:text="@string/support_contact"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_blue"
                 app:cornerRadius="14dp" />

@@ -2,6 +2,7 @@ package com.barkatunnel.app.ui.home
 
 import android.app.AlertDialog
 import android.content.Context
+import com.barkatunnel.app.R
 
 object HomeNetworkDialog {
 
@@ -15,11 +16,11 @@ object HomeNetworkDialog {
             .toTypedArray()
 
         AlertDialog.Builder(context)
-            .setTitle("Choisir le réseau")
+            .setTitle(R.string.choose_network_home)
             .setItems(labels) { _, index ->
                 onSelected(options[index])
             }
-            .setNegativeButton("Annuler", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 }

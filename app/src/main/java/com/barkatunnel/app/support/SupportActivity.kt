@@ -21,11 +21,11 @@ class SupportActivity : AppCompatActivity() {
             try {
                 val supportUri = Uri.parse(SUPPORT_URL)
                     .buildUpon()
-                    .appendQueryParameter("text", SUPPORT_MESSAGE)
+                    .appendQueryParameter("text", getString(R.string.support_prefill))
                     .build()
                 startActivity(Intent(Intent.ACTION_VIEW, supportUri))
             } catch (_: Exception) {
-                Toast.makeText(this, "Impossible d’ouvrir le support.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.support_open_failed, Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -52,7 +52,5 @@ class SupportActivity : AppCompatActivity() {
 
     companion object {
         private const val SUPPORT_URL = "https://wa.me/message/XUBALKJE5J2CB1"
-        private const val SUPPORT_MESSAGE =
-            "Bonjour, je souhaite signaler un problème avec Barka Tunnel."
     }
 }

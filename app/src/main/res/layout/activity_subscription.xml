@@ -26,7 +26,7 @@
                 android:id="@+id/subscriptionBackButton"
                 android:layout_width="46dp"
                 android:layout_height="46dp"
-                android:contentDescription="Retour"
+                android:contentDescription="@string/back"
                 android:padding="10dp"
                 android:src="@drawable/ic_back_barka" />
 
@@ -35,7 +35,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:text="ABONNEMENT"
+                android:text="@string/subscription_title"
                 android:textColor="@color/barka_blue"
                 android:textSize="21sp"
                 android:textStyle="bold" />
@@ -49,7 +49,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            android:text="Choisissez une offre"
+            android:text="@string/subscription_choose_offer"
             android:textColor="@color/barka_text"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -69,7 +69,7 @@
                 android:buttonTint="@color/barka_blue"
                 android:checked="true"
                 android:paddingHorizontal="16dp"
-                android:text="24 HEURES                                      300 XOF"
+                android:text="@string/subscription_24h"
                 android:textColor="@color/barka_text"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -82,7 +82,7 @@
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
                 android:paddingHorizontal="16dp"
-                android:text="1 SEMAINE                                      800 XOF"
+                android:text="@string/subscription_week"
                 android:textColor="@color/barka_text"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -95,7 +95,7 @@
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
                 android:paddingHorizontal="16dp"
-                android:text="2 SEMAINES                                  1 000 XOF"
+                android:text="@string/subscription_two_weeks"
                 android:textColor="@color/barka_text"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -108,7 +108,7 @@
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
                 android:paddingHorizontal="16dp"
-                android:text="1 MOIS                                          2 000 XOF"
+                android:text="@string/subscription_month"
                 android:textColor="@color/barka_text"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -125,7 +125,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="PAIEMENT SÉCURISÉ"
+                android:text="@string/subscription_secure_payment"
                 android:textColor="@color/barka_blue"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -134,7 +134,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Payez facilement et recevez votre code d’activation."
+                android:text="@string/subscription_payment_help"
                 android:textColor="@color/barka_text_secondary"
                 android:textSize="13sp" />
 
@@ -143,7 +143,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="14dp"
-                android:text="PAYER"
+                android:text="@string/subscription_pay"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_blue"
@@ -154,7 +154,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:gravity="center"
-                android:text="Après paiement, vous recevrez votre code d’activation à copier."
+                android:text="@string/subscription_after_payment"
                 android:textColor="@color/barka_text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>

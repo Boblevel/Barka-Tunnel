@@ -36,14 +36,14 @@ class BarkaVpnService : VpnService() {
             ACTION_CONNECT -> {
                 startForeground(
                     NOTIFICATION_ID,
-                    buildNotification(this, "Tentative de connexion au VPN…")
+                    buildNotification(this, getString(R.string.notification_connecting))
                 )
                 worker.execute { connect(intent, requestId) }
             }
             ACTION_DISCONNECT -> {
                 startForeground(
                     NOTIFICATION_ID,
-                    buildNotification(this, "Déconnexion du VPN…")
+                    buildNotification(this, getString(R.string.notification_disconnecting))
                 )
                 worker.execute { disconnect(requestId) }
             }
@@ -118,14 +118,17 @@ class BarkaVpnService : VpnService() {
             }
 
             connected = true
-            updateNotification("VPN connecté")
+            updateNotification(getString(R.string.notification_connected))
             C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
         } catch (e: Exception) {
             val technicalMessage = sanitizeError(e.message ?: "Échec interne de la connexion.")
             Log.e(TAG, "Connection failure: $technicalMessage", e)
             AppLogStore.add(this, "Connexion refusée.")
             stopTunnel()
-            C6VpnRuntime.complete(requestId, C6VpnResult.Error(CONNECTION_PENDING_MESSAGE))
+            C6VpnRuntime.complete(
+                requestId,
+                C6VpnResult.Error(getString(R.string.connection_pending_help))
+            )
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -197,7 +200,10 @@ class BarkaVpnService : VpnService() {
             val appContext = context.applicationContext
             appContext.getSystemService(NotificationManager::class.java).notify(
                 NOTIFICATION_ID,
-                buildNotification(appContext, "Tentative de connexion au VPN…")
+                buildNotification(
+                    appContext,
+                    appContext.getString(R.string.notification_connecting)
+                )
             )
         }
 
@@ -205,7 +211,10 @@ class BarkaVpnService : VpnService() {
             val appContext = context.applicationContext
             appContext.getSystemService(NotificationManager::class.java).notify(
                 NOTIFICATION_ID,
-                buildNotification(appContext, "Connexion en cours • vérification du réseau…")
+                buildNotification(
+                    appContext,
+                    appContext.getString(R.string.notification_waiting)
+                )
             )
         }
 
@@ -247,10 +256,10 @@ class BarkaVpnService : VpnService() {
             val manager = context.getSystemService(NotificationManager::class.java)
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "État de la connexion Barka Tunnel",
+                context.getString(R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Affiche l’état de la connexion Barka Tunnel"
+                description = context.getString(R.string.notification_channel_description)
                 setSound(null, null)
                 enableVibration(false)
                 setShowBadge(false)
@@ -260,8 +269,6 @@ class BarkaVpnService : VpnService() {
         }
 
         private const val TAG = "BarkaVpnService"
-        private const val CONNECTION_PENDING_MESSAGE =
-            "Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie."
         private const val CHANNEL_ID = "barka_vpn_status_v2"
         private const val NOTIFICATION_ID = 6001
         private const val VPN_MTU = 1500

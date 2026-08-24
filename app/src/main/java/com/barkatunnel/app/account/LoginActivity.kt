@@ -34,14 +34,14 @@ class LoginActivity : AppCompatActivity() {
             if (username.isBlank() || password.isBlank()) {
                 Toast.makeText(
                     this,
-                    "Entre ton identifiant et ton mot de passe.",
+                    R.string.login_fields_required,
                     Toast.LENGTH_SHORT
                 ).show()
                 return@setOnClickListener
             }
 
             loginButton.isEnabled = false
-            loginButton.text = "CONNEXION..."
+            loginButton.setText(R.string.login_progress)
 
             Thread {
                 val result = repository.login(
@@ -51,14 +51,14 @@ class LoginActivity : AppCompatActivity() {
 
                 runOnUiThread {
                     loginButton.isEnabled = true
-                    loginButton.text = "SE CONNECTER"
+                    loginButton.setText(R.string.login_button)
 
                     when (result) {
                         is ApiResult.Success -> {
                             if (result.data.success) {
                                 Toast.makeText(
                                     this,
-                                    "Connexion réussie.",
+                                    getString(R.string.login_success),
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 finish()

@@ -37,7 +37,7 @@
                     <ImageView
                         android:layout_width="46dp"
                         android:layout_height="46dp"
-                        android:contentDescription="Logo Barka Tunnel"
+                        android:contentDescription="@string/barka_logo_description"
                         android:src="@drawable/ic_barka_logo" />
 
                     <LinearLayout
@@ -49,7 +49,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Barka"
+                            android:text="@string/main_brand_barka"
                             android:maxLines="1"
                             android:textColor="@color/barka_text"
                             android:textSize="18sp"
@@ -59,7 +59,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="4dp"
-                            android:text="Tunnel"
+                            android:text="@string/main_brand_tunnel"
                             android:maxLines="1"
                             android:textColor="@color/barka_blue"
                             android:textSize="18sp"
@@ -79,7 +79,7 @@
                     <ImageView
                         android:layout_width="34dp"
                         android:layout_height="34dp"
-                        android:contentDescription="Essai gratuit"
+                        android:contentDescription="@string/free_trial_description"
                         android:src="@drawable/ic_gift_barka"
                         android:tint="@color/barka_red" />
                 </LinearLayout>
@@ -96,7 +96,7 @@
                     <ImageView
                         android:layout_width="34dp"
                         android:layout_height="34dp"
-                        android:contentDescription="Vérifier les mises à jour"
+                        android:contentDescription="@string/check_updates_description"
                         android:src="@drawable/ic_refresh_barka" />
                 </LinearLayout>
 
@@ -105,7 +105,7 @@
                     android:layout_width="50dp"
                     android:layout_height="50dp"
                     android:clickable="true"
-                    android:contentDescription="Ouvrir le menu"
+                    android:contentDescription="@string/open_menu_description"
                     android:focusable="true"
                     android:padding="6dp"
                     android:src="@drawable/ic_menu_barka" />
@@ -132,7 +132,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="IP DU RÉSEAU"
+                        android:text="@string/network_ip_title"
                         android:textColor="@color/barka_blue"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -142,7 +142,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
-                        android:text="Indisponible"
+                        android:text="@string/unavailable"
                         android:textColor="@color/barka_text"
                         android:textSize="22sp"
                         android:textStyle="bold" />
@@ -152,7 +152,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="3dp"
-                        android:text="Adresse IP actuelle"
+                        android:text="@string/network_ip_current"
                         android:textColor="@color/barka_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -161,7 +161,7 @@
                     android:id="@+id/networkTransportIcon"
                     android:layout_width="36dp"
                     android:layout_height="36dp"
-                    android:contentDescription="Type de réseau"
+                    android:contentDescription="@string/network_transport_network"
                     android:src="@drawable/ic_wifi_barka" />
             </LinearLayout>
 
@@ -169,7 +169,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:text="RÉSEAU"
+                android:text="@string/network_title"
                 android:textColor="@color/barka_blue"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -189,7 +189,7 @@
                     android:layout_width="56dp"
                     android:layout_height="56dp"
                     android:adjustViewBounds="true"
-                    android:contentDescription="Logo de l’opérateur sélectionné"
+                    android:contentDescription="@string/selected_operator_logo_description"
                     android:scaleType="fitCenter"
                     android:src="@drawable/moov_africa_official" />
 
@@ -203,7 +203,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="RÉSEAU SÉLECTIONNÉ"
+                        android:text="@string/selected_network_title"
                         android:textColor="@color/barka_blue"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -225,18 +225,35 @@
                             android:textStyle="bold" />
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="16dp"
-                            android:layout_marginStart="8dp"
-                            android:contentDescription="Burkina Faso"
+                            android:id="@+id/networkFlagBurkina"
+                            android:layout_width="20dp"
+                            android:layout_height="14dp"
+                            android:layout_marginStart="6dp"
+                            android:contentDescription="@string/burkina_faso"
                             android:src="@drawable/ic_flag_bf" />
+
+                        <ImageView
+                            android:id="@+id/networkFlagNiger"
+                            android:layout_width="20dp"
+                            android:layout_height="14dp"
+                            android:layout_marginStart="4dp"
+                            android:contentDescription="@string/niger"
+                            android:src="@drawable/ic_flag_ne" />
+
+                        <ImageView
+                            android:id="@+id/networkFlagTogo"
+                            android:layout_width="20dp"
+                            android:layout_height="14dp"
+                            android:layout_marginStart="4dp"
+                            android:contentDescription="@string/togo"
+                            android:src="@drawable/ic_flag_tg" />
                     </LinearLayout>
 
                     <TextView
                         android:id="@+id/networkSubtitle"
                         android:layout_width="1dp"
                         android:layout_height="1dp"
-                        android:text="Réseau sélectionné"
+                        android:text="@string/selected_network_subtitle"
                         android:visibility="gone" />
                 </LinearLayout>
 
@@ -271,7 +288,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:gravity="center"
-                android:text="NON CONNECTÉ"
+                android:text="@string/status_not_connected"
                 android:textColor="@color/barka_text"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -282,7 +299,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:gravity="center"
-                android:text="Temps de connexion : 00:00:00"
+                android:text="@string/connection_time_format"
                 android:textColor="@color/barka_text_secondary"
                 android:textSize="12sp" />
 
@@ -299,7 +316,7 @@
                 <ImageView
                     android:layout_width="74dp"
                     android:layout_height="74dp"
-                    android:contentDescription="Temps restant"
+                    android:contentDescription="@string/remaining_time_description"
                     android:padding="10dp"
                     android:src="@drawable/ic_clock_barka" />
 
@@ -313,7 +330,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="TEMPS RESTANT"
+                        android:text="@string/remaining_time"
                         android:textColor="@color/barka_blue"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -340,7 +357,7 @@
                     android:id="@+id/addAccessButton"
                     android:layout_width="116dp"
                     android:layout_height="48dp"
-                    android:text="AJOUTER"
+                    android:text="@string/add"
                     android:textStyle="bold"
                     app:backgroundTint="@color/barka_blue"
                     app:cornerRadius="12dp" />
@@ -350,7 +367,7 @@
                 android:id="@+id/connectButton"
                 android:layout_width="1dp"
                 android:layout_height="1dp"
-                android:text="SE CONNECTER"
+                android:text="@string/connect"
                 android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
@@ -380,14 +397,14 @@
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:contentDescription="Accueil"
+                android:contentDescription="@string/home"
                 android:src="@drawable/ic_nav_home_active" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Accueil"
+                android:text="@string/home"
                 android:textColor="@color/barka_blue"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -404,14 +421,14 @@
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:contentDescription="Journal"
+                android:contentDescription="@string/journal"
                 android:src="@drawable/ic_nav_journal" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Journal"
+                android:text="@string/journal"
                 android:textColor="@color/barka_text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>

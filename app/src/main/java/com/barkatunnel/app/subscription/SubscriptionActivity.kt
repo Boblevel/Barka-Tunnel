@@ -84,7 +84,7 @@ class SubscriptionActivity : AppCompatActivity() {
                     payButton.isEnabled = true
                     Toast.makeText(
                         this,
-                        e.message ?: "Paiement indisponible pour le moment.",
+                        e.message ?: getString(R.string.payment_unavailable),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -109,7 +109,7 @@ class SubscriptionActivity : AppCompatActivity() {
                             if (code.isNullOrBlank()) {
                                 Toast.makeText(
                                     this,
-                                    "Paiement confirmé. Le code est en préparation.",
+                                    R.string.payment_code_preparing,
                                     Toast.LENGTH_LONG
                                 ).show()
                             } else {
@@ -134,20 +134,20 @@ class SubscriptionActivity : AppCompatActivity() {
 
     private fun showActivationCode(code: String) {
         AlertDialog.Builder(this)
-            .setTitle("Paiement confirmé")
-            .setMessage("Votre code d’activation :\n\n$code")
-            .setPositiveButton("ACTIVER MAINTENANT") { _, _ ->
+            .setTitle(R.string.payment_confirmed)
+            .setMessage(getString(R.string.payment_code_format, code))
+            .setPositiveButton(R.string.payment_activate_now) { _, _ ->
                 startActivity(
                     Intent(this, ActivationActivity::class.java)
                         .putExtra(ActivationActivity.EXTRA_ACTIVATION_CODE, code)
                 )
             }
-            .setNeutralButton("COPIER LE CODE") { _, _ ->
+            .setNeutralButton(R.string.copy_code) { _, _ ->
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("Code Barka Tunnel", code))
-                Toast.makeText(this, "Code copié.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.code_copied, Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("FERMER", null)
+            .setNegativeButton(R.string.close, null)
             .show()
     }
 

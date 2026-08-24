@@ -28,7 +28,7 @@ object HomeNetworkIpOverlay {
         }
 
         val title = TextView(activity).apply {
-            text = "IP DU RÉSEAU"
+            setText(R.string.network_ip_title)
             setTextColor(activity.getColor(R.color.barka_blue))
             textSize = 12f
             setTypeface(typeface, Typeface.BOLD)

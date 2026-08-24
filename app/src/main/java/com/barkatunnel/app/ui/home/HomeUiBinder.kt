@@ -17,52 +17,51 @@ class HomeUiBinder(
 
     fun showNetwork(network: NetworkOption?) {
         if (network == null) {
-            networkName.text = "CHOISIR LE RÉSEAU"
-            networkSubtitle.text =
-                "MOOV-AFRICA BF  •  ORANGE BF  •  TELECEL BF"
+            networkName.setText(R.string.choose_network_home)
+            networkSubtitle.setText(R.string.network_options)
             return
         }
 
         networkName.text = network.displayName
-        networkSubtitle.text = "Réseau sélectionné"
+        networkSubtitle.setText(R.string.selected_network_subtitle)
     }
 
     fun showAccess(state: HomeAccessState) {
         accessRemainingTime.text =
             ConnectionTimeFormatter.format(state.remainingSeconds)
 
-        accessStatus.text = state.label
+        accessStatus.text = localizedAccessLabel(state.label)
     }
 
     fun showConnection(state: HomeConnectionState) {
         when (state) {
             HomeConnectionState.Disconnected -> {
-                vpnStatus.text = "NON CONNECTÉ"
-                connectButton.text = "SE CONNECTER"
+                vpnStatus.setText(R.string.status_not_connected)
+                connectButton.setText(R.string.connect)
                 vpnStatus.setTextColor(
                     ContextCompat.getColor(vpnStatus.context, R.color.barka_text)
                 )
             }
 
             HomeConnectionState.Connecting -> {
-                vpnStatus.text = "CONNEXION…"
-                connectButton.text = "SE DÉCONNECTER"
+                vpnStatus.setText(R.string.status_connecting)
+                connectButton.setText(R.string.disconnect)
                 vpnStatus.setTextColor(
                     ContextCompat.getColor(vpnStatus.context, R.color.barka_blue)
                 )
             }
 
             is HomeConnectionState.Connected -> {
-                vpnStatus.text = "CONNECTÉ"
-                connectButton.text = "SE DÉCONNECTER"
+                vpnStatus.setText(R.string.status_connected)
+                connectButton.setText(R.string.disconnect)
                 vpnStatus.setTextColor(
                     ContextCompat.getColor(vpnStatus.context, R.color.barka_green)
                 )
             }
 
             is HomeConnectionState.Error -> {
-                vpnStatus.text = "CONNEXION…"
-                connectButton.text = "SE DÉCONNECTER"
+                vpnStatus.setText(R.string.status_connecting)
+                connectButton.setText(R.string.disconnect)
                 vpnStatus.setTextColor(
                     ContextCompat.getColor(vpnStatus.context, R.color.barka_blue)
                 )
@@ -71,7 +70,21 @@ class HomeUiBinder(
     }
 
     fun showConnectionTime(seconds: Long) {
-        connectionTime.text =
-            "Temps de connexion : ${ConnectionTimeFormatter.format(seconds)}"
+        connectionTime.text = vpnStatus.context.getString(
+            R.string.connection_time_format,
+            ConnectionTimeFormatter.format(seconds)
+        )
+    }
+
+    private fun localizedAccessLabel(label: String): String = when (label) {
+        "Accès actif" -> vpnStatus.context.getString(R.string.access_active)
+        "Accès actif • hors ligne" ->
+            vpnStatus.context.getString(R.string.access_active_offline)
+        "Accès autorisé" -> vpnStatus.context.getString(R.string.access_authorized)
+        "Essai gratuit actif" -> vpnStatus.context.getString(R.string.free_trial_active)
+        "Essai indisponible ou expiré" ->
+            vpnStatus.context.getString(R.string.trial_unavailable)
+        "Aucun temps actif" -> vpnStatus.context.getString(R.string.no_active_time)
+        else -> label
     }
 }

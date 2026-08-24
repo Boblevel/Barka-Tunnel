@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M12,5A7,7 0,1 1,12,19A7,7 0,1 1,12,5Z"
+        android:strokeColor="@color/barka_text"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.2" />
+    <path
+        android:fillColor="@color/barka_text"
+        android:pathData="M11,1H13V6H11ZM11,18H13V23H11ZM1,11H6V13H1ZM18,11H23V13H18Z" />
+    <path
+        android:fillColor="@color/barka_text"
+        android:pathData="M12,9A3,3 0,1 1,12,15A3,3 0,1 1,12,9Z" />
+</vector>

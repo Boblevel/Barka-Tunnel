@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.backend.BackendAppUpdate
 import com.barkatunnel.app.journal.AppLogStore
@@ -39,7 +40,7 @@ class AppUpdateCoordinator(
                     activity.runOnUiThread {
                         Toast.makeText(
                             activity,
-                            e.message ?: "Impossible de vérifier les mises à jour.",
+                            e.message ?: activity.getString(R.string.update_check_failed),
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -72,7 +73,7 @@ class AppUpdateCoordinator(
             if (showNoUpdate) {
                 Toast.makeText(
                     activity,
-                    "Barka Tunnel est à jour.",
+                    activity.getString(R.string.update_none),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -96,24 +97,24 @@ class AppUpdateCoordinator(
         if (activity.isFinishing || activity.isDestroyed) return
 
         val title = if (update.forceUpdate) {
-            "Mise à jour obligatoire"
+            activity.getString(R.string.update_required_title)
         } else {
-            "Mise à jour disponible"
+            activity.getString(R.string.update_available_title)
         }
         val versionSuffix = update.latestVersionName
             .takeIf { it.isNotBlank() }
-            ?.let { "\n\nVersion : $it" }
+            ?.let { activity.getString(R.string.update_version_format, it) }
             .orEmpty()
 
         val builder = AlertDialog.Builder(activity)
             .setTitle(title)
             .setMessage(update.message + versionSuffix)
-            .setPositiveButton("METTRE À JOUR") { _, _ ->
+            .setPositiveButton(R.string.update_now) { _, _ ->
                 openApk(update.apkUrl)
             }
 
         if (!update.forceUpdate) {
-            builder.setNegativeButton("PLUS TARD", null)
+            builder.setNegativeButton(R.string.update_later, null)
         }
 
         val dialog = builder.create()
@@ -126,7 +127,7 @@ class AppUpdateCoordinator(
         if (!url.startsWith("https://")) {
             Toast.makeText(
                 activity,
-                "Lien de mise à jour invalide.",
+                activity.getString(R.string.update_invalid_link),
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -139,7 +140,7 @@ class AppUpdateCoordinator(
         } catch (_: Exception) {
             Toast.makeText(
                 activity,
-                "Impossible d'ouvrir la mise à jour.",
+                activity.getString(R.string.update_open_failed),
                 Toast.LENGTH_LONG
             ).show()
         }

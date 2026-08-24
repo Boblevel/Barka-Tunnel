@@ -21,7 +21,7 @@
             android:id="@+id/activationBackButton"
             android:layout_width="46dp"
             android:layout_height="46dp"
-            android:contentDescription="Retour"
+            android:contentDescription="@string/back"
             android:padding="10dp"
             android:src="@drawable/ic_back_barka" />
 
@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="CODE D’ACTIVATION"
+            android:text="@string/activation_title"
             android:textColor="@color/barka_blue"
             android:textSize="21sp"
             android:textStyle="bold" />
@@ -45,7 +45,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="26dp"
         android:gravity="center"
-        android:text="Entrez votre code d’activation&#10;pour débloquer votre abonnement."
+        android:text="@string/activation_help"
         android:textColor="@color/barka_text"
         android:textSize="15sp"
         android:textStyle="bold" />
@@ -56,7 +56,7 @@
         android:layout_height="60dp"
         android:layout_marginTop="22dp"
         android:background="@drawable/bg_network_selected"
-        android:hint="Ex : BARKA-XXXX-XXXX-XXXX"
+        android:hint="@string/activation_hint"
         android:inputType="textCapCharacters"
         android:paddingHorizontal="16dp"
         android:textColor="@color/barka_text"
@@ -68,7 +68,7 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="12dp"
-        android:text="ACTIVER"
+        android:text="@string/activation_button"
         android:textSize="16sp"
         android:textStyle="bold"
         app:backgroundTint="@color/barka_blue"
@@ -80,7 +80,7 @@
         android:layout_height="48dp"
         android:layout_marginTop="6dp"
         android:gravity="center"
-        android:text="ⓘ   Où trouver mon code ?"
+        android:text="@string/activation_where_code"
         android:textColor="@color/barka_blue"
         android:textSize="13sp"
         android:textStyle="bold" />

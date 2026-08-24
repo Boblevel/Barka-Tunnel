@@ -17,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.MainActivity
@@ -58,11 +59,14 @@ class SettingsActivity : AppCompatActivity() {
             .remove("default_port")
             .apply()
 
-        findViewById<TextView>(R.id.settingsVersionValue).text = "Version ${BuildConfig.VERSION_NAME}"
-        findViewById<TextView>(R.id.aboutValue).text = "Barka Tunnel\nVersion ${BuildConfig.VERSION_NAME}"
+        findViewById<TextView>(R.id.settingsVersionValue).text =
+            getString(R.string.version_format, BuildConfig.VERSION_NAME)
+        findViewById<TextView>(R.id.aboutValue).text =
+            getString(R.string.settings_about_format, BuildConfig.VERSION_NAME)
 
         val notificationsSwitch = findViewById<SwitchCompat>(R.id.notificationsSwitch)
         val themeButton = findViewById<MaterialButton>(R.id.themeButton)
+        val languageButton = findViewById<MaterialButton>(R.id.languageButton)
         settingsIpValue = findViewById(R.id.settingsIpValue)
 
         findViewById<android.view.View>(R.id.settingsBackButton).setOnClickListener {
@@ -80,26 +84,72 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         fun refreshDynamicLabels() {
-            val currentTheme = prefs.getString("theme", "Clair") ?: "Clair"
-            themeButton.text = "Thème • $currentTheme"
+            val currentTheme = normalizedTheme(
+                prefs.getString("theme", "light") ?: "light"
+            )
+            themeButton.text = getString(
+                R.string.settings_theme_format,
+                themeLabel(currentTheme)
+            )
+            val language = prefs.getString("language", "fr") ?: "fr"
+            languageButton.text = getString(
+                R.string.settings_language_format,
+                if (language == "en") {
+                    getString(R.string.language_english)
+                } else {
+                    getString(R.string.language_french)
+                }
+            )
             val info = NetworkIpProvider.getCurrent(this)
-            settingsIpValue.text = "Adresse IP : ${info.ip} • ${info.transport}"
+            settingsIpValue.text = getString(
+                R.string.settings_ip_format,
+                info.ip,
+                info.transport
+            )
         }
 
         themeButton.setOnClickListener {
             showSingleChoiceDialog(
-                title = "Choisir le thème",
-                values = arrayOf("Clair", "Sombre", "Système"),
-                selected = prefs.getString("theme", "Clair") ?: "Clair"
+                title = getString(R.string.settings_choose_theme),
+                values = arrayOf(
+                    getString(R.string.theme_light),
+                    getString(R.string.theme_dark),
+                    getString(R.string.theme_system)
+                ),
+                selected = themeLabel(
+                    normalizedTheme(prefs.getString("theme", "light") ?: "light")
+                )
             ) { value ->
-                prefs.edit().putString("theme", value).apply()
-                val mode = when (value) {
-                    "Sombre" -> AppCompatDelegate.MODE_NIGHT_YES
-                    "Système" -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                val theme = when (value) {
+                    getString(R.string.theme_dark) -> "dark"
+                    getString(R.string.theme_system) -> "system"
+                    else -> "light"
+                }
+                prefs.edit().putString("theme", theme).apply()
+                val mode = when (theme) {
+                    "dark" -> AppCompatDelegate.MODE_NIGHT_YES
+                    "system" -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
                     else -> AppCompatDelegate.MODE_NIGHT_NO
                 }
                 AppCompatDelegate.setDefaultNightMode(mode)
                 refreshDynamicLabels()
+            }
+        }
+
+        languageButton.setOnClickListener {
+            val french = getString(R.string.language_french)
+            val english = getString(R.string.language_english)
+            val currentLanguage = prefs.getString("language", "fr") ?: "fr"
+            showSingleChoiceDialog(
+                title = getString(R.string.settings_choose_language),
+                values = arrayOf(french, english),
+                selected = if (currentLanguage == "en") english else french
+            ) { value ->
+                val language = if (value == english) "en" else "fr"
+                prefs.edit().putString("language", language).apply()
+                AppCompatDelegate.setApplicationLocales(
+                    LocaleListCompat.forLanguageTags(language)
+                )
             }
         }
 
@@ -175,7 +225,11 @@ class SettingsActivity : AppCompatActivity() {
                 .putBoolean("notifications", false)
                 .apply()
             findViewById<SwitchCompat>(R.id.notificationsSwitch).isChecked = false
-            Toast.makeText(this, "Notifications non autorisées.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                R.string.settings_notification_denied,
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -183,19 +237,25 @@ class SettingsActivity : AppCompatActivity() {
         if (!::settingsIpValue.isInitialized) return
         runOnUiThread {
             val info = NetworkIpProvider.getCurrent(this)
-            settingsIpValue.text = "Adresse IP : ${info.ip} • ${info.transport}"
+            settingsIpValue.text = getString(
+                R.string.settings_ip_format,
+                info.ip,
+                info.transport
+            )
         }
     }
 
     private fun shareApplication() {
         val apkUrl = "${BarkaBackendClient.BASE_URL}/downloads/BarkaTunnel.apk"
-        val text = "Barka Tunnel\nTélécharger la dernière version : $apkUrl"
+        val text = getString(R.string.share_download_format, apkUrl)
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_SUBJECT, "Barka Tunnel")
             putExtra(Intent.EXTRA_TEXT, text)
         }
-        startActivity(Intent.createChooser(sendIntent, "Partager Barka Tunnel"))
+        startActivity(
+            Intent.createChooser(sendIntent, getString(R.string.share_app_chooser))
+        )
     }
 
     private fun showSingleChoiceDialog(
@@ -211,11 +271,23 @@ class SettingsActivity : AppCompatActivity() {
             .setSingleChoiceItems(values, checkedIndex) { _, which ->
                 checkedIndex = which
             }
-            .setPositiveButton("ENREGISTRER") { _, _ ->
+            .setPositiveButton(R.string.save) { _, _ ->
                 onSelected(values[checkedIndex])
             }
-            .setNegativeButton("ANNULER", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun normalizedTheme(value: String): String = when (value) {
+        "dark", "Sombre" -> "dark"
+        "system", "Système" -> "system"
+        else -> "light"
+    }
+
+    private fun themeLabel(value: String): String = when (value) {
+        "dark" -> getString(R.string.theme_dark)
+        "system" -> getString(R.string.theme_system)
+        else -> getString(R.string.theme_light)
     }
 
     private fun applySystemBars() {

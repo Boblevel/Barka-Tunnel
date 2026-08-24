@@ -32,7 +32,7 @@
                     android:layout_width="46dp"
                     android:layout_height="46dp"
                     android:clickable="true"
-                    android:contentDescription="Retour"
+                    android:contentDescription="@string/back"
                     android:focusable="true"
                     android:padding="10dp"
                     android:src="@drawable/ic_back_barka" />
@@ -42,7 +42,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="PARAMÈTRES"
+                    android:text="@string/settings_title"
                     android:textColor="@color/barka_blue"
                     android:textSize="21sp"
                     android:textStyle="bold" />
@@ -65,7 +65,7 @@
                     android:layout_width="62dp"
                     android:layout_height="62dp"
                     android:background="@drawable/bg_logo_white_circle"
-                    android:contentDescription="Logo Barka Tunnel"
+                    android:contentDescription="@string/barka_logo_description"
                     android:padding="6dp"
                     android:src="@drawable/ic_barka_logo" />
 
@@ -79,7 +79,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Barka Tunnel"
+                        android:text="@string/app_name"
                         android:textColor="@color/barka_card"
                         android:textSize="20sp"
                         android:textStyle="bold" />
@@ -89,7 +89,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Version"
+                        android:text="@string/version_format"
                         android:textColor="#D8E8FF"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -100,7 +100,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="GÉNÉRAL"
+                android:text="@string/settings_general"
                 android:textColor="@color/barka_blue"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -123,7 +123,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Afficher les notifications"
+                        android:text="@string/settings_notifications"
                         android:textColor="@color/barka_text"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -132,7 +132,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="3dp"
-                        android:text="Recevoir les informations importantes"
+                        android:text="@string/settings_notifications_summary"
                         android:textColor="@color/barka_text_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
@@ -150,7 +150,24 @@
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
-                android:text="Thème • Clair"
+                android:text="@string/settings_theme_format"
+                android:textAllCaps="false"
+                android:textColor="@color/barka_text"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_card"
+                app:cornerRadius="14dp"
+                app:strokeColor="@color/barka_border"
+                app:strokeWidth="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/languageButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="12dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="18dp"
+                android:text="@string/settings_language_format"
                 android:textAllCaps="false"
                 android:textColor="@color/barka_text"
                 android:textSize="16sp"
@@ -164,7 +181,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="CONNEXION"
+                android:text="@string/settings_connection"
                 android:textColor="@color/barka_blue"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -177,7 +194,7 @@
                 android:background="@drawable/bg_network_selected"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="18dp"
-                android:text="Adresse IP : Indisponible"
+                android:text="@string/settings_ip_unavailable"
                 android:textColor="@color/barka_text"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -189,7 +206,7 @@
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
-                android:text="Réglages VPN Android"
+                android:text="@string/settings_android_vpn"
                 android:textAllCaps="false"
                 android:textColor="@color/barka_text"
                 android:textSize="16sp"
@@ -203,7 +220,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="OUTILS"
+                android:text="@string/settings_tools"
                 android:textColor="@color/barka_blue"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -215,7 +232,7 @@
                 android:layout_marginTop="8dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
-                android:text="Autorisations de l’application"
+                android:text="@string/settings_app_permissions"
                 android:textAllCaps="false"
                 android:textColor="@color/barka_text"
                 android:textSize="16sp"
@@ -232,7 +249,7 @@
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
-                android:text="Vérifier la mise à jour"
+                android:text="@string/settings_check_update"
                 android:textAllCaps="false"
                 android:textColor="@color/barka_text"
                 android:textSize="16sp"
@@ -249,7 +266,7 @@
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
-                android:text="Partager l’application"
+                android:text="@string/settings_share_app"
                 android:textAllCaps="false"
                 android:textColor="@color/barka_text"
                 android:textSize="16sp"
@@ -267,7 +284,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="À PROPOS"
+                android:text="@string/settings_about"
                 android:textColor="@color/barka_blue"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -279,7 +296,7 @@
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:padding="18dp"
-                android:text="Barka Tunnel"
+                android:text="@string/app_name"
                 android:textColor="@color/barka_text"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -309,14 +326,14 @@
             <ImageView
                 android:layout_width="23dp"
                 android:layout_height="23dp"
-                android:contentDescription="Accueil"
+                android:contentDescription="@string/home"
                 android:src="@drawable/ic_nav_home" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Accueil"
+                android:text="@string/home"
                 android:textColor="@color/barka_blue"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -333,14 +350,14 @@
             <ImageView
                 android:layout_width="23dp"
                 android:layout_height="23dp"
-                android:contentDescription="Journal"
+                android:contentDescription="@string/journal"
                 android:src="@drawable/ic_nav_journal" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Journal"
+                android:text="@string/journal"
                 android:textColor="@color/barka_text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>

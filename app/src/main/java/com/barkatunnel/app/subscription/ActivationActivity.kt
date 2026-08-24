@@ -35,7 +35,7 @@ class ActivationActivity : AppCompatActivity() {
         help.setOnClickListener {
             Toast.makeText(
                 this,
-                "Après paiement, copie le code reçu puis colle-le ici.",
+                R.string.activation_where_code_message,
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -48,7 +48,7 @@ class ActivationActivity : AppCompatActivity() {
             if (code.isBlank()) {
                 Toast.makeText(
                     this,
-                    "Entre ton code d’activation.",
+                    R.string.activation_code_required,
                     Toast.LENGTH_SHORT
                 ).show()
                 return@setOnClickListener
@@ -83,7 +83,7 @@ class ActivationActivity : AppCompatActivity() {
                         activateButton.isEnabled = true
                         Toast.makeText(
                             this,
-                            e.message ?: "Validation impossible pour le moment.",
+                            e.message ?: getString(R.string.activation_unavailable),
                             Toast.LENGTH_LONG
                         ).show()
                     }

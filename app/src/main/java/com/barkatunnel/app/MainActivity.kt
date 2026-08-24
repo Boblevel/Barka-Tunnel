@@ -40,6 +40,7 @@ import com.barkatunnel.app.ipfinder.IpFinderActivity
 import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.journal.JournalUiBinder
 import com.barkatunnel.app.networkinfo.NetworkIpProvider
+import com.barkatunnel.app.networkinfo.NetworkTransport
 import com.barkatunnel.app.settings.SettingsActivity
 import com.barkatunnel.app.subscription.ActivationActivity
 import com.barkatunnel.app.subscription.SubscriptionActivity
@@ -57,6 +58,7 @@ import com.barkatunnel.app.update.AppUpdateCoordinator
 import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.google.android.material.button.MaterialButton
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : AppCompatActivity() {
 
@@ -72,6 +74,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var networkTransportIcon: ImageView
     private lateinit var networkName: TextView
     private lateinit var networkSubtitle: TextView
+    private lateinit var networkFlagNiger: ImageView
+    private lateinit var networkFlagTogo: ImageView
     private lateinit var accessRemainingTime: TextView
     private lateinit var accessStatus: TextView
     private lateinit var connectionTime: TextView
@@ -84,6 +88,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var updateCoordinator: AppUpdateCoordinator
     private lateinit var connectAction: () -> Unit
     private var networkCallbackRegistered = false
+    private val profileSyncInProgress = AtomicBoolean(false)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -95,7 +100,7 @@ class MainActivity : AppCompatActivity() {
             AppLogStore.add(this, "Permission de notification refusée.")
             Toast.makeText(
                 this,
-                "Autorise les notifications de Barka Tunnel pour afficher l’état de connexion.",
+                R.string.notification_permission_help,
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -109,7 +114,11 @@ class MainActivity : AppCompatActivity() {
             if (::connectAction.isInitialized) connectAction()
         } else {
             AppLogStore.add(this, "Permission VPN Android refusée.")
-            Toast.makeText(this, "Permission VPN requise pour se connecter.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                R.string.vpn_permission_required,
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -118,14 +127,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) = refreshNetworkIpAsync()
+        override fun onAvailable(network: Network) {
+            refreshNetworkIpAsync()
+            maybeSyncVpnProfiles()
+        }
         override fun onLost(network: Network) = refreshNetworkIpAsync()
-        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) = refreshNetworkIpAsync()
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            refreshNetworkIpAsync()
+            if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                maybeSyncVpnProfiles()
+            }
+        }
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = refreshNetworkIpAsync()
     }
 
     private val vpnProfileRepository by lazy {
-        VpnProfileRepository(BarkaBackendClient(this))
+        VpnProfileRepository(BarkaBackendClient(this), this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -153,6 +170,8 @@ class MainActivity : AppCompatActivity() {
         networkLogo = homePage.findViewById(R.id.networkLogo)
         networkName = homePage.findViewById(R.id.networkName)
         networkSubtitle = homePage.findViewById(R.id.networkSubtitle)
+        networkFlagNiger = homePage.findViewById(R.id.networkFlagNiger)
+        networkFlagTogo = homePage.findViewById(R.id.networkFlagTogo)
 
         val buttonFreeTrial = homePage.findViewById<android.view.View>(R.id.buttonFreeTrial)
         val buttonRefresh = homePage.findViewById<android.view.View>(R.id.buttonRefresh)
@@ -190,13 +209,15 @@ class MainActivity : AppCompatActivity() {
             onAccessTick = { seconds ->
                 accessRemainingTime.text = formatDuration(seconds)
 
-                if (seconds <= 0L && accessStatus.text == "Accès actif") {
-                    accessStatus.text = "Aucun temps actif"
+                if (seconds <= 0L) {
+                    accessStatus.setText(R.string.no_active_time)
                 }
             },
             onConnectionTick = { seconds ->
-                connectionTime.text =
-                    "Temps de connexion : ${formatDuration(seconds)}"
+                connectionTime.text = getString(
+                    R.string.connection_time_format,
+                    formatDuration(seconds)
+                )
             }
         )
 
@@ -224,13 +245,13 @@ class MainActivity : AppCompatActivity() {
 
         buttonRefresh.setOnClickListener {
             refreshNetworkIp()
-            refreshVpnServices()
+            refreshVpnServices(force = true)
             updateCoordinator.check(showNoUpdate = true, force = true)
 
             val controller = requireController() ?: return@setOnClickListener
 
             runHomeAction(
-                successMessage = "Accès et informations actualisés."
+                successMessage = getString(R.string.access_refreshed)
             ) {
                 val accessResult = controller.refreshAccess()
 
@@ -480,6 +501,7 @@ class MainActivity : AppCompatActivity() {
             connectivityManager.registerDefaultNetworkCallback(networkCallback)
             networkCallbackRegistered = true
         }
+        maybeSyncVpnProfiles()
     }
 
     override fun onStop() {
@@ -527,7 +549,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         homeController = HomeController(runtime)
-        accessStatus.text = "En attente d’activation"
+        accessStatus.setText(R.string.waiting_activation)
 
         val initialNetwork = selectedNetwork
             ?: NetworkOption.ALL.firstOrNull()
@@ -631,7 +653,7 @@ class MainActivity : AppCompatActivity() {
         AppLogStore.add(this, "Contrôleur VPN indisponible.")
         Toast.makeText(
             this,
-            "Initialisation du VPN en cours. Réessaie.",
+            R.string.vpn_initializing,
             Toast.LENGTH_SHORT
         ).show()
 
@@ -704,7 +726,9 @@ class MainActivity : AppCompatActivity() {
                 val userMessage = userFacingMessage(result.text)
                 val pendingConnection =
                     currentState?.connection is HomeConnectionState.Connecting &&
-                        userMessage.startsWith("Connexion en cours")
+                        userMessage.startsWith(
+                            getString(R.string.journal_connecting_title)
+                        )
                 if (!pendingConnection) {
                     AppLogStore.add(this, "Information • $userMessage")
                     Toast.makeText(
@@ -718,10 +742,10 @@ class MainActivity : AppCompatActivity() {
             HomeControllerResult.LoginRequired -> {
                 AppLogStore.add(this, "Accès non actif : essai ou abonnement requis.")
                 accessRemainingTime.text = "00:00:00"
-                accessStatus.text = "Active l’essai 1H ou un abonnement"
+                accessStatus.setText(R.string.activate_access_short)
                 Toast.makeText(
                     this,
-                    "Active l’essai 1H ou un abonnement pour continuer.",
+                    R.string.activate_access_long,
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -811,28 +835,40 @@ class MainActivity : AppCompatActivity() {
         val ipAddress = networkIpValue.text.toString().trim()
         if (
             ipAddress.isBlank() ||
+            ipAddress.equals(getString(R.string.unavailable), ignoreCase = true) ||
             ipAddress.equals("Indisponible", ignoreCase = true) ||
             ipAddress == "—"
         ) {
-            Toast.makeText(this, "Adresse IP indisponible.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.ip_unavailable_toast, Toast.LENGTH_SHORT).show()
             return
         }
 
         val clipboard = getSystemService(ClipboardManager::class.java)
         clipboard.setPrimaryClip(
-            ClipData.newPlainText("Adresse IP du réseau", ipAddress)
+            ClipData.newPlainText(getString(R.string.ip_clipboard_label), ipAddress)
         )
         AppLogStore.add(this, "Adresse IP copiée.")
-        Toast.makeText(this, "Adresse IP copiée.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.ip_copied_toast, Toast.LENGTH_SHORT).show()
     }
 
     private fun userFacingMessage(value: String): String {
         val hasTechnicalConnectionDetail = TECHNICAL_CONNECTION_TERMS.containsMatchIn(value) ||
             value.contains("out of range", ignoreCase = true)
-        return if (hasTechnicalConnectionDetail) {
-            "Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie."
-        } else {
-            value
+        if (hasTechnicalConnectionDetail) {
+            return getString(R.string.connection_pending_help)
+        }
+        return when (value) {
+            "Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie." ->
+                getString(R.string.connection_pending_help)
+            "Choisis d’abord un réseau." -> getString(R.string.choose_network_first)
+            "Aucun accès actif." -> getString(R.string.no_access_active)
+            "Le VPN est toujours connecté." -> getString(R.string.vpn_still_connected)
+            "Déconnexion refusée." -> getString(R.string.disconnect_refused)
+            "L’essai gratuit de cet appareil a déjà été utilisé." ->
+                getString(R.string.trial_already_used)
+            "L’essai gratuit n’est pas disponible sur cet appareil." ->
+                getString(R.string.trial_not_available_device)
+            else -> value
         }
     }
 
@@ -910,7 +946,8 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
-        dialog.findViewById<TextView>(R.id.menuVersion).text = "Version ${BuildConfig.VERSION_NAME}"
+        dialog.findViewById<TextView>(R.id.menuVersion).text =
+            getString(R.string.version_format, BuildConfig.VERSION_NAME)
 
         dialog.findViewById<android.view.View>(R.id.menuSupport)
             .setOnClickListener {
@@ -940,22 +977,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshVpnServices() {
-        Thread {
-            when (val result = vpnProfileRepository.refreshCatalog()) {
-                is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Success -> {
-                    AppLogStore.add(
-                        this,
-                        "Services VPN actualisés • ${result.enabledCount} actif(s)."
-                    )
-                }
+    private fun maybeSyncVpnProfiles() {
+        if (
+            !vpnProfileRepository.hasValidatedInternet() ||
+            !vpnProfileRepository.shouldRefresh(PROFILE_SYNC_INTERVAL_MS)
+        ) {
+            return
+        }
+        refreshVpnServices(force = false)
+    }
 
-                is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Error -> {
-                    AppLogStore.add(
-                        this,
-                        "Actualisation des services impossible • ${result.message}"
-                    )
+    private fun refreshVpnServices(force: Boolean) {
+        if (
+            !vpnProfileRepository.hasValidatedInternet() ||
+            (!force && !vpnProfileRepository.shouldRefresh(PROFILE_SYNC_INTERVAL_MS))
+        ) {
+            return
+        }
+        if (!profileSyncInProgress.compareAndSet(false, true)) return
+        Thread {
+            try {
+                when (val result = vpnProfileRepository.refreshCatalog()) {
+                    is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Success -> {
+                        AppLogStore.add(
+                            this,
+                            "Services de connexion synchronisés • ${result.enabledCount}."
+                        )
+                    }
+
+                    is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Error -> {
+                        AppLogStore.add(
+                            this,
+                            "Synchronisation reportée • ${result.message}"
+                        )
+                    }
                 }
+            } finally {
+                profileSyncInProgress.set(false)
             }
         }.start()
     }
@@ -964,11 +1022,14 @@ class MainActivity : AppCompatActivity() {
         val info = NetworkIpProvider.getCurrent(this)
 
         networkIpValue.text = info.ip
-        networkIpStatus.text = "${info.transport} • IP actuelle"
+        networkIpStatus.text = getString(
+            R.string.current_ip_status_format,
+            info.transport
+        )
 
         if (::networkTransportIcon.isInitialized) {
-            val icon = when (info.transport) {
-                "Données mobiles" -> R.drawable.ic_mobile_barka
+            val icon = when (info.transportType) {
+                NetworkTransport.CELLULAR -> R.drawable.ic_mobile_barka
                 else -> R.drawable.ic_wifi_barka
             }
             networkTransportIcon.setImageResource(icon)
@@ -990,6 +1051,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         networkLogo.setImageResource(drawable)
+        val showMoovCountries = network?.id == "moov_bf"
+        networkFlagNiger.visibility = if (showMoovCountries) {
+            android.view.View.VISIBLE
+        } else {
+            android.view.View.GONE
+        }
+        networkFlagTogo.visibility = if (showMoovCountries) {
+            android.view.View.VISIBLE
+        } else {
+            android.view.View.GONE
+        }
     }
 
     private fun formatDuration(
@@ -1016,6 +1088,7 @@ class MainActivity : AppCompatActivity() {
         private const val MAX_VIBRATION_AMPLITUDE = 255
         private const val PAGE_HOME = 0
         private const val PAGE_JOURNAL = 1
+        private const val PROFILE_SYNC_INTERVAL_MS = 6L * 60L * 60L * 1000L
         private val TECHNICAL_CONNECTION_TERMS = Regex(
             "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
         )

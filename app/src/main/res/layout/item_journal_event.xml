@@ -30,7 +30,7 @@
             android:id="@+id/eventTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Informations"
+            android:text="@string/event_information"
             android:textColor="@color/barka_text"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:maxLines="2"
-            android:text="Application démarrée"
+            android:text="@string/event_app_started"
             android:textColor="@color/barka_text_secondary"
             android:textSize="10sp" />
     </LinearLayout>

@@ -25,7 +25,7 @@ class JournalUiBinder(
 
         if (events.isEmpty()) {
             val empty = TextView(context).apply {
-                text = "Aucune connexion enregistrée."
+                setText(R.string.journal_empty)
                 setTextColor(ContextCompat.getColor(context, R.color.barka_text_secondary))
                 textSize = 11f
                 setPadding(dp(12), dp(24), dp(12), dp(24))
@@ -111,23 +111,23 @@ class JournalUiBinder(
         val network = event.networkName?.let { " · $it" }.orEmpty()
         return when (event.type) {
             EventType.CONNECTING -> EventPresentation(
-                title = "Connexion en cours",
-                message = "Tentative de connexion$network.",
+                title = context.getString(R.string.journal_connecting_title),
+                message = context.getString(R.string.journal_connecting_message, network),
                 colorRes = R.color.barka_orange
             )
             EventType.REFUSED -> EventPresentation(
-                title = "Connexion refusée",
-                message = "La connexion n’a pas abouti$network.",
+                title = context.getString(R.string.journal_refused_title),
+                message = context.getString(R.string.journal_refused_message, network),
                 colorRes = R.color.barka_red
             )
             EventType.CONNECTED -> EventPresentation(
-                title = "Connecté",
-                message = "VPN connecté$network.",
+                title = context.getString(R.string.journal_connected_title),
+                message = context.getString(R.string.journal_connected_message, network),
                 colorRes = R.color.barka_green
             )
             EventType.DISCONNECTED -> EventPresentation(
-                title = "Déconnecté",
-                message = "VPN déconnecté.",
+                title = context.getString(R.string.journal_disconnected_title),
+                message = context.getString(R.string.journal_disconnected_message),
                 colorRes = R.color.barka_blue
             )
         }

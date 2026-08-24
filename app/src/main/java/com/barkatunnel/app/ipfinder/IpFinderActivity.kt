@@ -1,55 +1,102 @@
 package com.barkatunnel.app.ipfinder
 
-import android.content.ClipboardManager
+import android.app.role.RoleManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
+import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.barkatunnel.app.MainActivity
 import com.barkatunnel.app.R
+import com.barkatunnel.app.ipfinder.assistant.BarkaAssistantService
 import com.barkatunnel.app.journal.AppLogStore
+import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.google.android.material.button.MaterialButton
-import java.net.InetSocketAddress
-import java.net.Socket
+import java.net.Inet4Address
 
 class IpFinderActivity : AppCompatActivity() {
 
-    @Volatile
-    private var scanning = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val connectivityManager by lazy {
+        getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
 
-    private var lastFoundIp: String? = null
-    private var lastFoundPort: Int? = null
-    private var lastFoundLatency: Long? = null
+    @Volatile private var searching = false
+    private var receiverRegistered = false
+    private var attempts = 0
+    private var cycleRequestRetries = 0
+    private var previousIp: String? = null
+    private var searchPatterns: List<String> = emptyList()
 
     private lateinit var scanButton: MaterialButton
     private lateinit var stopButton: MaterialButton
+    private lateinit var setAssistantButton: MaterialButton
     private lateinit var statusText: TextView
     private lateinit var progressText: TextView
     private lateinit var resultText: TextView
-    private lateinit var copyButton: MaterialButton
-    private lateinit var useButton: MaterialButton
+    private lateinit var wifiWarning: TextView
+    private lateinit var ipInput: EditText
+
+    private val roleRequestLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        refreshAssistantState()
+    }
+
+    private val cycleReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (
+                intent?.action != BarkaAssistantService.ACTION_CYCLE_COMPLETED ||
+                !searching
+            ) {
+                return
+            }
+            val succeeded = intent.getBooleanExtra(
+                BarkaAssistantService.EXTRA_CYCLE_SUCCEEDED,
+                false
+            )
+            if (succeeded) {
+                waitForCellularIp(0)
+            } else {
+                stopSearch(
+                    getString(R.string.ip_finder_cycle_failed),
+                    R.color.barka_red
+                )
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_ip_finder)
 
-        val ipInput = findViewById<EditText>(R.id.ipInput)
-        val portsInput = findViewById<EditText>(R.id.portsInput)
-
-        val standardPorts = listOf("443", "80", "8080", "53")
-            .joinToString(", ")
-        portsInput.setText(standardPorts)
-
+        ipInput = findViewById(R.id.ipInput)
         scanButton = findViewById(R.id.scanButton)
         stopButton = findViewById(R.id.stopButton)
+        setAssistantButton = findViewById(R.id.setAssistantButton)
         statusText = findViewById(R.id.scanStatus)
         progressText = findViewById(R.id.scanProgress)
         resultText = findViewById(R.id.scanResult)
-        copyButton = findViewById(R.id.copyIpButton)
-        useButton = findViewById(R.id.useIpButton)
+        wifiWarning = findViewById(R.id.wifiWarning)
+
+        ipInput.setText(
+            getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_SEARCH_PATTERN, "")
+                .orEmpty()
+        )
 
         findViewById<android.view.View>(R.id.backButton).setOnClickListener {
             finish()
@@ -69,221 +116,342 @@ class IpFinderActivity : AppCompatActivity() {
             )
         }
 
-        copyButton.setOnClickListener {
-            val ip = lastFoundIp ?: return@setOnClickListener
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(
-                android.content.ClipData.newPlainText("IP Barka Tunnel", ip)
-            )
-            Toast.makeText(this, "IP copiée.", Toast.LENGTH_SHORT).show()
-        }
-
-        useButton.setOnClickListener {
-            val ip = lastFoundIp ?: return@setOnClickListener
-            getSharedPreferences("barka_ipfinder", Context.MODE_PRIVATE)
-                .edit()
-                .putString("selected_ip", ip)
-                .putInt("selected_port", lastFoundPort ?: 0)
-                .apply()
-
-            AppLogStore.add(
-                this,
-                "IP Finder • IP sélectionnée : $ip:${lastFoundPort ?: 0}."
-            )
-
-            Toast.makeText(
-                this,
-                "IP sélectionnée pour Barka Tunnel.",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-
         stopButton.setOnClickListener {
-            stopScan("Scan arrêté manuellement.")
+            stopSearch(
+                getString(R.string.ip_finder_stopped),
+                R.color.barka_text_secondary
+            )
         }
 
         scanButton.setOnClickListener {
-            if (scanning) {
-                stopScan("Scan arrêté manuellement.")
-                return@setOnClickListener
+            if (searching) {
+                stopSearch(
+                    getString(R.string.ip_finder_stopped),
+                    R.color.barka_text_secondary
+                )
+            } else {
+                startSearch()
             }
-
-            val ips = ipInput.text.toString()
-                .lines()
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .distinct()
-                .filter { isValidIpv4(it) }
-
-            if (ips.isEmpty()) {
-                Toast.makeText(
-                    this,
-                    "Ajoute au moins une IPv4 valide.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                return@setOnClickListener
-            }
-
-            val ports = parsePorts(portsInput.text.toString())
-
-            if (ports.isEmpty()) {
-                Toast.makeText(
-                    this,
-                    "Ajoute au moins un port valide.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                return@setOnClickListener
-            }
-
-            startScan(ips, ports)
         }
+
+        setAssistantButton.setOnClickListener {
+            requestAssistantSelection()
+        }
+
+        ContextCompat.registerReceiver(
+            this,
+            cycleReceiver,
+            IntentFilter(BarkaAssistantService.ACTION_CYCLE_COMPLETED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        receiverRegistered = true
+        refreshAssistantState()
+        refreshNetworkState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshAssistantState()
+        refreshNetworkState()
     }
 
     override fun onDestroy() {
-        scanning = false
+        searching = false
+        handler.removeCallbacksAndMessages(null)
+        if (receiverRegistered) {
+            runCatching { unregisterReceiver(cycleReceiver) }
+            receiverRegistered = false
+        }
         super.onDestroy()
     }
 
-    private fun startScan(
-        ips: List<String>,
-        ports: List<Int>
-    ) {
-        scanning = true
-        lastFoundIp = null
-        lastFoundPort = null
-        lastFoundLatency = null
-
-        scanButton.text = "SCAN EN COURS…"
-        scanButton.isEnabled = false
-        stopButton.isEnabled = true
-        copyButton.isEnabled = false
-        useButton.isEnabled = false
-
-        statusText.text = "Scan en cours…"
-        progressText.text = "Testées : 0/${ips.size} • Réussies : 0"
-        resultText.text = "Recherche de la première IP répondante…"
-
-        AppLogStore.add(
-            this,
-            "IP Finder • scan lancé sur ${ips.size} IP • ports ${ports.joinToString(",")}."
-        )
-
-        Thread {
-            var found: TestResult? = null
-
-            for ((index, ip) in ips.withIndex()) {
-                if (!scanning) break
-
-                runOnUiThread {
-                    progressText.text =
-                        "Testées : ${index + 1}/${ips.size} • En cours : $ip"
-                }
-
-                found = testIp(ip, ports)
-
-                if (found != null) {
-                    break
-                }
+    private fun requestAssistantSelection() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(RoleManager::class.java)
+            if (!roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
+                Toast.makeText(
+                    this,
+                    R.string.ip_finder_assistant_unavailable,
+                    Toast.LENGTH_LONG
+                ).show()
+                return
             }
-
-            val completedNormally = scanning
-            scanning = false
-
-            runOnUiThread {
-                scanButton.text = "DÉMARRER LE SCAN"
-                scanButton.isEnabled = true
-                stopButton.isEnabled = false
-
-                if (found != null) {
-                    val hit = found!!
-                    lastFoundIp = hit.ip
-                    lastFoundPort = hit.port
-                    lastFoundLatency = hit.latencyMs
-
-                    statusText.text = "IP trouvée !"
-                    progressText.text = "Réussies : 1 • Scan arrêté automatiquement"
-                    resultText.text =
-                        "${hit.ip}\\nPort : ${hit.port}\\nRéponse : ${hit.latencyMs} ms"
-
-                    copyButton.isEnabled = true
-                    useButton.isEnabled = true
-
-                    AppLogStore.add(
-                        this,
-                        "Succès IP Finder • ${hit.ip}:${hit.port} • ${hit.latencyMs} ms."
-                    )
-                } else if (completedNormally) {
-                    statusText.text = "Scan terminé"
-                    progressText.text = "Réussies : 0"
-                    resultText.text = "Aucune IP répondante trouvée."
-                    AppLogStore.add(
-                        this,
-                        "IP Finder • aucune IP répondante trouvée."
-                    )
-                }
+            if (roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
+                refreshAssistantState()
+                return
             }
-        }.start()
+            roleRequestLauncher.launch(
+                roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
+            )
+            return
+        }
+
+        runCatching {
+            roleRequestLauncher.launch(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
+        }.onFailure {
+            Toast.makeText(
+                this,
+                R.string.ip_finder_assistant_unavailable,
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
-    private fun stopScan(message: String) {
-        scanning = false
-        scanButton.text = "DÉMARRER LE SCAN"
+    private fun refreshAssistantState() {
+        if (!::setAssistantButton.isInitialized) return
+        setAssistantButton.setText(
+            if (BarkaAssistantService.isSelected(this)) {
+                R.string.ip_finder_assistant_selected
+            } else {
+                R.string.ip_finder_set_assistant
+            }
+        )
+    }
+
+    private fun refreshNetworkState() {
+        if (!::wifiWarning.isInitialized) return
+        val wifiActive = isWifiActive()
+        wifiWarning.setText(
+            if (wifiActive) {
+                R.string.ip_finder_wifi_warning
+            } else {
+                R.string.ip_finder_wifi_ready
+            }
+        )
+        wifiWarning.setTextColor(
+            ContextCompat.getColor(
+                this,
+                if (wifiActive) R.color.barka_red else R.color.barka_green
+            )
+        )
+
+        if (!searching) {
+            val currentIp = currentCellularIpv4()
+            statusText.setText(R.string.ip_finder_idle)
+            statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_blue))
+            progressText.setText(R.string.ip_finder_current_cellular_ip)
+            resultText.text = currentIp ?: getString(R.string.ip_finder_no_cellular_ip)
+            resultText.setTextColor(ContextCompat.getColor(this, R.color.barka_text))
+        }
+    }
+
+    private fun startSearch() {
+        if (isWifiActive()) {
+            Toast.makeText(
+                this,
+                R.string.ip_finder_turn_off_wifi,
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        if (!BarkaAssistantService.isSelected(this)) {
+            Toast.makeText(
+                this,
+                R.string.ip_finder_select_assistant,
+                Toast.LENGTH_LONG
+            ).show()
+            requestAssistantSelection()
+            return
+        }
+
+        val rawPattern = ipInput.text.toString().trim()
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_SEARCH_PATTERN, rawPattern)
+            .apply()
+
+        searchPatterns = parsePatterns(rawPattern)
+        previousIp = currentCellularIpv4()
+        attempts = 0
+        searching = true
+        scanButton.isEnabled = false
+        stopButton.visibility = View.VISIBLE
+        statusText.setText(R.string.ip_finder_searching)
+        statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_orange))
+        progressText.setText(R.string.ip_finder_waiting_for_network)
+        resultText.text = previousIp ?: getString(R.string.ip_finder_no_cellular_ip)
+        resultText.setTextColor(ContextCompat.getColor(this, R.color.barka_text))
+        AppLogStore.add(this, getString(R.string.ip_finder_log_started))
+
+        disconnectActiveTunnel()
+        handler.postDelayed({ requestNextCycle() }, DISCONNECT_SETTLE_DELAY_MS)
+    }
+
+    private fun requestNextCycle() {
+        if (!searching) return
+        if (attempts >= MAX_ATTEMPTS) {
+            stopSearch(
+                getString(R.string.ip_finder_no_match, attempts),
+                R.color.barka_red
+            )
+            return
+        }
+
+        attempts += 1
+        cycleRequestRetries = 0
+        statusText.setText(R.string.ip_finder_searching)
+        progressText.text = getString(
+            R.string.ip_finder_attempt_format,
+            attempts,
+            MAX_ATTEMPTS
+        )
+        requestAirplaneCycleWithRetry()
+    }
+
+    private fun requestAirplaneCycleWithRetry() {
+        if (!searching) return
+        if (BarkaAssistantService.requestAirplaneCycle(this)) return
+
+        if (
+            BarkaAssistantService.isSelected(this) &&
+            cycleRequestRetries < MAX_SERVICE_READY_RETRIES
+        ) {
+            cycleRequestRetries += 1
+            handler.postDelayed(
+                { requestAirplaneCycleWithRetry() },
+                SERVICE_READY_RETRY_DELAY_MS
+            )
+            return
+        }
+
+        stopSearch(
+            getString(R.string.ip_finder_cycle_failed),
+            R.color.barka_red
+        )
+    }
+
+    private fun waitForCellularIp(poll: Int) {
+        if (!searching) return
+        statusText.setText(R.string.ip_finder_waiting_for_network)
+        val candidate = currentCellularIpv4()
+        if (candidate != null && candidate != previousIp) {
+            previousIp = candidate
+            resultText.text = candidate
+            if (matchesSearchPattern(candidate)) {
+                completeSearch(candidate)
+            } else {
+                handler.postDelayed({ requestNextCycle() }, NEXT_CYCLE_DELAY_MS)
+            }
+            return
+        }
+
+        if (poll < MAX_NETWORK_POLLS) {
+            handler.postDelayed(
+                { waitForCellularIp(poll + 1) },
+                NETWORK_POLL_DELAY_MS
+            )
+        } else {
+            requestNextCycle()
+        }
+    }
+
+    private fun completeSearch(ip: String) {
+        searching = false
+        handler.removeCallbacksAndMessages(null)
         scanButton.isEnabled = true
-        stopButton.isEnabled = false
+        stopButton.visibility = View.GONE
+        statusText.setText(R.string.ip_finder_found)
+        statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_green))
+        progressText.setText(R.string.ip_finder_current_cellular_ip)
+        resultText.text = getString(R.string.ip_finder_found_detail, ip)
+        resultText.setTextColor(ContextCompat.getColor(this, R.color.barka_green))
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_FOUND_IP, ip)
+            .apply()
+        AppLogStore.add(
+            this,
+            getString(R.string.ip_finder_log_found_format, ip)
+        )
+    }
+
+    private fun stopSearch(message: String, colorRes: Int) {
+        searching = false
+        handler.removeCallbacksAndMessages(null)
+        scanButton.isEnabled = true
+        stopButton.visibility = View.GONE
         statusText.text = message
+        statusText.setTextColor(ContextCompat.getColor(this, colorRes))
         AppLogStore.add(this, "IP Finder • $message")
     }
 
-    private fun testIp(
-        ip: String,
-        ports: List<Int>
-    ): TestResult? {
-        for (port in ports) {
-            if (!scanning) return null
+    private fun parsePatterns(value: String): List<String> = value
+        .split(Regex("[\\n,;]+"))
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .distinct()
 
-            val startedAt = System.currentTimeMillis()
-
-            try {
-                Socket().use { socket ->
-                    socket.connect(
-                        InetSocketAddress(ip, port),
-                        850
-                    )
-
-                    return TestResult(
-                        ip = ip,
-                        port = port,
-                        latencyMs = System.currentTimeMillis() - startedAt
-                    )
+    private fun matchesSearchPattern(ip: String): Boolean {
+        if (searchPatterns.isEmpty()) return true
+        return searchPatterns.any { pattern ->
+            when {
+                pattern.startsWith("=") -> {
+                    val expected = pattern.drop(1).trim()
+                    expected.isNotBlank() && ip == expected
                 }
-            } catch (_: Exception) {
+                pattern.startsWith("^") && pattern.endsWith("$") -> {
+                    val expected = pattern.drop(1).dropLast(1).trim()
+                    expected.isNotBlank() && ip == expected
+                }
+                pattern.startsWith("^") -> {
+                    val expected = pattern.drop(1).trim()
+                    expected.isNotBlank() && ip.startsWith(expected)
+                }
+                pattern.endsWith("$") -> {
+                    val expected = pattern.dropLast(1).trim()
+                    expected.isNotBlank() && ip.endsWith(expected)
+                }
+                else -> ip.contains(pattern)
             }
         }
-
-        return null
     }
 
-    private fun parsePorts(value: String): List<Int> {
-        return value
-            .split(",", " ", "\\n", ";")
-            .mapNotNull { it.trim().toIntOrNull() }
-            .filter { it in 1..65535 }
-            .distinct()
-            .ifEmpty { listOf(443, 80, 8080, 53) }
-    }
+    private fun currentCellularIpv4(): String? =
+        connectivityManager.allNetworks.asSequence()
+            .mapNotNull { network ->
+                val capabilities = connectivityManager.getNetworkCapabilities(network)
+                    ?: return@mapNotNull null
+                if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                    return@mapNotNull null
+                }
+                connectivityManager.getLinkProperties(network)
+                    ?.linkAddresses
+                    ?.asSequence()
+                    ?.map { it.address }
+                    ?.filterIsInstance<Inet4Address>()
+                    ?.firstOrNull { !it.isLoopbackAddress }
+                    ?.hostAddress
+            }
+            .firstOrNull()
 
-    private fun isValidIpv4(value: String): Boolean {
-        val parts = value.split(".")
-        if (parts.size != 4) return false
+    private fun isWifiActive(): Boolean =
+        connectivityManager.allNetworks.any { network ->
+            connectivityManager.getNetworkCapabilities(network)
+                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        }
 
-        return parts.all { part ->
-            part.toIntOrNull()?.let { it in 0..255 } == true
+    private fun disconnectActiveTunnel() {
+        runCatching {
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, BarkaVpnService::class.java).apply {
+                    action = BarkaVpnService.ACTION_DISCONNECT
+                }
+            )
         }
     }
 
-    private data class TestResult(
-        val ip: String,
-        val port: Int,
-        val latencyMs: Long
-    )
+    companion object {
+        private const val PREFERENCES_NAME = "barka_ipfinder"
+        private const val KEY_SEARCH_PATTERN = "search_pattern"
+        private const val KEY_LAST_FOUND_IP = "last_found_ip"
+        private const val MAX_ATTEMPTS = 30
+        private const val MAX_NETWORK_POLLS = 15
+        private const val MAX_SERVICE_READY_RETRIES = 6
+        private const val DISCONNECT_SETTLE_DELAY_MS = 900L
+        private const val SERVICE_READY_RETRY_DELAY_MS = 500L
+        private const val NETWORK_POLL_DELAY_MS = 1_000L
+        private const val NEXT_CYCLE_DELAY_MS = 900L
+    }
 }

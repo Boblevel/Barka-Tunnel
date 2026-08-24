@@ -1,4 +1,233 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Barka Tunnel</string>
+    <string name="app_name" translatable="false">Barka Tunnel</string>
+    <string name="back">Retour</string>
+    <string name="home">Accueil</string>
+    <string name="journal">Journal</string>
+    <string name="version_format">Version %1$s</string>
+    <string name="barka_logo_description">Logo Barka Tunnel</string>
+    <string name="burkina_faso">Burkina Faso</string>
+    <string name="niger">Niger</string>
+    <string name="togo">Togo</string>
+    <string name="unavailable">Indisponible</string>
+    <string name="network_transport_wifi" translatable="false">Wi‑Fi</string>
+    <string name="network_transport_mobile">Données mobiles</string>
+    <string name="network_transport_vpn" translatable="false">VPN</string>
+    <string name="network_transport_network">Réseau</string>
+
+    <string name="main_brand_barka" translatable="false">Barka</string>
+    <string name="main_brand_tunnel" translatable="false">Tunnel</string>
+    <string name="free_trial_description">Essai gratuit</string>
+    <string name="check_updates_description">Vérifier les mises à jour</string>
+    <string name="open_menu_description">Ouvrir le menu</string>
+    <string name="network_ip_title">IP DU RÉSEAU</string>
+    <string name="network_ip_current">Adresse IP actuelle</string>
+    <string name="current_ip_status_format">%1$s • IP actuelle</string>
+    <string name="network_title">RÉSEAU</string>
+    <string name="selected_network_title">RÉSEAU SÉLECTIONNÉ</string>
+    <string name="selected_network_subtitle">Réseau sélectionné</string>
+    <string name="selected_operator_logo_description">Logo de l’opérateur sélectionné</string>
+    <string name="selected_network_description">Réseau sélectionné</string>
+    <string name="status_not_connected">NON CONNECTÉ</string>
+    <string name="status_connecting">CONNEXION…</string>
+    <string name="status_connected">CONNECTÉ</string>
+    <string name="connection_time_format">Temps de connexion : %1$s</string>
+    <string name="remaining_time">TEMPS RESTANT</string>
+    <string name="remaining_time_description">Temps restant</string>
+    <string name="add">AJOUTER</string>
+    <string name="connect">SE CONNECTER</string>
+    <string name="disconnect">SE DÉCONNECTER</string>
+    <string name="ip_unavailable_toast">Adresse IP indisponible.</string>
+    <string name="ip_clipboard_label">Adresse IP du réseau</string>
+    <string name="ip_copied_toast">Adresse IP copiée.</string>
+    <string name="vpn_permission_required">Permission VPN requise pour se connecter.</string>
+    <string name="vpn_initializing">Initialisation du VPN en cours. Réessaie.</string>
+    <string name="choose_network_first">Choisis d’abord un réseau.</string>
+    <string name="choose_network_home">CHOISIR LE RÉSEAU</string>
+    <string name="network_options" translatable="false">MOOV-AFRICA BF  •  ORANGE BF  •  TELECEL BF</string>
+    <string name="access_active">Accès actif</string>
+    <string name="access_active_offline">Accès actif • hors ligne</string>
+    <string name="access_authorized">Accès autorisé</string>
+    <string name="no_active_time">Aucun temps actif</string>
+    <string name="free_trial_active">Essai gratuit actif</string>
+    <string name="trial_unavailable">Essai indisponible ou expiré</string>
+    <string name="waiting_activation">En attente d’activation</string>
+    <string name="activate_access_short">Active l’essai 1H ou un abonnement</string>
+    <string name="activate_access_long">Active l’essai 1H ou un abonnement pour continuer.</string>
+    <string name="access_refreshed">Accès et informations actualisés.</string>
+    <string name="notification_permission_help">Autorise les notifications de Barka Tunnel pour afficher l’état de connexion.</string>
+    <string name="connection_pending_help">Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie.</string>
+    <string name="no_access_active">Aucun accès actif.</string>
+    <string name="vpn_still_connected">Le VPN est toujours connecté.</string>
+    <string name="disconnect_refused">Déconnexion refusée.</string>
+    <string name="trial_already_used">L’essai gratuit de cet appareil a déjà été utilisé.</string>
+    <string name="trial_not_available_device">L’essai gratuit n’est pas disponible sur cet appareil.</string>
+
+    <string name="menu_guide">Guide d’utilisation</string>
+    <string name="menu_subscription">Abonnement</string>
+    <string name="menu_activation_code">Code d’activation</string>
+    <string name="menu_ip_finder" translatable="false">IP Finder</string>
+    <string name="menu_settings">Paramètres</string>
+    <string name="menu_support">Contacter le support</string>
+    <string name="choose_network">CHOISIR UN RÉSEAU</string>
+
+    <string name="ip_finder_title" translatable="false">IP FINDER</string>
+    <string name="ip_finder_search_hint">Motif de recherche</string>
+    <string name="ip_finder_pattern_help">^ commence par · $ se termine par · = exact · sans symbole contient · séparez par ligne, virgule ou ;</string>
+    <string name="ip_finder_method">MÉTHODE</string>
+    <string name="ip_finder_assistant">Assistant</string>
+    <string name="ip_finder_assistant_chip">✓  Assistant</string>
+    <string name="ip_finder_assistant_explanation">Bascule automatiquement le mode avion avec l’assistant numérique, sans accès root.</string>
+    <string name="ip_finder_set_assistant">DÉFINIR COMME ASSISTANT</string>
+    <string name="ip_finder_assistant_selected">BARKA TUNNEL EST L’ASSISTANT</string>
+    <string name="ip_finder_wifi_warning">Le Wi‑Fi est actif — désactivez-le pour permettre le changement de l’IP mobile.</string>
+    <string name="ip_finder_wifi_ready">Wi‑Fi désactivé — la recherche peut utiliser le réseau mobile.</string>
+    <string name="ip_finder_disconnect_notice">La recherche d’une nouvelle IP déconnectera toute connexion sécurisée active.</string>
+    <string name="ip_finder_idle">Prêt</string>
+    <string name="ip_finder_current_cellular_ip">IP mobile actuelle</string>
+    <string name="ip_finder_no_cellular_ip">Aucune IP mobile détectée</string>
+    <string name="ip_finder_find">TROUVER UNE IP</string>
+    <string name="ip_finder_stop">ARRÊTER</string>
+    <string name="ip_finder_searching">Recherche en cours…</string>
+    <string name="ip_finder_attempt_format">Tentative %1$d sur %2$d</string>
+    <string name="ip_finder_waiting_for_network">Redémarrage du réseau mobile…</string>
+    <string name="ip_finder_found">IP compatible trouvée</string>
+    <string name="ip_finder_found_detail">Nouvelle IP : %1$s</string>
+    <string name="ip_finder_stopped">Recherche arrêtée.</string>
+    <string name="ip_finder_no_match">Aucune IP compatible trouvée après %1$d tentatives.</string>
+    <string name="ip_finder_turn_off_wifi">Désactivez d’abord le Wi‑Fi.</string>
+    <string name="ip_finder_select_assistant">Sélectionnez Barka Tunnel comme assistant numérique pour autoriser le changement d’IP.</string>
+    <string name="ip_finder_assistant_unavailable">L’assistant numérique n’est pas disponible sur cet appareil.</string>
+    <string name="ip_finder_cycle_failed">Android n’a pas autorisé le changement d’IP. Vérifiez que Barka Tunnel est l’assistant numérique.</string>
+    <string name="ip_finder_cellular_unavailable">Le réseau mobile n’est pas disponible. Activez la SIM et les données mobiles.</string>
+    <string name="ip_finder_log_started">IP Finder • recherche démarrée.</string>
+    <string name="ip_finder_log_found_format">IP Finder • IP compatible trouvée : %1$s.</string>
+
+    <string name="settings_title">PARAMÈTRES</string>
+    <string name="settings_general">GÉNÉRAL</string>
+    <string name="settings_notifications">Afficher les notifications</string>
+    <string name="settings_notifications_summary">Recevoir les informations importantes</string>
+    <string name="settings_theme_format">Thème • %1$s</string>
+    <string name="settings_choose_theme">Choisir le thème</string>
+    <string name="theme_light">Clair</string>
+    <string name="theme_dark">Sombre</string>
+    <string name="theme_system">Système</string>
+    <string name="settings_language_format">Langue • %1$s</string>
+    <string name="settings_choose_language">Choisir la langue</string>
+    <string name="language_french">Français</string>
+    <string name="language_english">Anglais</string>
+    <string name="settings_connection">CONNEXION</string>
+    <string name="settings_ip_format">Adresse IP : %1$s • %2$s</string>
+    <string name="settings_ip_unavailable">Adresse IP : Indisponible</string>
+    <string name="settings_android_vpn">Réglages VPN Android</string>
+    <string name="settings_tools">OUTILS</string>
+    <string name="settings_app_permissions">Autorisations de l’application</string>
+    <string name="settings_check_update">Vérifier la mise à jour</string>
+    <string name="settings_share_app">Partager l’application</string>
+    <string name="settings_about">À PROPOS</string>
+    <string name="settings_about_format">Barka Tunnel\nVersion %1$s</string>
+    <string name="settings_notification_denied">Les notifications restent désactivées.</string>
+    <string name="share_app_chooser">Partager Barka Tunnel</string>
+    <string name="share_app_text">Découvre Barka Tunnel.</string>
+    <string name="share_download_format">Barka Tunnel\nTélécharger la dernière version : %1$s</string>
+    <string name="save">ENREGISTRER</string>
+    <string name="cancel">ANNULER</string>
+
+    <string name="journal_title">JOURNAL</string>
+    <string name="clear_journal_description">Effacer le journal</string>
+    <string name="today">AUJOURD’HUI</string>
+    <string name="journal_empty">Aucune connexion enregistrée.</string>
+    <string name="journal_connecting_title">Connexion en cours</string>
+    <string name="journal_connecting_message">Tentative de connexion%1$s.</string>
+    <string name="journal_refused_title">Connexion refusée</string>
+    <string name="journal_refused_message">La connexion n’a pas abouti%1$s.</string>
+    <string name="journal_connected_title">Connecté</string>
+    <string name="journal_connected_message">VPN connecté%1$s.</string>
+    <string name="journal_disconnected_title">Déconnecté</string>
+    <string name="journal_disconnected_message">VPN déconnecté.</string>
+
+    <string name="support_title">SUPPORT</string>
+    <string name="support_description">Support</string>
+    <string name="support_help_title">Besoin d’aide ?</string>
+    <string name="support_help_text">Notre équipe de support est disponible pour vous aider avec l’activation, les abonnements et l’utilisation de Barka Tunnel.</string>
+    <string name="support_contact">CONTACTER</string>
+    <string name="support_open_failed">Impossible d’ouvrir le support.</string>
+    <string name="support_prefill">Bonjour, je souhaite signaler un problème avec Barka Tunnel.</string>
+
+    <string name="guide_title">GUIDE D’UTILISATION</string>
+    <string name="guide_1_title">1. Présentation                                      ⌄</string>
+    <string name="guide_1_text">Découvrez Barka Tunnel et les éléments principaux de l’accueil.</string>
+    <string name="guide_2_title">2. Choisir le réseau                              ⌄</string>
+    <string name="guide_2_text">Sélectionnez MOOV-AFRICA BF, ORANGE BF ou TELECEL BF selon votre réseau.</string>
+    <string name="guide_3_title">3. IP Finder                                           ⌄</string>
+    <string name="guide_3_text">Saisissez un motif, définissez Barka Tunnel comme assistant puis lancez la recherche d’une nouvelle IP mobile.</string>
+    <string name="guide_4_title">4. Abonnement                                      ⌄</string>
+    <string name="guide_4_text">Choisissez une offre puis appuyez sur PAYER pour obtenir votre code après paiement.</string>
+    <string name="guide_5_title">5. Code d’activation                              ⌄</string>
+    <string name="guide_5_text">Copiez le code reçu après paiement, collez-le dans Code d’activation puis appuyez sur ACTIVER.</string>
+    <string name="guide_6_title">6. Connexion                                         ⌄</string>
+    <string name="guide_6_text">Sur l’accueil, utilisez le bouton central pour démarrer ou arrêter la connexion VPN.</string>
+    <string name="guide_7_title">7. Journal                                              ⌄</string>
+    <string name="guide_7_text">Consultez les connexions en cours, refusées, réussies et les déconnexions.</string>
+    <string name="guide_8_title">8. Paramètres                                        ⌄</string>
+    <string name="guide_8_text">Personnalisez la langue et le thème, vérifiez les autorisations, les mises à jour et accédez au support.</string>
+
+    <string name="login_title">Connexion</string>
+    <string name="login_subtitle">Connecte ton compte Barka Tunnel</string>
+    <string name="login_identifier">Identifiant</string>
+    <string name="login_password">Mot de passe</string>
+    <string name="login_button">SE CONNECTER</string>
+    <string name="login_success">Connexion réussie.</string>
+    <string name="login_fields_required">Entre ton identifiant et ton mot de passe.</string>
+    <string name="login_progress">CONNEXION…</string>
+
+    <string name="subscription_title">ABONNEMENT</string>
+    <string name="subscription_choose_offer">Choisissez une offre</string>
+    <string name="subscription_24h">24 HEURES                                      300 XOF</string>
+    <string name="subscription_week">1 SEMAINE                                      800 XOF</string>
+    <string name="subscription_two_weeks">2 SEMAINES                                  1 000 XOF</string>
+    <string name="subscription_month">1 MOIS                                          2 000 XOF</string>
+    <string name="subscription_secure_payment">PAIEMENT SÉCURISÉ</string>
+    <string name="subscription_payment_help">Payez facilement et recevez votre code d’activation.</string>
+    <string name="subscription_pay">PAYER</string>
+    <string name="subscription_after_payment">Après paiement, vous recevrez votre code d’activation à copier.</string>
+    <string name="payment_confirmed">Paiement confirmé</string>
+    <string name="payment_code_ready">Votre code d’activation est prêt :</string>
+    <string name="payment_code_format">Votre code d’activation :\n\n%1$s</string>
+    <string name="payment_activate_now">ACTIVER MAINTENANT</string>
+    <string name="payment_code_preparing">Paiement confirmé. Le code est en préparation.</string>
+    <string name="payment_unavailable">Paiement indisponible pour le moment.</string>
+    <string name="copy_code">COPIER LE CODE</string>
+    <string name="code_copied">Code copié.</string>
+    <string name="close">FERMER</string>
+
+    <string name="activation_title">CODE D’ACTIVATION</string>
+    <string name="activation_help">Entrez votre code d’activation\npour débloquer votre abonnement.</string>
+    <string name="activation_hint">Ex : BARKA-XXXX-XXXX-XXXX</string>
+    <string name="activation_button">ACTIVER</string>
+    <string name="activation_where_code">ⓘ   Où trouver mon code ?</string>
+    <string name="activation_where_code_message">Après paiement, copie le code reçu puis colle-le ici.</string>
+    <string name="activation_code_required">Entre ton code d’activation.</string>
+    <string name="activation_unavailable">Validation impossible pour le moment.</string>
+
+    <string name="event_information">Informations</string>
+    <string name="event_app_started">Application démarrée</string>
+
+    <string name="update_title">Mise à jour Barka Tunnel</string>
+    <string name="update_required_title">Mise à jour obligatoire</string>
+    <string name="update_available_title">Mise à jour disponible</string>
+    <string name="update_version_format">\n\nVersion : %1$s</string>
+    <string name="update_available">Une nouvelle version de Barka Tunnel est disponible.</string>
+    <string name="update_now">METTRE À JOUR</string>
+    <string name="update_later">PLUS TARD</string>
+    <string name="update_none">Barka Tunnel est déjà à jour.</string>
+    <string name="update_check_failed">Impossible de vérifier les mises à jour.</string>
+    <string name="update_invalid_link">Lien de mise à jour invalide.</string>
+    <string name="update_open_failed">Impossible d’ouvrir la mise à jour.</string>
+    <string name="notification_connecting">Tentative de connexion au VPN…</string>
+    <string name="notification_disconnecting">Déconnexion du VPN…</string>
+    <string name="notification_connected">VPN connecté</string>
+    <string name="notification_waiting">Connexion en cours • vérification du réseau…</string>
+    <string name="notification_channel_name">État de la connexion Barka Tunnel</string>
+    <string name="notification_channel_description">Affiche l’état de la connexion Barka Tunnel</string>
 </resources>

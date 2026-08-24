@@ -22,7 +22,7 @@
                 android:layout_width="68dp"
                 android:layout_height="68dp"
                 android:background="@drawable/bg_logo_white_circle"
-                android:contentDescription="Logo Barka Tunnel"
+                android:contentDescription="@string/barka_logo_description"
                 android:padding="7dp"
                 android:src="@drawable/ic_barka_logo" />
 
@@ -30,7 +30,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Barka Tunnel"
+                android:text="@string/app_name"
                 android:textColor="@color/barka_card"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -40,7 +40,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Version 1.0"
+                android:text="@string/version_format"
                 android:textColor="#D8E8FF"
                 android:textSize="11sp" />
         </LinearLayout>
@@ -58,37 +58,43 @@
                 android:id="@+id/menuHome"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_home_line"
-                android:text="Accueil" />
+                android:text="@string/home" />
 
             <TextView
                 android:id="@+id/menuGuide"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_book_line"
-                android:text="Guide d’utilisation" />
+                android:text="@string/menu_guide" />
 
             <TextView
                 android:id="@+id/menuSubscription"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_card_line"
-                android:text="Abonnement" />
+                android:text="@string/menu_subscription" />
 
             <TextView
                 android:id="@+id/menuActivation"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_key_line"
-                android:text="Code d’activation" />
+                android:text="@string/menu_activation_code" />
+
+            <TextView
+                android:id="@+id/menuIpFinder"
+                style="@style/BarkaMenuItem"
+                android:drawableStart="@drawable/ic_menu_ip_finder"
+                android:text="@string/menu_ip_finder" />
 
             <TextView
                 android:id="@+id/menuSettings"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_settings_line"
-                android:text="Paramètres" />
+                android:text="@string/menu_settings" />
 
             <TextView
                 android:id="@+id/menuSupport"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_support_line"
-                android:text="Contacter le support" />
+                android:text="@string/menu_support" />
 
             <View
                 android:id="@+id/menuJournal"
@@ -96,11 +102,6 @@
                 android:layout_height="1dp"
                 android:visibility="gone" />
 
-            <View
-                android:id="@+id/menuIpFinder"
-                android:layout_width="1dp"
-                android:layout_height="1dp"
-                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

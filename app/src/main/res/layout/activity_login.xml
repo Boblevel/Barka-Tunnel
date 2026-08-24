@@ -17,7 +17,7 @@
         <ImageView
             android:layout_width="82dp"
             android:layout_height="82dp"
-            android:contentDescription="Logo Barka Tunnel"
+            android:contentDescription="@string/barka_logo_description"
             android:src="@drawable/ic_barka_logo" />
 
         <TextView
@@ -25,7 +25,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:gravity="center"
-            android:text="Connexion"
+            android:text="@string/login_title"
             android:textColor="@color/barka_text"
             android:textSize="25sp"
             android:textStyle="bold" />
@@ -35,7 +35,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:gravity="center"
-            android:text="Connecte ton compte Barka Tunnel"
+            android:text="@string/login_subtitle"
             android:textColor="@color/barka_text_secondary"
             android:textSize="14sp" />
 
@@ -45,7 +45,7 @@
             android:layout_height="60dp"
             android:layout_marginTop="28dp"
             android:background="@drawable/bg_network_selected"
-            android:hint="Identifiant"
+            android:hint="@string/login_identifier"
             android:inputType="text"
             android:paddingHorizontal="16dp"
             android:textColor="@color/barka_text"
@@ -58,7 +58,7 @@
             android:layout_height="60dp"
             android:layout_marginTop="12dp"
             android:background="@drawable/bg_network_selected"
-            android:hint="Mot de passe"
+            android:hint="@string/login_password"
             android:inputType="textPassword"
             android:paddingHorizontal="16dp"
             android:textColor="@color/barka_text"
@@ -70,7 +70,7 @@
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:layout_marginTop="18dp"
-            android:text="SE CONNECTER"
+            android:text="@string/login_button"
             android:textSize="16sp"
             android:textStyle="bold"
             app:backgroundTint="@color/barka_blue"

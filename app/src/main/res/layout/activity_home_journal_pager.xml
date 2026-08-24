@@ -39,7 +39,7 @@
                 android:id="@+id/sharedNavHomeIcon"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:contentDescription="Accueil"
+                android:contentDescription="@string/home"
                 android:src="@drawable/ic_nav_home_active" />
 
             <TextView
@@ -47,7 +47,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Accueil"
+                android:text="@string/home"
                 android:textColor="@color/barka_blue"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -67,7 +67,7 @@
                 android:id="@+id/sharedNavJournalIcon"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:contentDescription="Journal"
+                android:contentDescription="@string/journal"
                 android:src="@drawable/ic_nav_journal" />
 
             <TextView
@@ -75,7 +75,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Journal"
+                android:text="@string/journal"
                 android:textColor="@color/barka_text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>
