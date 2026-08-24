@@ -2,8 +2,11 @@ package com.barkatunnel.app
 
 // BARKA_HOME_RUNTIME_V5_FINAL_NAV_NO_LOGIN
 
+import android.Manifest
 import android.app.Dialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.AudioAttributes
 import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
@@ -17,6 +20,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.ImageView
@@ -45,6 +49,7 @@ import com.barkatunnel.app.ui.home.HomeUiBinder
 import com.barkatunnel.app.ui.home.NetworkOption
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.update.AppUpdateCoordinator
+import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.google.android.material.button.MaterialButton
 import kotlin.math.abs
@@ -75,6 +80,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var updateCoordinator: AppUpdateCoordinator
     private lateinit var connectAction: () -> Unit
     private var networkCallbackRegistered = false
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            AppLogStore.add(this, "Permission de notification accordée.")
+            if (::connectAction.isInitialized) connectAction()
+        } else {
+            AppLogStore.add(this, "Permission de notification refusée.")
+            Toast.makeText(
+                this,
+                "Autorise les notifications de Barka Tunnel pour afficher l’état de connexion.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     private val vpnPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -177,12 +198,9 @@ class MainActivity : AppCompatActivity() {
 
             runHomeAction {
                 val result = controller.startFreeTrial()
-
-                if (result is HomeControllerResult.State) {
-                    timerController.syncAccessRemaining(
-                        result.value.access.remainingSeconds
-                    )
-                }
+                timerController.syncAccessRemaining(
+                    controller.currentState().access.remainingSeconds
+                )
 
                 result
             }
@@ -226,12 +244,26 @@ class MainActivity : AppCompatActivity() {
                     controller.currentState().connection
 
                 if (currentConnection !is HomeConnectionState.Connected) {
+                    if (
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        AppLogStore.add(this, "Demande de permission de notification Android.")
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        return@connectAction
+                    }
+
                     val permissionIntent = VpnService.prepare(this)
                     if (permissionIntent != null) {
                         AppLogStore.add(this, "Demande de permission VPN Android.")
                         vpnPermissionLauncher.launch(permissionIntent)
                         return@connectAction
                     }
+
+                    BarkaVpnService.showConnectingNotification(this)
                 }
 
                 runHomeAction {
@@ -259,17 +291,18 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         val result = controller.connect()
+                        val connectedState =
+                            (result as? HomeControllerResult.State)?.value?.connection
 
-                        if (
-                            result is HomeControllerResult.State &&
-                            result.value.connection is HomeConnectionState.Connected
-                        ) {
+                        if (connectedState is HomeConnectionState.Connected) {
                             timerController.startConnectionTimer()
                             vibrateOnce(CONNECTED_VIBRATION_MS)
                             AppLogStore.add(
                                 this,
-                                "VPN connecté • ${(result.value.connection as HomeConnectionState.Connected).networkName}."
+                                "VPN connecté • ${connectedState.networkName}."
                             )
+                        } else {
+                            BarkaVpnService.cancelConnectingNotification(this)
                         }
 
                         result
@@ -546,10 +579,12 @@ class MainActivity : AppCompatActivity() {
             }
 
             is HomeControllerResult.Message -> {
-                homeController?.currentState()?.connection?.let { connection ->
-                    uiBinder.showConnection(connection)
-                    updatePowerButtonState(connection)
-                    stopConnectionTimerIfInactive(connection)
+                homeController?.currentState()?.let { currentState ->
+                    uiBinder.showAccess(currentState.access)
+                    timerController.syncAccessRemaining(currentState.access.remainingSeconds)
+                    uiBinder.showConnection(currentState.connection)
+                    updatePowerButtonState(currentState.connection)
+                    stopConnectionTimerIfInactive(currentState.connection)
                 }
                 AppLogStore.add(this, "Échec / information : ${result.text}")
                 Toast.makeText(
@@ -584,29 +619,55 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun vibrateOnce(durationMs: Long) {
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            getSystemService(VibratorManager::class.java).defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            getSystemService(VIBRATOR_SERVICE) as Vibrator
-        }
+        runOnUiThread {
+            val isConnectedPulse = durationMs >= CONNECTED_VIBRATION_MS
+            val feedbackType = if (isConnectedPulse) {
+                HapticFeedbackConstants.LONG_PRESS
+            } else {
+                HapticFeedbackConstants.VIRTUAL_KEY
+            }
+            powerButton.performHapticFeedback(
+                feedbackType,
+                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+            )
 
-        if (!vibrator.hasVibrator()) {
-            AppLogStore.add(this, "Vibration indisponible sur cet appareil.")
-            return
-        }
-
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(
-                    VibrationEffect.createOneShot(durationMs, MAX_VIBRATION_AMPLITUDE)
-                )
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                getSystemService(VibratorManager::class.java).defaultVibrator
             } else {
                 @Suppress("DEPRECATION")
-                vibrator.vibrate(durationMs)
+                getSystemService(VIBRATOR_SERVICE) as Vibrator
             }
-        }.onFailure {
-            AppLogStore.add(this, "Vibration impossible • ${it.message ?: "erreur Android"}.")
+
+            if (!vibrator.hasVibrator()) {
+                AppLogStore.add(this, "Vibration indisponible sur cet appareil.")
+                return@runOnUiThread
+            }
+
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val effect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        VibrationEffect.createPredefined(
+                            if (isConnectedPulse) {
+                                VibrationEffect.EFFECT_HEAVY_CLICK
+                            } else {
+                                VibrationEffect.EFFECT_CLICK
+                            }
+                        )
+                    } else {
+                        VibrationEffect.createOneShot(durationMs, MAX_VIBRATION_AMPLITUDE)
+                    }
+                    val attributes = AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                        .build()
+                    vibrator.vibrate(effect, attributes)
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(durationMs)
+                }
+            }.onFailure {
+                AppLogStore.add(this, "Vibration impossible • ${it.message ?: "erreur Android"}.")
+            }
         }
     }
 

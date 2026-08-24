@@ -3,10 +3,13 @@ package com.barkatunnel.app.vpnc6
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.net.VpnService
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.barkatunnel.app.MainActivity
 import com.barkatunnel.app.R
 import com.barkatunnel.app.journal.AppLogStore
@@ -30,11 +33,17 @@ class BarkaVpnService : VpnService() {
 
         when (action) {
             ACTION_CONNECT -> {
-                startForeground(NOTIFICATION_ID, notification("Connexion VPN…"))
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(this, "Tentative de connexion au VPN…")
+                )
                 worker.execute { connect(intent, requestId) }
             }
             ACTION_DISCONNECT -> {
-                startForeground(NOTIFICATION_ID, notification("Déconnexion VPN…"))
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(this, "Déconnexion du VPN…")
+                )
                 worker.execute { disconnect(requestId) }
             }
         }
@@ -169,38 +178,9 @@ class BarkaVpnService : VpnService() {
         VpnProfileProtocol.UDP -> SOCKS_UDP
     }
 
-    private fun notification(text: String): android.app.Notification {
-        createNotificationChannel()
-        val openApp = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_barka_logo)
-            .setContentTitle("Barka Tunnel")
-            .setContentText(text)
-            .setContentIntent(openApp)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .build()
-    }
-
     private fun updateNotification(text: String) {
         getSystemService(NotificationManager::class.java)
-            .notify(NOTIFICATION_ID, notification(text))
-    }
-
-    private fun createNotificationChannel() {
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                "Connexion VPN",
-                NotificationManager.IMPORTANCE_LOW
-            )
-        )
+            .notify(NOTIFICATION_ID, buildNotification(this, text))
     }
 
     private fun sanitizeError(value: String): String {
@@ -216,6 +196,63 @@ class BarkaVpnService : VpnService() {
         const val EXTRA_PROFILE_NAME = "profile_name"
         const val EXTRA_PROTOCOL = "protocol"
         const val EXTRA_CONFIG_JSON = "config_json"
+
+        fun showConnectingNotification(context: Context) {
+            val appContext = context.applicationContext
+            appContext.getSystemService(NotificationManager::class.java).notify(
+                NOTIFICATION_ID,
+                buildNotification(appContext, "Tentative de connexion au VPN…")
+            )
+        }
+
+        fun cancelConnectingNotification(context: Context) {
+            context.applicationContext
+                .getSystemService(NotificationManager::class.java)
+                .cancel(NOTIFICATION_ID)
+        }
+
+        private fun buildNotification(
+            context: Context,
+            text: String
+        ): android.app.Notification {
+            createNotificationChannel(context)
+            val openApp = PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            return NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification_barka)
+                .setContentTitle("Barka Tunnel")
+                .setContentText(text)
+                .setContentIntent(openApp)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .setSilent(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setColor(ContextCompat.getColor(context, R.color.barka_blue))
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+                .build()
+        }
+
+        private fun createNotificationChannel(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val manager = context.getSystemService(NotificationManager::class.java)
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Connexion VPN Barka Tunnel",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Affiche l’état de la connexion Barka Tunnel"
+                setShowBadge(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+            manager.createNotificationChannel(channel)
+        }
 
         private const val CHANNEL_ID = "barka_vpn"
         private const val NOTIFICATION_ID = 6001

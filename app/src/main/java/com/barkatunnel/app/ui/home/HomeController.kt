@@ -26,10 +26,10 @@ class HomeController(
     }
 
     fun startFreeTrial(): HomeControllerResult {
-        state = state.copy(
-            access = runtime.accessController.startFreeTrial()
-        )
-        return HomeControllerResult.State(state)
+        val access = runtime.accessController.startFreeTrial()
+        state = state.copy(access = access)
+        return access.notice?.let { HomeControllerResult.Message(it) }
+            ?: HomeControllerResult.State(state)
     }
 
     fun refreshServers(): HomeControllerResult {

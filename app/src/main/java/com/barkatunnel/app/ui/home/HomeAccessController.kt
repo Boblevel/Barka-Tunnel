@@ -4,6 +4,7 @@ import android.content.Context
 import com.barkatunnel.app.access.AccessCoordinator
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.network.ApiResult
+import com.barkatunnel.app.trial.TrialStatus
 
 class HomeAccessController private constructor(
     private val refreshAction: () -> HomeAccessState,
@@ -44,6 +45,13 @@ class HomeAccessController private constructor(
                             "Essai gratuit actif"
                         } else {
                             "Essai indisponible ou expiré"
+                        },
+                        notice = when (trial.status) {
+                            TrialStatus.EXPIRED ->
+                                "L’essai gratuit de cet appareil a déjà été utilisé."
+                            TrialStatus.BLOCKED ->
+                                "L’essai gratuit n’est pas disponible sur cet appareil."
+                            else -> null
                         }
                     )
                 }
@@ -90,7 +98,8 @@ class HomeAccessController private constructor(
                         trial.access.allowed && trial.access.accessType == "TRIAL" -> "Essai gratuit actif"
                         trial.access.allowed -> "Accès actif"
                         else -> trial.message
-                    }
+                    },
+                    notice = trial.message.takeUnless { trial.startedNow }
                 )
                 HomeAccessSnapshotStore.save(context, state)
                 state

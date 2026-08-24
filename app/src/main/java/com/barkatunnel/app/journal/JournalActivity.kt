@@ -3,15 +3,20 @@ package com.barkatunnel.app.journal
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.barkatunnel.app.R
 import com.google.android.material.button.MaterialButton
+import kotlin.math.abs
 
 class JournalActivity : AppCompatActivity() {
 
     private lateinit var journalList: LinearLayout
+    private var swipeStartX = 0f
+    private var swipeStartY = 0f
+    private var closingJournal = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +40,32 @@ class JournalActivity : AppCompatActivity() {
         }
 
         refreshLogs()
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        var closeAfterDispatch = false
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                swipeStartX = event.x
+                swipeStartY = event.y
+            }
+
+            MotionEvent.ACTION_UP -> {
+                val deltaX = event.x - swipeStartX
+                val deltaY = event.y - swipeStartY
+                val minimumDistance = SWIPE_MIN_DISTANCE_DP * resources.displayMetrics.density
+                closeAfterDispatch =
+                    abs(deltaX) >= minimumDistance &&
+                        abs(deltaX) > abs(deltaY) * SWIPE_DIRECTION_RATIO
+            }
+        }
+
+        val handled = super.dispatchTouchEvent(event)
+        if (closeAfterDispatch && !closingJournal) {
+            closingJournal = true
+            finish()
+        }
+        return handled
     }
 
     override fun onResume() {
@@ -96,4 +127,9 @@ class JournalActivity : AppCompatActivity() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private data class EventCategory(val title: String, val color: Int)
+
+    companion object {
+        private const val SWIPE_MIN_DISTANCE_DP = 96f
+        private const val SWIPE_DIRECTION_RATIO = 1.25f
+    }
 }
