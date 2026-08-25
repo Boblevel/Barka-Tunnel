@@ -5,5 +5,5 @@
         android:angle="0"
         android:startColor="@color/barka_blue"
         android:endColor="@color/barka_blue" />
-    <corners android:radius="24dp" />
+    <corners android:bottomRightRadius="24dp" />
 </shape>
