@@ -87,6 +87,7 @@ class BarkaVpnService : VpnService() {
             val configJson = intent.getStringExtra(EXTRA_CONFIG_JSON).orEmpty()
             val profileConfig = VpnProfileConfigParser.parse(protocol, configJson)
             val profileName = intent.getStringExtra(EXTRA_PROFILE_NAME).orEmpty()
+            AppLogStore.add(this, "Diagnostic VPN • profil ${protocol.name} chargé.")
             var lastFailure: Exception? = null
 
             repeat(CONNECTION_ATTEMPTS) { attempt ->
@@ -121,6 +122,10 @@ class BarkaVpnService : VpnService() {
                         "Connection attempt ${attempt + 1}/$CONNECTION_ATTEMPTS failed: $technicalMessage",
                         error
                     )
+                    AppLogStore.add(
+                        this,
+                        "Diagnostic VPN • tentative ${attempt + 1} • $technicalMessage"
+                    )
                     stopTunnel()
                 }
             }
@@ -146,7 +151,9 @@ class BarkaVpnService : VpnService() {
     ) {
         val protocolEngine = createEngine(protocol, profileConfig)
         engine = protocolEngine
+        AppLogStore.add(this, "Diagnostic VPN • démarrage moteur ${protocol.name}.")
         protocolEngine.start()
+        AppLogStore.add(this, "Diagnostic VPN • moteur ${protocol.name} actif.")
 
         if (
             !PortWaiter.waitUntilOpen(
@@ -157,6 +164,7 @@ class BarkaVpnService : VpnService() {
         ) {
             throw IllegalStateException("Le tunnel ${protocol.name} n’a pas ouvert son proxy local.")
         }
+        AppLogStore.add(this, "Diagnostic VPN • proxy SOCKS ${protocol.name} prêt.")
 
         val dns = when (profileConfig) {
             is VpnProfileConfig.SlowDns -> profileConfig.dns
@@ -171,6 +179,7 @@ class BarkaVpnService : VpnService() {
             .addDisallowedApplication(packageName)
             .establish()
             ?: throw IllegalStateException("Android n’a pas créé l’interface VPN.")
+        AppLogStore.add(this, "Diagnostic VPN • interface TUN Android créée.")
 
         val udpgw = when (profileConfig) {
             is VpnProfileConfig.UdpCustom -> "${profileConfig.udpGwHost}:${profileConfig.udpGwPort}"
@@ -178,6 +187,10 @@ class BarkaVpnService : VpnService() {
             is VpnProfileConfig.Vless -> null
         }
 
+        AppLogStore.add(
+            this,
+            "Diagnostic VPN • démarrage tun2socks • UDP=${if (protocol == VpnProfileProtocol.VLESS) "SOCKS5" else if (udpgw != null) "UDPGW" else "OFF"}."
+        )
         tun2SocksRunner = Tun2SocksRunner(this).also { runner ->
             runner.start(
                 vpnDescriptor = descriptor,
@@ -189,6 +202,7 @@ class BarkaVpnService : VpnService() {
                 forwardUdpThroughSocks = protocol == VpnProfileProtocol.VLESS
             )
         }
+        AppLogStore.add(this, "Diagnostic VPN • tun2socks actif.")
     }
 
     private fun disconnect(requestId: String?) {

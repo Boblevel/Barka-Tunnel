@@ -1,6 +1,7 @@
 package com.barkatunnel.app.vpnc6
 
 import android.content.Context
+import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.vpnprofile.VpnProfileConfig
 import java.util.concurrent.TimeUnit
 
@@ -27,18 +28,26 @@ class SlowDnsEngine(
             .distinct()
         var lastFailure: Exception? = null
 
-        for (resolver in resolvers) {
+        for ((index, resolver) in resolvers.withIndex()) {
             try {
+                AppLogStore.add(this.context, "Diagnostic MOOV • essai DNSTT ${index + 1}/${resolvers.size}.")
                 startWithResolver(dnstt, resolver)
+                AppLogStore.add(this.context, "Diagnostic MOOV • DNSTT + SSH prêts.")
                 return
             } catch (error: Exception) {
                 lastFailure = error
+                AppLogStore.add(
+                    this.context,
+                    "Diagnostic MOOV • DNSTT échec • ${sanitizeDiagnostic(error.message.orEmpty())}"
+                )
                 stopAttempt()
             }
         }
 
         try {
+            AppLogStore.add(this.context, "Diagnostic MOOV • essai SSH direct de secours.")
             startDirectSshFallback()
+            AppLogStore.add(this.context, "Diagnostic MOOV • SSH direct de secours actif.")
             return
         } catch (error: Exception) {
             lastFailure = error
@@ -66,10 +75,18 @@ class SlowDnsEngine(
             .start()
 
         if (!PortWaiter.waitUntilOpen("127.0.0.1", dnsttPort, 25_000)) {
-            throw IllegalStateException("DNSTT n’a pas établi son relais local.")
+            val detail = dnsttFailureDetail()
+            throw IllegalStateException(
+                if (detail.isBlank()) "DNSTT n’a pas établi son relais local."
+                else "DNSTT n’a pas établi son relais local : $detail"
+            )
         }
         if (dnsttProcess?.isAlive != true) {
-            throw IllegalStateException("DNSTT s’est arrêté prématurément.")
+            val detail = dnsttFailureDetail()
+            throw IllegalStateException(
+                if (detail.isBlank()) "DNSTT s’est arrêté prématurément."
+                else "DNSTT s’est arrêté prématurément : $detail"
+            )
         }
 
         sshProxy = SshSocksProxy(
@@ -116,6 +133,30 @@ class SlowDnsEngine(
         throw IllegalStateException(
             lastFailure?.message ?: "SSH de secours n’a pas pu joindre le serveur."
         )
+    }
+
+    private fun dnsttFailureDetail(): String {
+        val output = dnsttLogFile?.takeIf { it.isFile }?.readText().orEmpty()
+        if (output.isBlank()) return ""
+        return sanitizeDiagnostic(
+            output
+                .lineSequence()
+                .filter { it.isNotBlank() }
+                .toList()
+                .takeLast(3)
+                .joinToString(" | ")
+        ).take(300)
+    }
+
+    private fun sanitizeDiagnostic(value: String): String {
+        var clean = value
+        config.publicKey.takeIf { it.isNotBlank() }?.let {
+            clean = clean.replace(it, "[clé masquée]", ignoreCase = true)
+        }
+        config.password.takeIf { it.isNotBlank() }?.let {
+            clean = clean.replace(it, "[mot de passe masqué]")
+        }
+        return clean.take(300)
     }
 
     private fun stopAttempt() {
