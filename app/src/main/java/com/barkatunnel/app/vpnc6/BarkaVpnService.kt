@@ -164,9 +164,19 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun waitForProxyReady(port: Int): Boolean {
-        repeat(20) {
-            if (SocksProbe.connectThrough("127.0.0.1", port)) return true
-            Thread.sleep(1000)
+        repeat(PROXY_READY_ATTEMPTS) { attempt ->
+            if (
+                SocksProbe.connectThrough(
+                    proxyHost = "127.0.0.1",
+                    proxyPort = port,
+                    timeoutMs = PROXY_READY_PROBE_TIMEOUT_MS
+                )
+            ) {
+                return true
+            }
+            if (attempt < PROXY_READY_ATTEMPTS - 1) {
+                Thread.sleep(PROXY_READY_RETRY_DELAY_MS)
+            }
         }
         return false
     }
@@ -331,6 +341,9 @@ class BarkaVpnService : VpnService() {
         private const val SOCKS_VLESS = 10808
         private const val SOCKS_SLOWDNS = 10809
         private const val SOCKS_UDP = 10810
+        private const val PROXY_READY_ATTEMPTS = 24
+        private const val PROXY_READY_PROBE_TIMEOUT_MS = 2_500
+        private const val PROXY_READY_RETRY_DELAY_MS = 750L
         private const val SETTINGS_PREFS = "barka_settings"
         private const val KEY_AUTO_PING = "auto_ping"
         private const val AUTO_PING_HOST = "1.1.1.1"

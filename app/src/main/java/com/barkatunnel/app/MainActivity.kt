@@ -837,6 +837,7 @@ class MainActivity : AppCompatActivity() {
             ipAddress.isBlank() ||
             ipAddress.equals(getString(R.string.unavailable), ignoreCase = true) ||
             ipAddress.equals("Indisponible", ignoreCase = true) ||
+            ipAddress == getString(R.string.network_ip_offline) ||
             ipAddress == "—"
         ) {
             Toast.makeText(this, R.string.ip_unavailable_toast, Toast.LENGTH_SHORT).show()
@@ -1021,18 +1022,30 @@ class MainActivity : AppCompatActivity() {
     private fun refreshNetworkIp() {
         val info = NetworkIpProvider.getCurrent(this)
 
-        networkIpValue.text = info.ip
+        networkIpValue.text = if (info.transportType == NetworkTransport.OTHER) {
+            getString(R.string.network_ip_offline)
+        } else {
+            info.ip
+        }
         networkIpStatus.text = getString(
             R.string.current_ip_status_format,
             info.transport
         )
 
         if (::networkTransportIcon.isInitialized) {
-            val icon = when (info.transportType) {
-                NetworkTransport.CELLULAR -> R.drawable.ic_mobile_barka
-                else -> R.drawable.ic_wifi_barka
+            when (info.transportType) {
+                NetworkTransport.CELLULAR -> {
+                    networkTransportIcon.setImageResource(R.drawable.ic_mobile_barka)
+                    networkTransportIcon.visibility = View.VISIBLE
+                }
+                NetworkTransport.WIFI, NetworkTransport.VPN -> {
+                    networkTransportIcon.setImageResource(R.drawable.ic_wifi_barka)
+                    networkTransportIcon.visibility = View.VISIBLE
+                }
+                NetworkTransport.OTHER -> {
+                    networkTransportIcon.visibility = View.GONE
+                }
             }
-            networkTransportIcon.setImageResource(icon)
         }
     }
 

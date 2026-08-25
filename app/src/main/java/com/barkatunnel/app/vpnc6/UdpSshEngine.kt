@@ -10,18 +10,36 @@ class UdpSshEngine(
     private var sshProxy: SshSocksProxy? = null
 
     override fun start() {
-        sshProxy = SshSocksProxy(
-            sshHost = config.sshDomain?.takeIf { it.isNotBlank() } ?: config.host,
-            sshPort = config.port,
-            username = config.username,
-            password = config.password,
-            localPort = socksPort
-        ).also { it.start() }
+        val hosts = listOfNotNull(
+            config.host.takeIf { it.isNotBlank() },
+            config.sshDomain?.takeIf { it.isNotBlank() }
+        ).distinct()
+        var lastFailure: Exception? = null
 
-        if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000)) {
-            stop()
-            throw IllegalStateException("SSH UDP n’a pas ouvert son proxy local.")
+        for (host in hosts) {
+            val candidate = SshSocksProxy(
+                sshHost = host,
+                sshPort = config.port,
+                username = config.username,
+                password = config.password,
+                localPort = socksPort
+            )
+            try {
+                candidate.start()
+                if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000)) {
+                    throw IllegalStateException("SSH UDP n’a pas ouvert son proxy local.")
+                }
+                sshProxy = candidate
+                return
+            } catch (error: Exception) {
+                lastFailure = error
+                candidate.stop()
+            }
         }
+
+        throw IllegalStateException(
+            lastFailure?.message ?: "SSH UDP n’a pas pu joindre le serveur."
+        )
     }
 
     override fun stop() {

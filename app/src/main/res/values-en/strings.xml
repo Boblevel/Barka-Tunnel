@@ -150,22 +150,22 @@
     <string name="support_prefill">Hello, I would like to report a problem with Barka Tunnel.</string>
 
     <string name="guide_title">USER GUIDE</string>
-    <string name="guide_1_title">1. Introduction                                      ⌄</string>
-    <string name="guide_1_text">Discover Barka Tunnel and the main elements on the home screen.</string>
-    <string name="guide_2_title">2. Choose a network                              ⌄</string>
-    <string name="guide_2_text">Select MOOV-AFRICA BF, ORANGE BF, or TELECEL BF according to your network.</string>
-    <string name="guide_3_title">3. IP Finder                                           ⌄</string>
-    <string name="guide_3_text">Enter a pattern, set Barka Tunnel as the assistant, then search for a new mobile IP.</string>
-    <string name="guide_4_title">4. Subscription                                      ⌄</string>
-    <string name="guide_4_text">Choose an offer, then tap PAY to receive your code after payment.</string>
-    <string name="guide_5_title">5. Activation code                              ⌄</string>
-    <string name="guide_5_text">Copy the code received after payment, paste it under Activation code, then tap ACTIVATE.</string>
-    <string name="guide_6_title">6. Connection                                         ⌄</string>
-    <string name="guide_6_text">On the home screen, use the center button to start or stop the VPN connection.</string>
-    <string name="guide_7_title">7. Journal                                              ⌄</string>
-    <string name="guide_7_text">View pending, refused, successful connections and disconnections.</string>
-    <string name="guide_8_title">8. Settings                                        ⌄</string>
-    <string name="guide_8_text">Customize the language and theme, check permissions and updates, and access support.</string>
+    <string name="guide_1_title">1. Introduction</string>
+    <string name="guide_1_text">What is Barka Tunnel for?\n\n• NETWORK IP shows the detected IPv4 address and connection type (mobile data or Wi‑Fi). When there is no network, --- is displayed.\n• SELECTED NETWORK lets you choose the operator.\n• The large center button starts or stops the VPN.\n• TIME REMAINING shows your available access time; ADD opens the offers.\n• The gift, refresh, menu and Journal tab provide access to the other features.</string>
+    <string name="guide_2_title">2. Choose a network</string>
+    <string name="guide_2_text">1. Enable the SIM and mobile data for the operator you are using.\n2. Tap SELECTED NETWORK.\n3. Choose MOOV-AFRICA BF, ORANGE BF, or TELECEL BF.\n4. Check that the displayed name matches your network before starting the connection.\n\nEach operator automatically uses its dedicated connection profile; you do not need to enter technical settings.</string>
+    <string name="guide_3_title">3. IP Finder</string>
+    <string name="guide_3_text">IP Finder searches for a mobile IP that matches a pattern.\n\n1. Turn off Wi‑Fi and keep mobile data enabled.\n2. Enter a pattern: ^ starts with, $ ends with, = exact; without a symbol = contains. Multiple patterns can be separated by a line, comma, or ;.\n3. Tap SET AS ASSISTANT and choose Barka Tunnel as the Android digital assistant.\n4. Tap FIND AN IP. The app cycles the mobile network until a compatible IP is found or you stop the search.\n5. When a compatible IP is found, return to the home screen and start the VPN on the relevant network.\n\nThe search stops any active VPN connection.</string>
+    <string name="guide_4_title">4. Subscription</string>
+    <string name="guide_4_text">1. Open Subscription from ADD, the gift, or the menu.\n2. Choose the duration you want.\n3. Tap PAY and complete the secure payment.\n4. After confirmation, copy the activation code shown.\n5. Use ACTIVATE NOW or open Activation code.\n\nAfter activation, the available duration appears under TIME REMAINING.</string>
+    <string name="guide_5_title">5. Activation code</string>
+    <string name="guide_5_text">1. Open Activation code.\n2. Paste the code received after payment.\n3. Tap ACTIVATE.\n4. After validation, return to the home screen and check TIME REMAINING.\n\nAn activation code is personal: do not share it.</string>
+    <string name="guide_6_title">6. Connection</string>
+    <string name="guide_6_text">1. Select the network that matches your SIM.\n2. Make sure mobile data is enabled and that you have time remaining.\n3. Tap the large center button.\n4. While the tunnel is being established, the status shows CONNECTING…; wait for it to finish without tapping the button again.\n5. When the VPN is ready, the status changes to CONNECTED and the timer starts.\n6. To stop, tap the center button again.\n\nIf the connection is refused, open Journal to review the attempt, then check the selected network, mobile IP, and your access.</string>
+    <string name="guide_7_title">7. Journal</string>
+    <string name="guide_7_text">Journal shows useful events without exposing technical secrets.\n\n• Orange: connection in progress.\n• Green: connection established.\n• Red: connection refused or failed.\n• Ping lines appear only when Auto Ping is enabled and the VPN is connected.\n• The trash icon clears the displayed history.\n\nUse Journal after an attempt to see whether it is in progress, successful, or refused.</string>
+    <string name="guide_8_title">8. Settings</string>
+    <string name="guide_8_text">• Theme: Light, Dark, or System.\n• Language: French (default) or English.\n• Auto Ping: off by default; enable it only if you want a periodic tunnel check.\n• Android VPN settings: opens the system VPN settings.\n• Check for updates: looks for the latest available version.\n• Share the app: shares the download link.\n• About: shows the installed version.\n\nLanguage and theme settings change the interface without modifying your VPN profiles.</string>
 
     <string name="login_title">Sign in</string>
     <string name="login_subtitle">Sign in to your Barka Tunnel account</string>

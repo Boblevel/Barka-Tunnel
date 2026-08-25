@@ -65,7 +65,7 @@ class C6VpnController(context: Context) {
     }
 
     companion object {
-        private const val CONNECT_TIMEOUT_SECONDS = 35L
+        private const val CONNECT_TIMEOUT_SECONDS = 120L
         private const val DISCONNECT_TIMEOUT_SECONDS = 10L
     }
 }

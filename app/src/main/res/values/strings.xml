@@ -21,6 +21,7 @@
     <string name="check_updates_description">Vérifier les mises à jour</string>
     <string name="open_menu_description">Ouvrir le menu</string>
     <string name="network_ip_title">IP DU RÉSEAU</string>
+    <string name="network_ip_offline" translatable="false">---</string>
     <string name="network_ip_current">Adresse IP actuelle</string>
     <string name="current_ip_status_format">%1$s • IP actuelle</string>
     <string name="network_title">RÉSEAU</string>
@@ -158,22 +159,22 @@
     <string name="support_prefill">Bonjour, je souhaite signaler un problème avec Barka Tunnel.</string>
 
     <string name="guide_title">GUIDE D’UTILISATION</string>
-    <string name="guide_1_title">1. Présentation                                      ⌄</string>
-    <string name="guide_1_text">Découvrez Barka Tunnel et les éléments principaux de l’accueil.</string>
-    <string name="guide_2_title">2. Choisir le réseau                              ⌄</string>
-    <string name="guide_2_text">Sélectionnez MOOV-AFRICA BF, ORANGE BF ou TELECEL BF selon votre réseau.</string>
-    <string name="guide_3_title">3. IP Finder                                           ⌄</string>
-    <string name="guide_3_text">Saisissez un motif, définissez Barka Tunnel comme assistant puis lancez la recherche d’une nouvelle IP mobile.</string>
-    <string name="guide_4_title">4. Abonnement                                      ⌄</string>
-    <string name="guide_4_text">Choisissez une offre puis appuyez sur PAYER pour obtenir votre code après paiement.</string>
-    <string name="guide_5_title">5. Code d’activation                              ⌄</string>
-    <string name="guide_5_text">Copiez le code reçu après paiement, collez-le dans Code d’activation puis appuyez sur ACTIVER.</string>
-    <string name="guide_6_title">6. Connexion                                         ⌄</string>
-    <string name="guide_6_text">Sur l’accueil, utilisez le bouton central pour démarrer ou arrêter la connexion VPN.</string>
-    <string name="guide_7_title">7. Journal                                              ⌄</string>
-    <string name="guide_7_text">Consultez les connexions en cours, refusées, réussies et les déconnexions.</string>
-    <string name="guide_8_title">8. Paramètres                                        ⌄</string>
-    <string name="guide_8_text">Personnalisez la langue et le thème, vérifiez les autorisations, les mises à jour et accédez au support.</string>
+    <string name="guide_1_title">1. Présentation</string>
+    <string name="guide_1_text">À quoi sert Barka Tunnel ?\n\n• IP DU RÉSEAU affiche l’adresse IPv4 détectée et le type de connexion (données mobiles ou Wi‑Fi). Sans réseau, --- s’affiche.\n• RÉSEAU SÉLECTIONNÉ permet de choisir l’opérateur.\n• Le grand bouton central démarre ou arrête le VPN.\n• TEMPS RESTANT indique la durée d’accès disponible ; AJOUTER ouvre les offres.\n• Le cadeau, l’actualisation, le menu et l’onglet Journal donnent accès aux autres fonctions.</string>
+    <string name="guide_2_title">2. Choisir le réseau</string>
+    <string name="guide_2_text">1. Activez la SIM et les données mobiles de l’opérateur utilisé.\n2. Touchez RÉSEAU SÉLECTIONNÉ.\n3. Choisissez MOOV-AFRICA BF, ORANGE BF ou TELECEL BF.\n4. Vérifiez que le nom affiché correspond à votre réseau avant de lancer la connexion.\n\nChaque opérateur utilise automatiquement son profil de connexion dédié ; vous n’avez aucun paramètre technique à saisir.</string>
+    <string name="guide_3_title">3. IP Finder</string>
+    <string name="guide_3_text">IP Finder sert à rechercher une IP mobile correspondant à un motif.\n\n1. Désactivez le Wi‑Fi et gardez les données mobiles actives.\n2. Entrez un motif : ^ commence par, $ se termine par, = exact ; sans symbole = contient. Plusieurs motifs peuvent être séparés par ligne, virgule ou ;.\n3. Touchez DÉFINIR COMME ASSISTANT et choisissez Barka Tunnel comme assistant numérique Android.\n4. Touchez TROUVER UNE IP. L’application relance le réseau mobile jusqu’à trouver une IP compatible ou jusqu’à l’arrêt.\n5. Quand une IP compatible est trouvée, revenez à l’accueil et lancez le VPN sur le réseau concerné.\n\nLa recherche interrompt toute connexion VPN active.</string>
+    <string name="guide_4_title">4. Abonnement</string>
+    <string name="guide_4_text">1. Ouvrez Abonnement depuis AJOUTER, le cadeau ou le menu.\n2. Choisissez la durée souhaitée.\n3. Touchez PAYER et terminez le paiement sécurisé.\n4. Après confirmation, copiez le code d’activation affiché.\n5. Utilisez ACTIVER MAINTENANT ou ouvrez Code d’activation.\n\nAprès activation, la durée disponible apparaît dans TEMPS RESTANT.</string>
+    <string name="guide_5_title">5. Code d’activation</string>
+    <string name="guide_5_text">1. Ouvrez Code d’activation.\n2. Collez le code reçu après paiement.\n3. Touchez ACTIVER.\n4. Après validation, revenez à l’accueil et vérifiez TEMPS RESTANT.\n\nUn code d’activation est personnel : ne le partagez pas.</string>
+    <string name="guide_6_title">6. Connexion</string>
+    <string name="guide_6_text">1. Sélectionnez le réseau correspondant à votre SIM.\n2. Vérifiez que les données mobiles sont actives et qu’il reste du temps.\n3. Touchez le grand bouton central.\n4. Pendant l’établissement, l’état affiche CONNEXION… ; attendez la fin sans relancer le bouton.\n5. Quand le VPN est prêt, l’état passe à CONNECTÉ et le chronomètre démarre.\n6. Pour arrêter, touchez de nouveau le bouton central.\n\nEn cas de refus, ouvrez Journal pour voir l’état de la tentative puis vérifiez le réseau sélectionné, l’IP mobile et votre accès.</string>
+    <string name="guide_7_title">7. Journal</string>
+    <string name="guide_7_text">Le Journal affiche les événements utiles sans montrer les secrets techniques.\n\n• Orange : connexion en cours.\n• Vert : connexion établie.\n• Rouge : connexion refusée ou échec.\n• Les lignes Ping apparaissent seulement si Auto Ping est activé et que le VPN est connecté.\n• L’icône corbeille efface l’historique affiché.\n\nUtilisez le Journal après une tentative pour savoir si elle est en cours, réussie ou refusée.</string>
+    <string name="guide_8_title">8. Paramètres</string>
+    <string name="guide_8_text">• Thème : Clair, Sombre ou Système.\n• Langue : Français (par défaut) ou English.\n• Auto Ping : désactivé par défaut ; activez-le uniquement si vous souhaitez un contrôle périodique du tunnel.\n• Réglages VPN Android : ouvre les réglages système des VPN.\n• Vérifier la mise à jour : recherche la dernière version disponible.\n• Partager l’application : partage le lien de téléchargement.\n• À propos : affiche la version installée.\n\nLes réglages de langue et de thème s’appliquent à l’interface sans modifier vos profils VPN.</string>
 
     <string name="login_title">Connexion</string>
     <string name="login_subtitle">Connecte ton compte Barka Tunnel</string>

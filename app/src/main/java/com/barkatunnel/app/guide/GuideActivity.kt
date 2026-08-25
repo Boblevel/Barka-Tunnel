@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
 import com.barkatunnel.app.R
 
 class GuideActivity : AppCompatActivity() {
@@ -29,8 +30,19 @@ class GuideActivity : AppCompatActivity() {
         val details = findViewById<TextView>(detailsId)
 
         title.setOnClickListener {
-            details.visibility =
-                if (details.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            val expanding = details.visibility != View.VISIBLE
+            details.visibility = if (expanding) View.VISIBLE else View.GONE
+
+            val drawables = title.compoundDrawablesRelative
+            title.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                drawables[0],
+                drawables[1],
+                AppCompatResources.getDrawable(
+                    this,
+                    if (expanding) R.drawable.ic_guide_collapse else R.drawable.ic_guide_expand
+                ),
+                drawables[3]
+            )
         }
     }
 }
