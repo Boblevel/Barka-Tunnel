@@ -28,17 +28,33 @@ class SlowDnsEngine(
             .distinct()
         var lastFailure: Exception? = null
 
+        AppLogStore.add(
+            this.context,
+            "Diagnostic MOOV • config • DNS=${config.dns}:53 • NS=${config.nameServer} • serveur=${config.host} • SSH=${config.sshDomain}:${config.sshPort}."
+        )
+
         for ((index, resolver) in resolvers.withIndex()) {
             try {
-                AppLogStore.add(this.context, "Diagnostic MOOV • essai DNSTT ${index + 1}/${resolvers.size}.")
+                AppLogStore.add(
+                    this.context,
+                    "Diagnostic MOOV • essai DNSTT ${index + 1}/${resolvers.size} • resolver=$resolver:53."
+                )
                 startWithResolver(dnstt, resolver)
                 AppLogStore.add(this.context, "Diagnostic MOOV • DNSTT + SSH prêts.")
                 return
             } catch (error: Exception) {
                 lastFailure = error
+                val processDetail = dnsttFailureDetail()
+                val diagnostic = buildString {
+                    append(diagnosticThrowable(error))
+                    if (processDetail.isNotBlank()) {
+                        append(" • log DNSTT: ")
+                        append(processDetail)
+                    }
+                }.take(500)
                 AppLogStore.add(
                     this.context,
-                    "Diagnostic MOOV • DNSTT échec • ${sanitizeDiagnostic(error.message.orEmpty())}"
+                    "Diagnostic MOOV • DNSTT échec • $diagnostic"
                 )
                 stopAttempt()
             }
@@ -73,6 +89,10 @@ class SlowDnsEngine(
             .redirectErrorStream(true)
             .redirectOutput(output)
             .start()
+        AppLogStore.add(
+            this.context,
+            "Diagnostic MOOV • processus DNSTT lancé • relais local attendu 127.0.0.1:$dnsttPort."
+        )
 
         if (!PortWaiter.waitUntilOpen("127.0.0.1", dnsttPort, 25_000)) {
             val detail = dnsttFailureDetail()
@@ -81,6 +101,10 @@ class SlowDnsEngine(
                 else "DNSTT n’a pas établi son relais local : $detail"
             )
         }
+        AppLogStore.add(
+            this.context,
+            "Diagnostic MOOV • relais DNSTT local ouvert • 127.0.0.1:$dnsttPort."
+        )
         if (dnsttProcess?.isAlive != true) {
             val detail = dnsttFailureDetail()
             throw IllegalStateException(
@@ -89,6 +113,10 @@ class SlowDnsEngine(
             )
         }
 
+        AppLogStore.add(
+            this.context,
+            "Diagnostic MOOV • début SSH via DNSTT • destination locale 127.0.0.1:$dnsttPort."
+        )
         sshProxy = SshSocksProxy(
             sshHost = "127.0.0.1",
             sshPort = dnsttPort,
@@ -96,10 +124,18 @@ class SlowDnsEngine(
             password = config.password,
             localPort = socksPort
         ).also { it.start() }
+        AppLogStore.add(
+            this.context,
+            "Diagnostic MOOV • session SSH via DNSTT établie • SOCKS attendu 127.0.0.1:$socksPort."
+        )
 
         if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000)) {
             throw IllegalStateException("SSH SlowDNS n’a pas ouvert son proxy local.")
         }
+        AppLogStore.add(
+            this.context,
+            "Diagnostic MOOV • SOCKS SlowDNS ouvert • 127.0.0.1:$socksPort."
+        )
     }
 
     private fun startDirectSshFallback() {
@@ -110,6 +146,10 @@ class SlowDnsEngine(
         var lastFailure: Exception? = null
 
         for (host in hosts) {
+            AppLogStore.add(
+                this.context,
+                "Diagnostic MOOV • secours SSH • $host:${config.sshPort}."
+            )
             val candidate = SshSocksProxy(
                 sshHost = host,
                 sshPort = config.sshPort,
@@ -126,6 +166,10 @@ class SlowDnsEngine(
                 return
             } catch (error: Exception) {
                 lastFailure = error
+                AppLogStore.add(
+                    this.context,
+                    "Diagnostic MOOV • secours SSH échec • ${diagnosticThrowable(error)}"
+                )
                 candidate.stop()
             }
         }
@@ -146,6 +190,27 @@ class SlowDnsEngine(
                 .takeLast(3)
                 .joinToString(" | ")
         ).take(300)
+    }
+
+    private fun diagnosticThrowable(error: Throwable): String {
+        val message = sanitizeDiagnostic(error.message.orEmpty()).ifBlank { "sans message" }
+        val frame = error.stackTrace.firstOrNull()?.let { item ->
+            "${item.className.substringAfterLast('.')}.${item.methodName}:${item.lineNumber}"
+        }.orEmpty()
+        val cause = error.cause?.takeIf { it !== error }?.let { item ->
+            val causeMessage = sanitizeDiagnostic(item.message.orEmpty()).ifBlank { "sans message" }
+            " • cause=${item.javaClass.simpleName}:$causeMessage"
+        }.orEmpty()
+        return buildString {
+            append(error.javaClass.simpleName)
+            append(":")
+            append(message)
+            if (frame.isNotBlank()) {
+                append(" • at=")
+                append(frame)
+            }
+            append(cause)
+        }.take(360)
     }
 
     private fun sanitizeDiagnostic(value: String): String {
