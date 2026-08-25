@@ -8,7 +8,7 @@ rm -rf "$TMP" "$JNI"
 mkdir -p "$TMP" "$JNI/arm64-v8a" "$JNI/armeabi-v7a"
 
 # Xray/VLESS - version épinglée pour un build reproductible.
-XRAY_TAG="v26.7.28"
+XRAY_TAG="v26.3.27"
 # Les releases Android officielles Xray publient arm64-v8a, mais pas arm32-v7a.
 # C6 embarque donc Xray/VLESS pour arm64-v8a uniquement au lieu d'appeler
 # un asset inexistant qui provoque un HTTP 404 dans GitHub Actions.
