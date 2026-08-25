@@ -44,7 +44,7 @@ class JournalUiBinder(
         val compact = mutableListOf<JournalEvent>()
         events.forEach { event ->
             val previous = compact.lastOrNull()
-            if (previous?.type == event.type) {
+            if (previous?.type == event.type && event.type != EventType.DIAGNOSTIC) {
                 compact[compact.lastIndex] = event.copy(
                     networkName = event.networkName ?: previous.networkName
                 )
@@ -67,6 +67,8 @@ class JournalUiBinder(
         }
 
         val type = when {
+            value.startsWith("diagnostic vpn") || value.startsWith("diagnostic moov") ->
+                EventType.DIAGNOSTIC
             value.contains("déconnexion en cours") || value.contains("disconnecting") ->
                 EventType.DISCONNECTING
             value.contains("déconnexion") || value.contains("déconnecté") ->
@@ -93,7 +95,8 @@ class JournalUiBinder(
         return JournalEvent(
             clock = clock,
             type = type,
-            networkName = networkName
+            networkName = networkName,
+            detail = if (type == EventType.DIAGNOSTIC) message else null
         )
     }
 
@@ -144,6 +147,11 @@ class JournalUiBinder(
                 message = context.getString(R.string.journal_disconnected_message),
                 colorRes = R.color.barka_blue
             )
+            EventType.DIAGNOSTIC -> EventPresentation(
+                title = "Diagnostic VPN",
+                message = event.detail.orEmpty(),
+                colorRes = R.color.barka_blue
+            )
         }
     }
 
@@ -156,13 +164,15 @@ class JournalUiBinder(
         RETRY,
         CONNECTED,
         DISCONNECTING,
-        DISCONNECTED
+        DISCONNECTED,
+        DIAGNOSTIC
     }
 
     private data class JournalEvent(
         val clock: String,
         val type: EventType,
-        val networkName: String?
+        val networkName: String?,
+        val detail: String? = null
     )
 
     private data class EventPresentation(
