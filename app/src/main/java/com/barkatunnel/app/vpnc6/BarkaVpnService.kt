@@ -90,7 +90,7 @@ class BarkaVpnService : VpnService() {
 
             protocolEngine.start()
 
-            if (!SocksProbe.connectThrough("127.0.0.1", socksPort(protocol))) {
+            if (!waitForProxyReady(socksPort(protocol))) {
                 throw IllegalStateException("Le tunnel ${protocol.name} n’a pas validé le passage TCP réel.")
             }
 
@@ -163,6 +163,14 @@ class BarkaVpnService : VpnService() {
         connected = false
     }
 
+    private fun waitForProxyReady(port: Int): Boolean {
+        repeat(6) {
+            if (SocksProbe.connectThrough("127.0.0.1", port)) return true
+            Thread.sleep(1000)
+        }
+        return false
+    }
+
     private fun startAutoPing(protocol: VpnProfileProtocol) {
         keepAliveFuture?.cancel(true)
         val port = socksPort(protocol)
@@ -176,13 +184,16 @@ class BarkaVpnService : VpnService() {
                         // du protocole actif. Il garde donc réellement
                         // SlowDNS/SSH/VLESS en activité au lieu d'envoyer un
                         // ping hors du VPN.
-                        SocksProbe.connectThrough(
+                        val start = System.currentTimeMillis()
+                        val ok = SocksProbe.connectThrough(
                             proxyHost = "127.0.0.1",
                             proxyPort = port,
                             destinationHost = AUTO_PING_HOST,
                             destinationPort = AUTO_PING_PORT,
                             timeoutMs = AUTO_PING_TIMEOUT_MS
                         )
+                        val ping = System.currentTimeMillis() - start
+                        AppLogStore.add(this, "Ping : ${ping} ms ${if (ok) "OK" else "Échec"}")
                     }
                 }
             },

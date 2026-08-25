@@ -50,7 +50,7 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        autoPingSwitch.isChecked = prefs.getBoolean("auto_ping", true)
+        autoPingSwitch.isChecked = prefs.getBoolean("auto_ping", false)
         autoPingSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean("auto_ping", checked).apply()
         }

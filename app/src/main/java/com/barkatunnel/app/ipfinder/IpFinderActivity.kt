@@ -158,7 +158,7 @@ class IpFinderActivity : AppCompatActivity() {
 
     private fun requestAssistantSelection() {
         if (BarkaAssistantService.isSelected(this)) {
-            refreshAssistantState()
+            openAssistantSettingsFallback()
             return
         }
 
