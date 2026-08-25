@@ -42,7 +42,7 @@ class SshSocksProxy(
             stage = "ouverture SOCKS local"
             val listener = ServerSocket().apply {
                 reuseAddress = true
-                bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), localPort))
+                bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), this@SshSocksProxy.localPort))
             }
             serverSocket = listener
             running = true
