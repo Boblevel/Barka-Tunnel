@@ -231,4 +231,7 @@
     <string name="notification_waiting">Connecting • checking the network…</string>
     <string name="notification_channel_name">Barka Tunnel connection status</string>
     <string name="notification_channel_description">Shows the Barka Tunnel connection status</string>
+    <string name="journal_latency_title">VPN latency</string>
+    <string name="journal_latency_message">%1$d ms</string>
+    <string name="journal_latency_failed">Network check failed</string>
 </resources>

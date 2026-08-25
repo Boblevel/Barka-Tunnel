@@ -240,4 +240,7 @@
     <string name="notification_waiting">Connexion en cours • vérification du réseau…</string>
     <string name="notification_channel_name">État de la connexion Barka Tunnel</string>
     <string name="notification_channel_description">Affiche l’état de la connexion Barka Tunnel</string>
+    <string name="journal_latency_title">Latence VPN</string>
+    <string name="journal_latency_message">%1$d ms</string>
+    <string name="journal_latency_failed">Échec du contrôle réseau</string>
 </resources>

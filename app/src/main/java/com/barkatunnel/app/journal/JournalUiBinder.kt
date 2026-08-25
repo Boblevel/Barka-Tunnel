@@ -72,6 +72,7 @@ class JournalUiBinder(
                 value.startsWith("diagnostic orange") ||
                 value.startsWith("diagnostic telecel") ->
                 EventType.DIAGNOSTIC
+            value.startsWith("ping :") -> EventType.PING
             value.contains("déconnexion en cours") || value.contains("disconnecting") ->
                 EventType.DISCONNECTING
             value.contains("déconnexion") || value.contains("déconnecté") ->
@@ -99,7 +100,7 @@ class JournalUiBinder(
             clock = clock,
             type = type,
             networkName = networkName,
-            detail = if (type == EventType.DIAGNOSTIC) message else null
+            detail = if (type == EventType.DIAGNOSTIC || type == EventType.PING) message else null
         )
     }
 
@@ -150,6 +151,25 @@ class JournalUiBinder(
                 message = context.getString(R.string.journal_disconnected_message),
                 colorRes = R.color.barka_blue
             )
+            EventType.PING -> {
+                val latency = PING_VALUE.find(event.detail.orEmpty())
+                    ?.groupValues?.getOrNull(1)?.toLongOrNull()
+                val failed = event.detail.orEmpty().contains("échec", ignoreCase = true)
+                EventPresentation(
+                    title = context.getString(R.string.journal_latency_title),
+                    message = if (failed)
+                        context.getString(R.string.journal_latency_failed)
+                    else
+                        context.getString(R.string.journal_latency_message, latency ?: 0L),
+                    colorRes = when {
+                        failed -> R.color.barka_red
+                        latency == null -> R.color.barka_blue
+                        latency <= 300L -> R.color.barka_green
+                        latency <= 500L -> R.color.barka_orange
+                        else -> R.color.barka_red
+                    }
+                )
+            }
             EventType.DIAGNOSTIC -> EventPresentation(
                 title = "Diagnostic VPN",
                 message = event.detail.orEmpty(),
@@ -168,6 +188,7 @@ class JournalUiBinder(
         CONNECTED,
         DISCONNECTING,
         DISCONNECTED,
+        PING,
         DIAGNOSTIC
     }
 
@@ -187,6 +208,7 @@ class JournalUiBinder(
     companion object {
         private const val MAX_VISIBLE_EVENTS = 80
         private val LOG_LINE = Regex("^\\[([^]]+)]\\s*(.*)$")
+        private val PING_VALUE = Regex("Ping\\s*:\\s*(\\d+)\\s*ms", RegexOption.IGNORE_CASE)
         private val NETWORK_NAME = Regex(
             "MOOV-AFRICA BF|ORANGE BF|TELECEL BF",
             RegexOption.IGNORE_CASE

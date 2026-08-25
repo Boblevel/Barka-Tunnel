@@ -130,7 +130,8 @@ class XrayVlessEngine(
         if (config.security == "tls") {
             val tlsSettings = JSONObject()
                 .put("serverName", config.sni)
-                .put("allowInsecure", config.allowInsecure)
+            // Xray v26.3.27 refuse désormais allowInsecure=true depuis le 01/06/2026.
+            // On laisse donc la validation TLS standard utiliser le SNI configuré.
             config.fingerprint?.takeIf { it.isNotBlank() }?.let {
                 tlsSettings.put("fingerprint", it)
             }

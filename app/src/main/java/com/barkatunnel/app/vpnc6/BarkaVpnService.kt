@@ -306,7 +306,7 @@ class BarkaVpnService : VpnService() {
                         // du protocole actif. Il garde donc réellement
                         // SlowDNS/SSH/VLESS en activité au lieu d'envoyer un
                         // ping hors du VPN.
-                        val start = System.currentTimeMillis()
+                        val startNs = System.nanoTime()
                         val ok = SocksProbe.connectThrough(
                             proxyHost = "127.0.0.1",
                             proxyPort = port,
@@ -314,8 +314,11 @@ class BarkaVpnService : VpnService() {
                             destinationPort = AUTO_PING_PORT,
                             timeoutMs = AUTO_PING_TIMEOUT_MS
                         )
-                        val ping = System.currentTimeMillis() - start
-                        AppLogStore.add(this, "Ping : ${ping} ms ${if (ok) "OK" else "Échec"}")
+                        val latencyMs = (System.nanoTime() - startNs) / 1_000_000L
+                        AppLogStore.add(
+                            this,
+                            "Ping : ${latencyMs} ms ${if (ok) "OK" else "Échec"}"
+                        )
                     }
                 }
             },
@@ -494,7 +497,7 @@ class BarkaVpnService : VpnService() {
         private const val AUTO_PING_HOST = "1.1.1.1"
         private const val AUTO_PING_PORT = 443
         private const val AUTO_PING_TIMEOUT_MS = 4_000
-        private const val AUTO_PING_INITIAL_DELAY_SECONDS = 10L
-        private const val AUTO_PING_INTERVAL_SECONDS = 20L
+        private const val AUTO_PING_INITIAL_DELAY_SECONDS = 3L
+        private const val AUTO_PING_INTERVAL_SECONDS = 15L
     }
 }
