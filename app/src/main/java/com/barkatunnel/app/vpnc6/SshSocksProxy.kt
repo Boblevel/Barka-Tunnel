@@ -26,33 +26,44 @@ class SshSocksProxy(
     @Volatile private var running = false
 
     fun start() {
-        val ssh = JSch().getSession(username, sshHost, sshPort).apply {
-            setPassword(password)
-            setConfig("StrictHostKeyChecking", "no")
-            setConfig("PreferredAuthentications", "password,keyboard-interactive")
-            setServerAliveInterval(15_000)
-            setServerAliveCountMax(3)
-            connect(12_000)
-        }
-        session = ssh
+        var stage = "création session JSch"
+        try {
+            val ssh = JSch().getSession(username, sshHost, sshPort).apply {
+                setPassword(password)
+                setConfig("StrictHostKeyChecking", "no")
+                setConfig("PreferredAuthentications", "password,keyboard-interactive")
+                setServerAliveInterval(15_000)
+                setServerAliveCountMax(3)
+                stage = "connexion SSH"
+                connect(12_000)
+            }
+            session = ssh
 
-        val listener = ServerSocket().apply {
-            reuseAddress = true
-            bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), localPort))
-        }
-        serverSocket = listener
-        running = true
+            stage = "ouverture SOCKS local"
+            val listener = ServerSocket().apply {
+                reuseAddress = true
+                bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), localPort))
+            }
+            serverSocket = listener
+            running = true
 
-        executor.execute {
-            while (running) {
-                try {
-                    val socket = listener.accept()
-                    clients += socket
-                    executor.execute { handleClient(socket) }
-                } catch (_: Exception) {
-                    if (running) stop()
+            executor.execute {
+                while (running) {
+                    try {
+                        val socket = listener.accept()
+                        clients += socket
+                        executor.execute { handleClient(socket) }
+                    } catch (_: Exception) {
+                        if (running) stop()
+                    }
                 }
             }
+        } catch (error: Exception) {
+            throw IllegalStateException(
+                "SSH diagnostic • étape=$stage • hôte=$sshHost • portSSH=$sshPort • portSOCKS=$localPort • " +
+                    "${error.javaClass.simpleName}:${error.message.orEmpty()}",
+                error
+            )
         }
     }
 
