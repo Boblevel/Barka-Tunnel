@@ -12,7 +12,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.barkatunnel.app.BuildConfig
-import com.barkatunnel.app.MainActivity
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.update.AppUpdateCoordinator
@@ -133,19 +132,6 @@ class SettingsActivity : AppCompatActivity() {
             shareApplication()
         }
 
-        findViewById<android.view.View>(R.id.navHome).setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
-        }
-
-        findViewById<android.view.View>(R.id.navJournal).setOnClickListener {
-            startActivity(
-                Intent().setClassName(
-                    packageName,
-                    "com.barkatunnel.app.journal.JournalActivity"
-                )
-            )
-        }
     }
 
     override fun onResume() {
