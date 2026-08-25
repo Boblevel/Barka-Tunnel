@@ -85,9 +85,9 @@ class HomeController(
 
             is HomeVpnResult.Disconnected -> {
                 state = state.copy(
-                    connection = HomeConnectionState.Connecting
+                    connection = HomeConnectionState.Disconnected
                 )
-                HomeControllerResult.Message(CONNECTION_PENDING_MESSAGE)
+                HomeControllerResult.State(state)
             }
 
             is HomeVpnResult.AccessDenied -> {
@@ -107,6 +107,9 @@ class HomeController(
     }
 
     fun disconnect(): HomeControllerResult {
+        state = state.copy(
+            connection = HomeConnectionState.Disconnecting
+        )
         return when (val result = runtime.vpnCoordinator.disconnect()) {
             is HomeVpnResult.Disconnected -> {
                 state = state.copy(

@@ -6,6 +6,8 @@ sealed class HomeConnectionState {
 
     data object Connecting : HomeConnectionState()
 
+    data object Disconnecting : HomeConnectionState()
+
     data class Connected(
         val networkName: String
     ) : HomeConnectionState()

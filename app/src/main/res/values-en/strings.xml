@@ -25,6 +25,7 @@
     <string name="selected_network_description">Selected network</string>
     <string name="status_not_connected">NOT CONNECTED</string>
     <string name="status_connecting">CONNECTING…</string>
+    <string name="status_disconnecting">DISCONNECTING…</string>
     <string name="status_connected">CONNECTED</string>
     <string name="connection_time_format">Connection time: %1$s</string>
     <string name="remaining_time">TIME REMAINING</string>
@@ -137,8 +138,12 @@
     <string name="journal_connecting_message">Connection attempt%1$s.</string>
     <string name="journal_refused_title">Connection refused</string>
     <string name="journal_refused_message">The connection did not succeed%1$s.</string>
+    <string name="journal_retry_title">New attempt</string>
+    <string name="journal_retry_message">New connection attempt%1$s.</string>
     <string name="journal_connected_title">Connected</string>
     <string name="journal_connected_message">VPN connected%1$s.</string>
+    <string name="journal_disconnecting_title">Disconnecting</string>
+    <string name="journal_disconnecting_message">Stopping the VPN.</string>
     <string name="journal_disconnected_title">Disconnected</string>
     <string name="journal_disconnected_message">VPN disconnected.</string>
 

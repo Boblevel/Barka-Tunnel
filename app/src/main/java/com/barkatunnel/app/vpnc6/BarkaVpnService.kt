@@ -23,12 +23,14 @@ import java.util.concurrent.TimeUnit
 
 class BarkaVpnService : VpnService() {
     private val worker = Executors.newSingleThreadExecutor()
+    private val disconnectWorker = Executors.newSingleThreadExecutor()
     private val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
     @Volatile private var engine: C6ProtocolEngine? = null
     @Volatile private var connected = false
     private var tun2SocksRunner: Tun2SocksRunner? = null
     private var keepAliveFuture: ScheduledFuture<*>? = null
     @Volatile private var stopping = false
+    @Volatile private var activeConnectRequestId: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = super.onBind(intent)
 
@@ -39,6 +41,7 @@ class BarkaVpnService : VpnService() {
         when (action) {
             ACTION_CONNECT -> {
                 stopping = false
+                activeConnectRequestId = requestId
                 startForeground(
                     NOTIFICATION_ID,
                     buildNotification(this, getString(R.string.notification_connecting))
@@ -51,14 +54,15 @@ class BarkaVpnService : VpnService() {
                     NOTIFICATION_ID,
                     buildNotification(this, getString(R.string.notification_disconnecting))
                 )
-                worker.execute { disconnect(requestId) }
+                disconnectWorker.execute { disconnect(requestId) }
             }
         }
         return START_NOT_STICKY
     }
 
     override fun onRevoke() {
-        worker.execute { disconnect(null) }
+        stopping = true
+        disconnectWorker.execute { disconnect(null) }
         super.onRevoke()
     }
 
@@ -71,6 +75,7 @@ class BarkaVpnService : VpnService() {
         keepAliveFuture = null
         keepAliveExecutor.shutdownNow()
         worker.shutdownNow()
+        disconnectWorker.shutdownNow()
         super.onDestroy()
     }
 
@@ -88,49 +93,60 @@ class BarkaVpnService : VpnService() {
             val profileConfig = VpnProfileConfigParser.parse(protocol, configJson)
             val profileName = intent.getStringExtra(EXTRA_PROFILE_NAME).orEmpty()
             AppLogStore.add(this, "Diagnostic VPN • profil ${protocol.name} chargé.")
-            var lastFailure: Exception? = null
+            var attempt = 1
 
-            repeat(CONNECTION_ATTEMPTS) { attempt ->
-                if (stopping) {
-                    C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
-                    return
-                }
-                if (attempt > 0) {
+            while (!stopping) {
+                if (attempt > 1) {
                     AppLogStore.add(
                         this,
                         "Tentative de connexion automatique${profileName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
                     )
                     updateNotification(getString(R.string.notification_connecting))
                     Thread.sleep(CONNECTION_RETRY_DELAY_MS)
+                    if (stopping) break
                 }
 
                 try {
                     stopTunnel()
+                    if (stopping) break
                     connectOnce(protocol, profileConfig)
+                    if (stopping) {
+                        stopTunnel()
+                        break
+                    }
                     connected = true
                     startAutoPing(protocol)
                     updateNotification(getString(R.string.notification_connected))
                     C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
+                    activeConnectRequestId = null
                     return
                 } catch (error: Exception) {
-                    lastFailure = error
+                    if (stopping) break
                     val technicalMessage = sanitizeError(
                         error.message ?: "Échec interne de la connexion."
                     )
                     Log.w(
                         TAG,
-                        "Connection attempt ${attempt + 1}/$CONNECTION_ATTEMPTS failed: $technicalMessage",
+                        "Connection attempt $attempt failed: $technicalMessage",
                         error
                     )
                     AppLogStore.add(
                         this,
-                        "Diagnostic VPN • tentative ${attempt + 1} • $technicalMessage"
+                        "Diagnostic VPN • tentative $attempt • $technicalMessage"
+                    )
+                    AppLogStore.add(
+                        this,
+                        "Connexion refusée${profileName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
                     )
                     stopTunnel()
+                    attempt += 1
                 }
             }
 
-            throw lastFailure ?: IllegalStateException("Échec interne de la connexion.")
+            stopTunnel()
+            C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+            activeConnectRequestId = null
+            return
         } catch (e: Exception) {
             val technicalMessage = sanitizeError(e.message ?: "Échec interne de la connexion.")
             Log.e(TAG, "Connection failure: $technicalMessage", e)
@@ -140,6 +156,7 @@ class BarkaVpnService : VpnService() {
                 requestId,
                 C6VpnResult.Error(getString(R.string.connection_failed_help))
             )
+            activeConnectRequestId = null
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -208,6 +225,8 @@ class BarkaVpnService : VpnService() {
     private fun disconnect(requestId: String?) {
         stopping = true
         stopTunnel()
+        C6VpnRuntime.complete(activeConnectRequestId, C6VpnResult.Disconnected)
+        activeConnectRequestId = null
         C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
         AppLogStore.add(this, "VPN déconnecté.")
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -384,7 +403,6 @@ class BarkaVpnService : VpnService() {
         private const val SOCKS_VLESS = 10808
         private const val SOCKS_SLOWDNS = 10809
         private const val SOCKS_UDP = 10810
-        private const val CONNECTION_ATTEMPTS = 2
         private const val CONNECTION_RETRY_DELAY_MS = 2_500L
         private const val LOCAL_PROXY_READY_TIMEOUT_MS = 4_000L
         private const val SETTINGS_PREFS = "barka_settings"

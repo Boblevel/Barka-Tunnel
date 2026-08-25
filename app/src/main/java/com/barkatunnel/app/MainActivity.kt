@@ -283,6 +283,7 @@ class MainActivity : AppCompatActivity() {
                 val shouldDisconnect =
                     currentConnection is HomeConnectionState.Connected ||
                         currentConnection is HomeConnectionState.Connecting ||
+                        currentConnection is HomeConnectionState.Disconnecting ||
                         currentConnection is HomeConnectionState.Error
 
                 if (!shouldDisconnect) {
@@ -310,6 +311,11 @@ class MainActivity : AppCompatActivity() {
 
                 runHomeAction {
                     if (shouldDisconnect) {
+                        AppLogStore.add(this, "Déconnexion en cours.")
+                        runOnUiThread {
+                            uiBinder.showConnection(HomeConnectionState.Disconnecting)
+                            updatePowerButtonState(HomeConnectionState.Disconnecting)
+                        }
                         val result = controller.disconnect()
 
                         if (

@@ -51,6 +51,14 @@ class HomeUiBinder(
                 )
             }
 
+            HomeConnectionState.Disconnecting -> {
+                vpnStatus.setText(R.string.status_disconnecting)
+                connectButton.setText(R.string.disconnect)
+                vpnStatus.setTextColor(
+                    ContextCompat.getColor(vpnStatus.context, R.color.barka_blue)
+                )
+            }
+
             is HomeConnectionState.Connected -> {
                 vpnStatus.setText(R.string.status_connected)
                 connectButton.setText(R.string.disconnect)

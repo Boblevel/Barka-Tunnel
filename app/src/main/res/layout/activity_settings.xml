@@ -56,7 +56,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:background="@drawable/bg_menu_header"
+                android:background="@drawable/bg_settings_header"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:padding="18dp">

@@ -67,6 +67,8 @@ class JournalUiBinder(
         }
 
         val type = when {
+            value.contains("déconnexion en cours") || value.contains("disconnecting") ->
+                EventType.DISCONNECTING
             value.contains("déconnexion") || value.contains("déconnecté") ->
                 EventType.DISCONNECTED
             value.contains("connexion refusée") ||
@@ -80,6 +82,8 @@ class JournalUiBinder(
                 value.contains("connexion sécurisée établie") ||
                 (value.contains("c6") && value.contains("connecté")) ->
                 EventType.CONNECTED
+            value.contains("tentative de connexion automatique") ->
+                EventType.RETRY
             value.contains("tentative de connexion") ||
                 value.startsWith("connexion en cours") ->
                 EventType.CONNECTING
@@ -120,10 +124,20 @@ class JournalUiBinder(
                 message = context.getString(R.string.journal_refused_message, network),
                 colorRes = R.color.barka_red
             )
+            EventType.RETRY -> EventPresentation(
+                title = context.getString(R.string.journal_retry_title),
+                message = context.getString(R.string.journal_retry_message, network),
+                colorRes = R.color.barka_orange
+            )
             EventType.CONNECTED -> EventPresentation(
                 title = context.getString(R.string.journal_connected_title),
                 message = context.getString(R.string.journal_connected_message, network),
                 colorRes = R.color.barka_green
+            )
+            EventType.DISCONNECTING -> EventPresentation(
+                title = context.getString(R.string.journal_disconnecting_title),
+                message = context.getString(R.string.journal_disconnecting_message),
+                colorRes = R.color.barka_orange
             )
             EventType.DISCONNECTED -> EventPresentation(
                 title = context.getString(R.string.journal_disconnected_title),
@@ -139,7 +153,9 @@ class JournalUiBinder(
     private enum class EventType {
         CONNECTING,
         REFUSED,
+        RETRY,
         CONNECTED,
+        DISCONNECTING,
         DISCONNECTED
     }
 
