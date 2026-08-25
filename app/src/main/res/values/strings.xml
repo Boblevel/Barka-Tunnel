@@ -118,6 +118,8 @@
     <string name="language_french">Français</string>
     <string name="language_english">English</string>
     <string name="settings_connection">CONNEXION</string>
+    <string name="settings_auto_ping">Auto Ping</string>
+    <string name="settings_auto_ping_summary">Maintient le tunnel actif avec un contrôle réseau périodique</string>
     <string name="settings_ip_format">Adresse IP : %1$s • %2$s</string>
     <string name="settings_ip_unavailable">Adresse IP : Indisponible</string>
     <string name="settings_android_vpn">Réglages VPN Android</string>

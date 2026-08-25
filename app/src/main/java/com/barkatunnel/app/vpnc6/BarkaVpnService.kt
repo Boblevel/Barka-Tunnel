@@ -18,12 +18,16 @@ import com.barkatunnel.app.vpnprofile.VpnProfileConfig
 import com.barkatunnel.app.vpnprofile.VpnProfileConfigParser
 import com.barkatunnel.app.vpnprofile.VpnProfileProtocol
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 
 class BarkaVpnService : VpnService() {
     private val worker = Executors.newSingleThreadExecutor()
+    private val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
     @Volatile private var engine: C6ProtocolEngine? = null
     @Volatile private var connected = false
     private var tun2SocksRunner: Tun2SocksRunner? = null
+    private var keepAliveFuture: ScheduledFuture<*>? = null
     @Volatile private var stopping = false
 
     override fun onBind(intent: Intent?): IBinder? = super.onBind(intent)
@@ -61,6 +65,9 @@ class BarkaVpnService : VpnService() {
             runCatching { tun2SocksRunner?.stop() }
             runCatching { engine?.stop() }
         }
+        keepAliveFuture?.cancel(true)
+        keepAliveFuture = null
+        keepAliveExecutor.shutdownNow()
         worker.shutdownNow()
         super.onDestroy()
     }
@@ -103,7 +110,8 @@ class BarkaVpnService : VpnService() {
 
             val udpgw = when (profileConfig) {
                 is VpnProfileConfig.UdpCustom -> "${profileConfig.udpGwHost}:${profileConfig.udpGwPort}"
-                else -> DEFAULT_UDPGW
+                is VpnProfileConfig.SlowDns -> DEFAULT_UDPGW
+                is VpnProfileConfig.Vless -> null
             }
 
             tun2SocksRunner = Tun2SocksRunner(this).also { runner ->
@@ -113,11 +121,13 @@ class BarkaVpnService : VpnService() {
                     vpnAddress = TUN2SOCKS_ROUTER_ADDRESS,
                     netmask = VPN_NETMASK,
                     socksAddress = protocolEngine.socksAddress,
-                    udpgwAddress = udpgw
+                    udpgwAddress = udpgw,
+                    forwardUdpThroughSocks = protocol == VpnProfileProtocol.VLESS
                 )
             }
 
             connected = true
+            startAutoPing(protocol)
             updateNotification(getString(R.string.notification_connected))
             C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
         } catch (e: Exception) {
@@ -144,11 +154,42 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun stopTunnel() {
+        keepAliveFuture?.cancel(true)
+        keepAliveFuture = null
         runCatching { tun2SocksRunner?.stop() }
         tun2SocksRunner = null
         runCatching { engine?.stop() }
         engine = null
         connected = false
+    }
+
+    private fun startAutoPing(protocol: VpnProfileProtocol) {
+        keepAliveFuture?.cancel(true)
+        val port = socksPort(protocol)
+        keepAliveFuture = keepAliveExecutor.scheduleWithFixedDelay(
+            {
+                if (connected) {
+                    val enabled = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
+                        .getBoolean(KEY_AUTO_PING, true)
+                    if (enabled) {
+                        // Le contrôle passe volontairement par le proxy SOCKS
+                        // du protocole actif. Il garde donc réellement
+                        // SlowDNS/SSH/VLESS en activité au lieu d'envoyer un
+                        // ping hors du VPN.
+                        SocksProbe.connectThrough(
+                            proxyHost = "127.0.0.1",
+                            proxyPort = port,
+                            destinationHost = AUTO_PING_HOST,
+                            destinationPort = AUTO_PING_PORT,
+                            timeoutMs = AUTO_PING_TIMEOUT_MS
+                        )
+                    }
+                }
+            },
+            AUTO_PING_INITIAL_DELAY_SECONDS,
+            AUTO_PING_INTERVAL_SECONDS,
+            TimeUnit.SECONDS
+        )
     }
 
     private fun createEngine(
@@ -279,5 +320,12 @@ class BarkaVpnService : VpnService() {
         private const val SOCKS_VLESS = 10808
         private const val SOCKS_SLOWDNS = 10809
         private const val SOCKS_UDP = 10810
+        private const val SETTINGS_PREFS = "barka_settings"
+        private const val KEY_AUTO_PING = "auto_ping"
+        private const val AUTO_PING_HOST = "1.1.1.1"
+        private const val AUTO_PING_PORT = 443
+        private const val AUTO_PING_TIMEOUT_MS = 4_000
+        private const val AUTO_PING_INITIAL_DELAY_SECONDS = 10L
+        private const val AUTO_PING_INTERVAL_SECONDS = 20L
     }
 }

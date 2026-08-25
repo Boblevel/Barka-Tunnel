@@ -14,12 +14,21 @@ class Tun2SocksRunner(private val context: Context) {
         vpnAddress: String,
         netmask: String,
         socksAddress: String,
-        udpgwAddress: String
+        udpgwAddress: String?,
+        forwardUdpThroughSocks: Boolean = false
     ) {
         val (host, portText) = socksAddress.split(':', limit = 2)
         val port = portText.toIntOrNull() ?: throw IllegalStateException("Adresse SOCKS locale invalide.")
         descriptor = vpnDescriptor
         Tun2Socks.initialize(context.applicationContext)
+        val extraArgs = if (udpgwAddress.isNullOrBlank()) {
+            emptyList()
+        } else {
+            // Le routage DNS passe déjà comme tout autre paquet UDP par UDPGW.
+            // Éviter --udpgw-transparent-dns garde la ligne de commande
+            // compatible avec les builds Android BadVPN utilisés par C6.
+            listOf("--udpgw-remote-server-addr", udpgwAddress)
+        }
         thread = Thread({
             Tun2Socks.startTun2Socks(
                 Tun2Socks.LogLevel.WARNING,
@@ -30,15 +39,12 @@ class Tun2SocksRunner(private val context: Context) {
                 vpnAddress,
                 null,
                 netmask,
-                false,
-                listOf(
-                    "--udpgw-remote-server-addr", udpgwAddress,
-                    "--udpgw-transparent-dns"
-                )
+                forwardUdpThroughSocks,
+                extraArgs
             )
         }, "BarkaTun2Socks").also { it.start() }
 
-        Thread.sleep(700)
+        Thread.sleep(1_200)
         if (thread?.isAlive != true) {
             stop()
             throw IllegalStateException("tun2socks s’est arrêté au démarrage.")

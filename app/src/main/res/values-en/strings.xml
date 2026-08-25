@@ -110,6 +110,8 @@
     <string name="language_french">French</string>
     <string name="language_english">English</string>
     <string name="settings_connection">CONNECTION</string>
+    <string name="settings_auto_ping">Auto Ping</string>
+    <string name="settings_auto_ping_summary">Keeps the tunnel active with a periodic network check</string>
     <string name="settings_ip_format">IP address: %1$s • %2$s</string>
     <string name="settings_ip_unavailable">IP address: Unavailable</string>
     <string name="settings_android_vpn">Android VPN settings</string>

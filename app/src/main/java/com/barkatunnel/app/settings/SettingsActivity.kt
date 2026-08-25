@@ -1,18 +1,10 @@
 package com.barkatunnel.app.settings
 
-import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.LinkProperties
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SwitchCompat
@@ -23,7 +15,6 @@ import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.MainActivity
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
-import com.barkatunnel.app.networkinfo.NetworkIpProvider
 import com.barkatunnel.app.update.AppUpdateCoordinator
 import com.google.android.material.button.MaterialButton
 
@@ -31,19 +22,6 @@ class SettingsActivity : AppCompatActivity() {
 
     private val prefsName = "barka_settings"
     private lateinit var updateCoordinator: AppUpdateCoordinator
-    private lateinit var settingsIpValue: TextView
-    private var networkCallbackRegistered = false
-
-    private val connectivityManager by lazy {
-        getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-    }
-
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) = refreshIpAsync()
-        override fun onLost(network: Network) = refreshIpAsync()
-        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) = refreshIpAsync()
-        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = refreshIpAsync()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,23 +42,17 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.aboutValue).text =
             getString(R.string.settings_about_format, BuildConfig.VERSION_NAME)
 
-        val notificationsSwitch = findViewById<SwitchCompat>(R.id.notificationsSwitch)
+        val autoPingSwitch = findViewById<SwitchCompat>(R.id.autoPingSwitch)
         val themeButton = findViewById<MaterialButton>(R.id.themeButton)
         val languageButton = findViewById<MaterialButton>(R.id.languageButton)
-        settingsIpValue = findViewById(R.id.settingsIpValue)
 
         findViewById<android.view.View>(R.id.settingsBackButton).setOnClickListener {
             finish()
         }
 
-        notificationsSwitch.isChecked = prefs.getBoolean("notifications", true)
-        notificationsSwitch.setOnCheckedChangeListener { _, checked ->
-            prefs.edit().putBoolean("notifications", checked).apply()
-            if (checked && Build.VERSION.SDK_INT >= 33 &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2001)
-            }
+        autoPingSwitch.isChecked = prefs.getBoolean("auto_ping", true)
+        autoPingSwitch.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean("auto_ping", checked).apply()
         }
 
         fun refreshDynamicLabels() {
@@ -99,12 +71,6 @@ class SettingsActivity : AppCompatActivity() {
                 } else {
                     getString(R.string.language_french)
                 }
-            )
-            val info = NetworkIpProvider.getCurrent(this)
-            settingsIpValue.text = getString(
-                R.string.settings_ip_format,
-                info.ip,
-                info.transport
             )
         }
 
@@ -159,15 +125,6 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
         }
 
-        findViewById<MaterialButton>(R.id.appSettingsButton).setOnClickListener {
-            startActivity(
-                Intent(
-                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:$packageName")
-                )
-            )
-        }
-
         findViewById<MaterialButton>(R.id.checkUpdateButton).setOnClickListener {
             updateCoordinator.check(showNoUpdate = true, force = true)
         }
@@ -191,58 +148,9 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        if (!networkCallbackRegistered) {
-            connectivityManager.registerDefaultNetworkCallback(networkCallback)
-            networkCallbackRegistered = true
-        }
-    }
-
-    override fun onStop() {
-        if (networkCallbackRegistered) {
-            runCatching { connectivityManager.unregisterNetworkCallback(networkCallback) }
-            networkCallbackRegistered = false
-        }
-        super.onStop()
-    }
-
     override fun onResume() {
         super.onResume()
         applySystemBars()
-        refreshIpAsync()
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 2001 && grantResults.firstOrNull() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            getSharedPreferences(prefsName, MODE_PRIVATE)
-                .edit()
-                .putBoolean("notifications", false)
-                .apply()
-            findViewById<SwitchCompat>(R.id.notificationsSwitch).isChecked = false
-            Toast.makeText(
-                this,
-                R.string.settings_notification_denied,
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    private fun refreshIpAsync() {
-        if (!::settingsIpValue.isInitialized) return
-        runOnUiThread {
-            val info = NetworkIpProvider.getCurrent(this)
-            settingsIpValue.text = getString(
-                R.string.settings_ip_format,
-                info.ip,
-                info.transport
-            )
-        }
     }
 
     private fun shareApplication() {

@@ -29,6 +29,7 @@ class SshSocksProxy(
         val ssh = JSch().getSession(username, sshHost, sshPort).apply {
             setPassword(password)
             setConfig("StrictHostKeyChecking", "no")
+            setConfig("PreferredAuthentications", "password,keyboard-interactive")
             setServerAliveInterval(15_000)
             setServerAliveCountMax(3)
             connect(12_000)

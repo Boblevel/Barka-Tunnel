@@ -72,6 +72,8 @@ class IpFinderActivity : AppCompatActivity() {
             )
             if (succeeded) {
                 waitForCellularIp(0)
+            } else if (BarkaAssistantService.isSelected(this@IpFinderActivity)) {
+                handler.postDelayed({ requestNextCycle() }, NEXT_CYCLE_DELAY_MS)
             } else {
                 stopSearch(
                     getString(R.string.ip_finder_cycle_failed),
@@ -146,6 +148,7 @@ class IpFinderActivity : AppCompatActivity() {
     override fun onDestroy() {
         searching = false
         handler.removeCallbacksAndMessages(null)
+        BarkaAssistantService.cancelAirplaneCycle(this)
         if (receiverRegistered) {
             runCatching { unregisterReceiver(cycleReceiver) }
             receiverRegistered = false
@@ -296,10 +299,7 @@ class IpFinderActivity : AppCompatActivity() {
         if (!searching) return
         if (BarkaAssistantService.requestAirplaneCycle(this)) return
 
-        if (
-            BarkaAssistantService.isSelected(this) &&
-            cycleRequestRetries < MAX_SERVICE_READY_RETRIES
-        ) {
+        if (BarkaAssistantService.isSelected(this)) {
             cycleRequestRetries += 1
             handler.postDelayed(
                 { requestAirplaneCycleWithRetry() },
@@ -342,6 +342,7 @@ class IpFinderActivity : AppCompatActivity() {
     private fun completeSearch(ip: String) {
         searching = false
         handler.removeCallbacksAndMessages(null)
+        BarkaAssistantService.cancelAirplaneCycle(this)
         scanButton.isEnabled = true
         stopButton.visibility = View.GONE
         statusText.setText(R.string.ip_finder_found)
@@ -362,6 +363,7 @@ class IpFinderActivity : AppCompatActivity() {
     private fun stopSearch(message: String, colorRes: Int) {
         searching = false
         handler.removeCallbacksAndMessages(null)
+        BarkaAssistantService.cancelAirplaneCycle(this)
         scanButton.isEnabled = true
         stopButton.visibility = View.GONE
         statusText.text = message
@@ -440,7 +442,6 @@ class IpFinderActivity : AppCompatActivity() {
         private const val KEY_SEARCH_PATTERN = "search_pattern"
         private const val KEY_LAST_FOUND_IP = "last_found_ip"
         private const val MAX_NETWORK_POLLS = 15
-        private const val MAX_SERVICE_READY_RETRIES = 6
         private const val DISCONNECT_SETTLE_DELAY_MS = 900L
         private const val SERVICE_READY_RETRY_DELAY_MS = 500L
         private const val NETWORK_POLL_DELAY_MS = 1_000L

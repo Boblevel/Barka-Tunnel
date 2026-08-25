@@ -9,11 +9,11 @@ import android.provider.Settings
 import android.service.voice.VoiceInteractionSession
 
 class BarkaAssistantSession(
-    private val appContext: Context
+    appContext: Context
 ) : VoiceInteractionSession(appContext) {
 
     private val handler = Handler(Looper.getMainLooper())
-    private var cycleStarted = false
+    private var commandStarted = false
 
     override fun onPrepareShow(args: Bundle?, showFlags: Int) {
         super.onPrepareShow(args, showFlags)
@@ -22,31 +22,19 @@ class BarkaAssistantSession(
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
-        if (
-            cycleStarted ||
-            args?.getString(BarkaAssistantService.KEY_SESSION_ACTION) !=
-            BarkaAssistantService.SESSION_ACTION_REFRESH_CELLULAR_IP
-        ) {
+        if (commandStarted || args?.getString(BarkaAssistantService.KEY_SESSION_ACTION) !=
+            BarkaAssistantService.SESSION_ACTION_SET_AIRPLANE_MODE) {
             finish()
             return
         }
 
-        cycleStarted = true
-        if (!requestAirplaneMode(enabled = true)) {
-            completeCycle(false)
-            return
-        }
-
+        commandStarted = true
+        val enabled = args.getBoolean(BarkaAssistantService.KEY_AIRPLANE_MODE_ENABLED)
+        val issued = requestAirplaneMode(enabled)
         handler.postDelayed({
-            if (!requestAirplaneMode(enabled = false)) {
-                completeCycle(false)
-            } else {
-                handler.postDelayed(
-                    { completeCycle(true) },
-                    CELLULAR_RESTART_DELAY_MS
-                )
-            }
-        }, AIRPLANE_MODE_DELAY_MS)
+            BarkaAssistantService.reportSessionCommand(enabled, issued)
+            finish()
+        }, COMMAND_SETTLE_DELAY_MS)
     }
 
     override fun onDestroy() {
@@ -64,20 +52,7 @@ class BarkaAssistantSession(
             true
         }.getOrDefault(false)
 
-    private fun completeCycle(succeeded: Boolean) {
-        appContext.sendBroadcast(
-            Intent(BarkaAssistantService.ACTION_CYCLE_COMPLETED)
-                .setPackage(appContext.packageName)
-                .putExtra(
-                    BarkaAssistantService.EXTRA_CYCLE_SUCCEEDED,
-                    succeeded
-                )
-        )
-        finish()
-    }
-
     companion object {
-        private const val AIRPLANE_MODE_DELAY_MS = 1_800L
-        private const val CELLULAR_RESTART_DELAY_MS = 3_500L
+        private const val COMMAND_SETTLE_DELAY_MS = 450L
     }
 }

@@ -77,7 +77,13 @@ class XrayVlessEngine(
     }
 
     private fun buildConfig(): JSONObject {
-        val outboundAddress = config.ip?.takeIf { it.isNotBlank() } ?: config.address
+        // L'adresse portée par l'URI VLESS reste la destination principale :
+        // elle peut être volontairement liée à l'opérateur. Le server_ip du
+        // panel reste un secours de configuration, sans écraser cette adresse.
+        val outboundAddress = config.address.ifBlank {
+            config.ip?.takeIf { it.isNotBlank() }
+                ?: throw IllegalStateException("Adresse VLESS absente.")
+        }
         val user = JSONObject()
             .put("id", config.uuid)
             .put("encryption", config.encryption)
