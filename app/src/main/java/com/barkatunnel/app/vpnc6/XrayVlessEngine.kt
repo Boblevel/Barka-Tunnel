@@ -34,7 +34,7 @@ class XrayVlessEngine(
             .redirectOutput(ProcessBuilder.Redirect.appendTo(output))
             .start()
 
-        if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 12_000)) {
+        if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 25_000)) {
             val detail = xrayFailureDetail()
             stop()
             throw IllegalStateException(

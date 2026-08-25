@@ -164,7 +164,7 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun waitForProxyReady(port: Int): Boolean {
-        repeat(6) {
+        repeat(20) {
             if (SocksProbe.connectThrough("127.0.0.1", port)) return true
             Thread.sleep(1000)
         }
@@ -178,7 +178,7 @@ class BarkaVpnService : VpnService() {
             {
                 if (connected) {
                     val enabled = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
-                        .getBoolean(KEY_AUTO_PING, true)
+                        .getBoolean(KEY_AUTO_PING, false)
                     if (enabled) {
                         // Le contrôle passe volontairement par le proxy SOCKS
                         // du protocole actif. Il garde donc réellement
