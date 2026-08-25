@@ -19,6 +19,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -279,7 +280,7 @@ class MainActivity : AppCompatActivity() {
 
             if (controller != null) {
                 val currentConnection =
-                    controller.currentState().connection
+                    syncVpnRuntimeState() ?: controller.currentState().connection
                 val shouldDisconnect =
                     currentConnection is HomeConnectionState.Connected ||
                         currentConnection is HomeConnectionState.Connecting ||
@@ -529,6 +530,7 @@ class MainActivity : AppCompatActivity() {
         if (::networkIpValue.isInitialized) {
             applySystemBars()
             refreshNetworkIp()
+            syncVpnRuntimeState()
             refreshHomeState()
             if (::journalUiBinder.isInitialized && homeJournalPager.currentItem == PAGE_JOURNAL) {
                 journalUiBinder.refresh()
@@ -564,7 +566,39 @@ class MainActivity : AppCompatActivity() {
             handleHomeResult(homeController!!.selectNetwork(initialNetwork))
         }
 
+        syncVpnRuntimeState()
         refreshHomeState()
+    }
+
+    private fun syncVpnRuntimeState(): HomeConnectionState? {
+        val controller = homeController ?: return null
+        val snapshot = BarkaVpnService.connectionSnapshot()
+        val connection = when (snapshot.state) {
+            BarkaVpnService.RuntimeConnectionState.DISCONNECTED ->
+                HomeConnectionState.Disconnected
+            BarkaVpnService.RuntimeConnectionState.CONNECTING ->
+                HomeConnectionState.Connecting
+            BarkaVpnService.RuntimeConnectionState.CONNECTED ->
+                HomeConnectionState.Connected(
+                    snapshot.profileName ?: controller.currentState().selectedNetwork?.displayName.orEmpty()
+                )
+            BarkaVpnService.RuntimeConnectionState.DISCONNECTING ->
+                HomeConnectionState.Disconnecting
+        }
+
+        handleHomeResult(controller.syncConnection(connection))
+
+        if (connection is HomeConnectionState.Connected) {
+            val elapsedSeconds = if (snapshot.connectedAtElapsedMs > 0L) {
+                ((SystemClock.elapsedRealtime() - snapshot.connectedAtElapsedMs) / 1000L)
+                    .coerceAtLeast(0L)
+            } else {
+                0L
+            }
+            timerController.startConnectionTimer(elapsedSeconds)
+        }
+
+        return connection
     }
 
     private fun refreshHomeState() {

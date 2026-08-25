@@ -67,7 +67,10 @@ class JournalUiBinder(
         }
 
         val type = when {
-            value.startsWith("diagnostic vpn") || value.startsWith("diagnostic moov") ->
+            value.startsWith("diagnostic vpn") ||
+                value.startsWith("diagnostic moov") ||
+                value.startsWith("diagnostic orange") ||
+                value.startsWith("diagnostic telecel") ->
                 EventType.DIAGNOSTIC
             value.contains("déconnexion en cours") || value.contains("disconnecting") ->
                 EventType.DISCONNECTING

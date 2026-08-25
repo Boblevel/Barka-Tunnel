@@ -46,11 +46,13 @@ class HomeTimerController(
         }
     }
 
-    fun startConnectionTimer() {
+    fun startConnectionTimer(initialElapsedSeconds: Long = 0L) {
+        val safeElapsedSeconds = initialElapsedSeconds.coerceAtLeast(0L)
         runOnMain {
-            connectionStartedElapsed = SystemClock.elapsedRealtime()
+            connectionStartedElapsed =
+                SystemClock.elapsedRealtime() - (safeElapsedSeconds * 1000L)
             connectionRunning = true
-            onConnectionTick(0L)
+            onConnectionTick(safeElapsedSeconds)
         }
     }
 

@@ -1,6 +1,7 @@
 package com.barkatunnel.app.vpnc6
 
 import android.content.Context
+import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.vpnprofile.VpnProfileConfig
 import org.json.JSONArray
 import org.json.JSONObject
@@ -18,6 +19,14 @@ class XrayVlessEngine(
     private var logFile: File? = null
 
     override fun start() {
+        val outboundAddress = config.ip?.takeIf { it.isNotBlank() }
+            ?: config.address
+        AppLogStore.add(
+            context,
+            "Diagnostic ORANGE • config VLESS • serveur=$outboundAddress:${config.port} • " +
+                "WS=${config.host}${config.path} • SNI=${config.sni} • sécurité=${config.security}."
+        )
+
         val xray = NativeCoreLocator.xray(context)
         if (!xray.canExecute() && !xray.setExecutable(true, false)) {
             throw IllegalStateException("Le moteur VLESS Android n’est pas exécutable.")
@@ -33,23 +42,40 @@ class XrayVlessEngine(
             .redirectErrorStream(true)
             .redirectOutput(ProcessBuilder.Redirect.appendTo(output))
             .start()
+        AppLogStore.add(
+            context,
+            "Diagnostic ORANGE • processus Xray lancé • SOCKS attendu 127.0.0.1:$socksPort."
+        )
 
         if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 25_000)) {
             val detail = xrayFailureDetail()
+            AppLogStore.add(
+                context,
+                "Diagnostic ORANGE • Xray échec ouverture SOCKS" +
+                    detail.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty() + "."
+            )
             stop()
             throw IllegalStateException(
                 if (detail.isBlank()) "VLESS n’a pas ouvert son proxy local."
                 else "VLESS n’a pas ouvert son proxy local : $detail"
             )
         }
+        AppLogStore.add(context, "Diagnostic ORANGE • SOCKS VLESS ouvert • 127.0.0.1:$socksPort.")
+
         if (process?.isAlive != true) {
             val detail = xrayFailureDetail()
+            AppLogStore.add(
+                context,
+                "Diagnostic ORANGE • Xray arrêté prématurément" +
+                    detail.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty() + "."
+            )
             stop()
             throw IllegalStateException(
                 if (detail.isBlank()) "Le moteur VLESS s’est arrêté prématurément."
                 else "Le moteur VLESS s’est arrêté : $detail"
             )
         }
+        AppLogStore.add(context, "Diagnostic ORANGE • moteur Xray prêt.")
     }
 
     override fun stop() {

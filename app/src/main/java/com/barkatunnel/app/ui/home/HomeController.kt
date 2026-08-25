@@ -11,6 +11,11 @@ class HomeController(
 
     fun currentState(): HomeScreenState = state
 
+    fun syncConnection(connection: HomeConnectionState): HomeControllerResult {
+        state = state.copy(connection = connection)
+        return HomeControllerResult.State(state)
+    }
+
     fun selectNetwork(
         network: NetworkOption
     ): HomeControllerResult {
