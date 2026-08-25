@@ -93,7 +93,7 @@ def start_trial(device_id: str) -> tuple[dict, bool, str]:
         ).fetchone()
 
         if row["trial_started_at"] is None:
-            expires = now + 60 * 60
+            expires = now + 2 * 60 * 60
             cx.execute(
                 """
                 UPDATE devices
@@ -103,7 +103,7 @@ def start_trial(device_id: str) -> tuple[dict, bool, str]:
                 (now, expires, now, device_id),
             )
             started_now = True
-            message = "Essai gratuit de 1 heure démarré."
+            message = "Essai gratuit de 2 heures démarré."
         else:
             started_now = False
             message = "L'essai gratuit de cet appareil a déjà été utilisé."

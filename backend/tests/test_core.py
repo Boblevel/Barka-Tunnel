@@ -36,8 +36,7 @@ def test_trial_is_one_time_and_server_side(tmp_path):
     assert started2 is False
     assert access1["access_type"] == "TRIAL"
     assert access2["expires_at"] == access1["expires_at"]
-    assert access1["remaining_seconds"] <= 3600
-    assert access1["remaining_seconds"] > 0
+    assert 7190 <= access1["remaining_seconds"] <= 7200
 
 
 def test_activation_code_is_single_use_and_extends(tmp_path):

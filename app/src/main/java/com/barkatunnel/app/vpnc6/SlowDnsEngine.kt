@@ -37,6 +37,14 @@ class SlowDnsEngine(
             }
         }
 
+        try {
+            startDirectSshFallback()
+            return
+        } catch (error: Exception) {
+            lastFailure = error
+            stopAttempt()
+        }
+
         throw IllegalStateException(
             lastFailure?.message ?: "SlowDNS n’a pas pu établir le relais DNS/SSH."
         )
@@ -75,6 +83,39 @@ class SlowDnsEngine(
         if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000)) {
             throw IllegalStateException("SSH SlowDNS n’a pas ouvert son proxy local.")
         }
+    }
+
+    private fun startDirectSshFallback() {
+        val hosts = listOf(config.host, config.sshDomain)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+        var lastFailure: Exception? = null
+
+        for (host in hosts) {
+            val candidate = SshSocksProxy(
+                sshHost = host,
+                sshPort = config.sshPort,
+                username = config.username,
+                password = config.password,
+                localPort = socksPort
+            )
+            try {
+                candidate.start()
+                if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000)) {
+                    throw IllegalStateException("SSH de secours n’a pas ouvert son proxy local.")
+                }
+                sshProxy = candidate
+                return
+            } catch (error: Exception) {
+                lastFailure = error
+                candidate.stop()
+            }
+        }
+
+        throw IllegalStateException(
+            lastFailure?.message ?: "SSH de secours n’a pas pu joindre le serveur."
+        )
     }
 
     private fun stopAttempt() {

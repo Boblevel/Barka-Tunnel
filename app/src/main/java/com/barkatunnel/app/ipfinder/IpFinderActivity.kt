@@ -96,11 +96,10 @@ class IpFinderActivity : AppCompatActivity() {
         resultText = findViewById(R.id.scanResult)
         wifiWarning = findViewById(R.id.wifiWarning)
 
-        ipInput.setText(
-            getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-                .getString(KEY_SEARCH_PATTERN, "")
-                .orEmpty()
-        )
+        val savedSearchPattern = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_SEARCH_PATTERN, "")
+            .orEmpty()
+        ipInput.setText(savedSearchPattern.ifBlank { DEFAULT_SEARCH_PATTERN })
 
         findViewById<android.view.View>(R.id.backButton).setOnClickListener {
             finish()
@@ -441,6 +440,7 @@ class IpFinderActivity : AppCompatActivity() {
         private const val PREFERENCES_NAME = "barka_ipfinder"
         private const val KEY_SEARCH_PATTERN = "search_pattern"
         private const val KEY_LAST_FOUND_IP = "last_found_ip"
+        private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.46;10.75;10.102;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
         private const val MAX_NETWORK_POLLS = 15
         private const val DISCONNECT_SETTLE_DELAY_MS = 900L
         private const val SERVICE_READY_RETRY_DELAY_MS = 500L

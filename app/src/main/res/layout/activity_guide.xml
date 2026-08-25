@@ -44,7 +44,7 @@
                 android:layout_height="46dp" />
         </LinearLayout>
 
-        <TextView android:id="@+id/guide1" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_menu_home_line" android:text="@string/guide_1_title" />
+        <TextView android:id="@+id/guide1" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_guide_barka" android:text="@string/guide_1_title" />
         <TextView android:id="@+id/guide1Details" style="@style/BarkaGuideDetails" android:text="@string/guide_1_text" />
 
         <TextView android:id="@+id/guide2" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_mobile_barka" android:text="@string/guide_2_title" />

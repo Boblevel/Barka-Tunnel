@@ -99,9 +99,9 @@ class HomeController(
 
             is HomeVpnResult.Error -> {
                 state = state.copy(
-                    connection = HomeConnectionState.Connecting
+                    connection = HomeConnectionState.Disconnected
                 )
-                HomeControllerResult.Message(CONNECTION_PENDING_MESSAGE)
+                HomeControllerResult.Message(result.message)
             }
         }
     }

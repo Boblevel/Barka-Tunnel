@@ -46,11 +46,12 @@
     <string name="free_trial_active">Free trial active</string>
     <string name="trial_unavailable">Trial unavailable or expired</string>
     <string name="waiting_activation">Waiting for activation</string>
-    <string name="activate_access_short">Activate the 1-hour trial or a subscription</string>
-    <string name="activate_access_long">Activate the 1-hour trial or a subscription to continue.</string>
+    <string name="activate_access_short">Activate the 2-hour trial or a subscription</string>
+    <string name="activate_access_long">Activate the 2-hour trial or a subscription to continue.</string>
     <string name="access_refreshed">Access and information updated.</string>
     <string name="notification_permission_help">Allow Barka Tunnel notifications to display the connection status.</string>
     <string name="connection_pending_help">Connection in progress. Tap the button to stop, then try again.</string>
+    <string name="connection_failed_help">The connection could not be established after the automatic attempts.</string>
     <string name="no_access_active">No active access.</string>
     <string name="vpn_still_connected">The VPN is still connected.</string>
     <string name="disconnect_refused">Disconnection refused.</string>
@@ -151,7 +152,7 @@
 
     <string name="guide_title">USER GUIDE</string>
     <string name="guide_1_title">1. Introduction</string>
-    <string name="guide_1_text">What is Barka Tunnel for?\n\n• NETWORK IP shows the detected IPv4 address and connection type (mobile data or Wi‑Fi). When there is no network, --- is displayed.\n• SELECTED NETWORK lets you choose the operator.\n• The large center button starts or stops the VPN.\n• TIME REMAINING shows your available access time; ADD opens the offers.\n• The gift, refresh, menu and Journal tab provide access to the other features.</string>
+    <string name="guide_1_text">Barka Tunnel is a modern, innovative and 100% Burkinabè application designed to help users better manage their Internet expenses. It provides a simple and accessible experience for using the connection services available in the app and managing access time more easily every day.\n\nDesigned around the realities and needs of users in Burkina Faso, Barka Tunnel focuses on simplicity, efficiency and more economical Internet use, with the goal of reducing the pressure of repeated data-bundle purchases while keeping the experience clear and modern.</string>
     <string name="guide_2_title">2. Choose a network</string>
     <string name="guide_2_text">1. Enable the SIM and mobile data for the operator you are using.\n2. Tap SELECTED NETWORK.\n3. Choose MOOV-AFRICA BF, ORANGE BF, or TELECEL BF.\n4. Check that the displayed name matches your network before starting the connection.\n\nEach operator automatically uses its dedicated connection profile; you do not need to enter technical settings.</string>
     <string name="guide_3_title">3. IP Finder</string>

@@ -38,6 +38,7 @@ class BarkaVpnService : VpnService() {
 
         when (action) {
             ACTION_CONNECT -> {
+                stopping = false
                 startForeground(
                     NOTIFICATION_ID,
                     buildNotification(this, getString(R.string.notification_connecting))
@@ -45,6 +46,7 @@ class BarkaVpnService : VpnService() {
                 worker.execute { connect(intent, requestId) }
             }
             ACTION_DISCONNECT -> {
+                stopping = true
                 startForeground(
                     NOTIFICATION_ID,
                     buildNotification(this, getString(R.string.notification_disconnecting))
@@ -84,52 +86,46 @@ class BarkaVpnService : VpnService() {
             ) ?: throw IllegalStateException("Protocole VPN C6 invalide.")
             val configJson = intent.getStringExtra(EXTRA_CONFIG_JSON).orEmpty()
             val profileConfig = VpnProfileConfigParser.parse(protocol, configJson)
+            val profileName = intent.getStringExtra(EXTRA_PROFILE_NAME).orEmpty()
+            var lastFailure: Exception? = null
 
-            val protocolEngine = createEngine(protocol, profileConfig)
-            engine = protocolEngine
+            repeat(CONNECTION_ATTEMPTS) { attempt ->
+                if (stopping) {
+                    C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+                    return
+                }
+                if (attempt > 0) {
+                    AppLogStore.add(
+                        this,
+                        "Tentative de connexion automatique${profileName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
+                    )
+                    updateNotification(getString(R.string.notification_connecting))
+                    Thread.sleep(CONNECTION_RETRY_DELAY_MS)
+                }
 
-            protocolEngine.start()
-
-            if (!waitForProxyReady(socksPort(protocol))) {
-                throw IllegalStateException("Le tunnel ${protocol.name} n’a pas validé le passage TCP réel.")
+                try {
+                    stopTunnel()
+                    connectOnce(protocol, profileConfig)
+                    connected = true
+                    startAutoPing(protocol)
+                    updateNotification(getString(R.string.notification_connected))
+                    C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
+                    return
+                } catch (error: Exception) {
+                    lastFailure = error
+                    val technicalMessage = sanitizeError(
+                        error.message ?: "Échec interne de la connexion."
+                    )
+                    Log.w(
+                        TAG,
+                        "Connection attempt ${attempt + 1}/$CONNECTION_ATTEMPTS failed: $technicalMessage",
+                        error
+                    )
+                    stopTunnel()
+                }
             }
 
-            val dns = when (profileConfig) {
-                is VpnProfileConfig.SlowDns -> profileConfig.dns
-                else -> "1.1.1.1"
-            }
-            val descriptor = Builder()
-                .setSession("Barka Tunnel")
-                .setMtu(VPN_MTU)
-                .addAddress(VPN_INTERFACE_ADDRESS, 24)
-                .addRoute("0.0.0.0", 0)
-                .addDnsServer(dns)
-                .addDisallowedApplication(packageName)
-                .establish()
-                ?: throw IllegalStateException("Android n’a pas créé l’interface VPN.")
-
-            val udpgw = when (profileConfig) {
-                is VpnProfileConfig.UdpCustom -> "${profileConfig.udpGwHost}:${profileConfig.udpGwPort}"
-                is VpnProfileConfig.SlowDns -> DEFAULT_UDPGW
-                is VpnProfileConfig.Vless -> null
-            }
-
-            tun2SocksRunner = Tun2SocksRunner(this).also { runner ->
-                runner.start(
-                    vpnDescriptor = descriptor,
-                    mtu = VPN_MTU,
-                    vpnAddress = TUN2SOCKS_ROUTER_ADDRESS,
-                    netmask = VPN_NETMASK,
-                    socksAddress = protocolEngine.socksAddress,
-                    udpgwAddress = udpgw,
-                    forwardUdpThroughSocks = protocol == VpnProfileProtocol.VLESS
-                )
-            }
-
-            connected = true
-            startAutoPing(protocol)
-            updateNotification(getString(R.string.notification_connected))
-            C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
+            throw lastFailure ?: IllegalStateException("Échec interne de la connexion.")
         } catch (e: Exception) {
             val technicalMessage = sanitizeError(e.message ?: "Échec interne de la connexion.")
             Log.e(TAG, "Connection failure: $technicalMessage", e)
@@ -137,10 +133,61 @@ class BarkaVpnService : VpnService() {
             stopTunnel()
             C6VpnRuntime.complete(
                 requestId,
-                C6VpnResult.Error(getString(R.string.connection_pending_help))
+                C6VpnResult.Error(getString(R.string.connection_failed_help))
             )
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
+        }
+    }
+
+    private fun connectOnce(
+        protocol: VpnProfileProtocol,
+        profileConfig: VpnProfileConfig
+    ) {
+        val protocolEngine = createEngine(protocol, profileConfig)
+        engine = protocolEngine
+        protocolEngine.start()
+
+        if (
+            !PortWaiter.waitUntilOpen(
+                "127.0.0.1",
+                socksPort(protocol),
+                LOCAL_PROXY_READY_TIMEOUT_MS
+            )
+        ) {
+            throw IllegalStateException("Le tunnel ${protocol.name} n’a pas ouvert son proxy local.")
+        }
+
+        val dns = when (profileConfig) {
+            is VpnProfileConfig.SlowDns -> profileConfig.dns
+            else -> "1.1.1.1"
+        }
+        val descriptor = Builder()
+            .setSession("Barka Tunnel")
+            .setMtu(VPN_MTU)
+            .addAddress(VPN_INTERFACE_ADDRESS, 24)
+            .addRoute("0.0.0.0", 0)
+            .addDnsServer(dns)
+            .addDisallowedApplication(packageName)
+            .establish()
+            ?: throw IllegalStateException("Android n’a pas créé l’interface VPN.")
+
+        val udpgw = when (profileConfig) {
+            is VpnProfileConfig.UdpCustom -> "${profileConfig.udpGwHost}:${profileConfig.udpGwPort}"
+            is VpnProfileConfig.SlowDns -> DEFAULT_UDPGW
+            is VpnProfileConfig.Vless -> null
+        }
+
+        tun2SocksRunner = Tun2SocksRunner(this).also { runner ->
+            runner.start(
+                vpnDescriptor = descriptor,
+                mtu = VPN_MTU,
+                vpnAddress = TUN2SOCKS_ROUTER_ADDRESS,
+                netmask = VPN_NETMASK,
+                socksAddress = protocolEngine.socksAddress,
+                udpgwAddress = udpgw,
+                forwardUdpThroughSocks = protocol == VpnProfileProtocol.VLESS
+            )
         }
     }
 
@@ -161,24 +208,6 @@ class BarkaVpnService : VpnService() {
         runCatching { engine?.stop() }
         engine = null
         connected = false
-    }
-
-    private fun waitForProxyReady(port: Int): Boolean {
-        repeat(PROXY_READY_ATTEMPTS) { attempt ->
-            if (
-                SocksProbe.connectThrough(
-                    proxyHost = "127.0.0.1",
-                    proxyPort = port,
-                    timeoutMs = PROXY_READY_PROBE_TIMEOUT_MS
-                )
-            ) {
-                return true
-            }
-            if (attempt < PROXY_READY_ATTEMPTS - 1) {
-                Thread.sleep(PROXY_READY_RETRY_DELAY_MS)
-            }
-        }
-        return false
     }
 
     private fun startAutoPing(protocol: VpnProfileProtocol) {
@@ -341,9 +370,9 @@ class BarkaVpnService : VpnService() {
         private const val SOCKS_VLESS = 10808
         private const val SOCKS_SLOWDNS = 10809
         private const val SOCKS_UDP = 10810
-        private const val PROXY_READY_ATTEMPTS = 24
-        private const val PROXY_READY_PROBE_TIMEOUT_MS = 2_500
-        private const val PROXY_READY_RETRY_DELAY_MS = 750L
+        private const val CONNECTION_ATTEMPTS = 2
+        private const val CONNECTION_RETRY_DELAY_MS = 2_500L
+        private const val LOCAL_PROXY_READY_TIMEOUT_MS = 4_000L
         private const val SETTINGS_PREFS = "barka_settings"
         private const val KEY_AUTO_PING = "auto_ping"
         private const val AUTO_PING_HOST = "1.1.1.1"
