@@ -64,6 +64,8 @@ class HomeController(
                 "Choisis d’abord un réseau."
             )
 
+        state = state.copy(access = runtime.accessController.refreshAccess())
+
         if (!state.access.allowed) {
             return HomeControllerResult.Message(
                 "Aucun accès actif."

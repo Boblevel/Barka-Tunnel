@@ -126,6 +126,7 @@ class AdminCodeListItem(BaseModel):
     status: Literal["issued", "redeemed", "revoked"]
     created_at: str
     redeemed_at: str | None = None
+    expires_at: str | None = None
     redeemed_device_id: str | None = None
     source_type: str
 

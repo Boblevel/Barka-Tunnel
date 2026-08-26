@@ -23,6 +23,14 @@ Voir docs/DEPLOIEMENT_FINAL.md.
 - Retirer Maintenance -> synchronisation et retour du réseau.
 - Modifier une coordonnée de profil dans le panel -> version augmente -> application synchronise la nouvelle configuration.
 - Code 1 semaine -> durée 7 jours.
+- Panel : Abonnements payés séparés des Codes Redeem manuels.
+- Désactiver un accès activé -> MOOV/Orange/Telecel gelés pour l'appareil.
+- Réactiver -> accès restauré si aucune autre révocation ne reste.
+- Supprimer -> le code disparaît du panel et son temps restant est retiré.
+- Dates création/expiration visibles en JJ-MM-AAAA.
+- Journal : titre « Latence » sans « VPN ».
+- Guide : M.RHAFF + instructions MOOV/Orange/Telecel.
+- Paramètres : Canal Telegram officiel ouvre https://t.me/barkaTunnel.
 
 4) SÉCURITÉ
 Ne publie jamais .env, data/barka.db, clés privées, tokens ou secrets de paiement.

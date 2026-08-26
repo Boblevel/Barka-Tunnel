@@ -288,6 +288,27 @@ class MainActivity : AppCompatActivity() {
                         currentConnection is HomeConnectionState.Error
 
                 if (!shouldDisconnect) {
+                    val selected = controller.currentState().selectedNetwork
+                    if (
+                        selected?.id == "orange_bf" &&
+                        NetworkIpProvider.getCurrent(this).transportType == NetworkTransport.CELLULAR
+                    ) {
+                        val currentCellularIp = NetworkIpProvider.getCellularIpv4(this)
+                        val validatedOrangeIp = getSharedPreferences(
+                            IpFinderActivity.PREFERENCES_NAME,
+                            MODE_PRIVATE
+                        ).getString(IpFinderActivity.KEY_LAST_FOUND_IP, null)
+                        if (currentCellularIp.isNullOrBlank() || currentCellularIp != validatedOrangeIp) {
+                            AppLogStore.add(this, "Connexion refusée • ORANGE BF.")
+                            Toast.makeText(
+                                this,
+                                R.string.orange_ipfinder_required,
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@connectAction
+                        }
+                    }
+
                     if (
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                         ContextCompat.checkSelfPermission(

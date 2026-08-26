@@ -2,6 +2,7 @@ package com.barkatunnel.app.settings
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.TextView
@@ -130,6 +131,10 @@ class SettingsActivity : AppCompatActivity() {
 
         findViewById<MaterialButton>(R.id.shareAppButton).setOnClickListener {
             shareApplication()
+        }
+
+        findViewById<MaterialButton>(R.id.telegramChannelButton).setOnClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/barkaTunnel")))
         }
 
     }

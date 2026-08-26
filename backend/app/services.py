@@ -45,6 +45,16 @@ def access_state(device_id: str) -> dict:
     finally:
         cx.close()
 
+    if bool(row["access_disabled"]):
+        return {
+            "allowed": False,
+            "access_type": "NONE",
+            "server_time": iso(now),
+            "started_at": None,
+            "expires_at": None,
+            "remaining_seconds": 0,
+        }
+
     sub_exp = row["subscription_expires_at"]
     if sub_exp is not None and int(sub_exp) > now:
         start = row["subscription_started_at"]
@@ -82,6 +92,16 @@ def access_state(device_id: str) -> dict:
 def start_trial(device_id: str) -> tuple[dict, bool, str]:
     ensure_device(device_id)
     current = access_state(device_id)
+    cx = connect()
+    try:
+        suspended = cx.execute(
+            "SELECT access_disabled FROM devices WHERE device_id=?",
+            (device_id,),
+        ).fetchone()
+    finally:
+        cx.close()
+    if suspended and bool(suspended["access_disabled"]):
+        return current, False, "Accès désactivé par l’administration."
     if current["access_type"] == "SUBSCRIPTION":
         return current, False, "Un abonnement est déjà actif."
 
@@ -152,6 +172,17 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
     success = False
     message = "Code invalide."
 
+    cx = connect()
+    try:
+        device = cx.execute(
+            "SELECT access_disabled FROM devices WHERE device_id=?",
+            (device_id,),
+        ).fetchone()
+    finally:
+        cx.close()
+    if device and bool(device["access_disabled"]):
+        return False, "Accès désactivé par l’administration.", access_state(device_id)
+
     with transaction() as cx:
         row = cx.execute(
             "SELECT * FROM activation_codes WHERE code_hash=?",
@@ -201,10 +232,11 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
             cx.execute(
                 """
                 UPDATE activation_codes
-                SET status='redeemed', redeemed_at=?, redeemed_device_id=?
+                SET status='redeemed', redeemed_at=?, redeemed_device_id=?,
+                    applied_from=?, applied_until=?
                 WHERE id=?
                 """,
-                (now, device_id, row["id"]),
+                (now, device_id, base, new_exp, row["id"]),
             )
 
             success = True

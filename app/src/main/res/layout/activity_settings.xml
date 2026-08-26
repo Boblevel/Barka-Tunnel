@@ -250,6 +250,23 @@
                 app:strokeColor="@color/barka_border"
                 app:strokeWidth="1dp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/telegramChannelButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="12dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="18dp"
+                android:text="@string/settings_telegram_channel"
+                android:textAllCaps="false"
+                android:textColor="@color/barka_text"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_card"
+                app:cornerRadius="14dp"
+                app:strokeColor="@color/barka_border"
+                app:strokeWidth="1dp" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

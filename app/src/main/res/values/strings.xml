@@ -130,6 +130,8 @@
     <string name="settings_app_permissions">Autorisations de l’application</string>
     <string name="settings_check_update">Vérifier la mise à jour</string>
     <string name="settings_share_app">Partager l’application</string>
+    <string name="settings_telegram_channel">Canal Telegram officiel</string>
+    <string name="orange_ipfinder_required">ORANGE BF nécessite une IP validée par IP Finder sur la connexion mobile actuelle.</string>
     <string name="settings_about">À PROPOS</string>
     <string name="settings_about_format">Barka Tunnel\nVersion %1$s</string>
     <string name="settings_notification_denied">Les notifications restent désactivées.</string>
@@ -166,9 +168,9 @@
 
     <string name="guide_title">GUIDE D’UTILISATION</string>
     <string name="guide_1_title">1. Présentation</string>
-    <string name="guide_1_text">Barka Tunnel est une application moderne, révolutionnaire et 100 % burkinabè, conçue pour aider les utilisateurs à mieux maîtriser leurs dépenses Internet. Elle propose une expérience simple et accessible afin de profiter plus facilement des services de connexion disponibles dans l’application et de mieux gérer son temps d’accès au quotidien.\n\nPensée pour les réalités et les besoins des utilisateurs au Burkina Faso, Barka Tunnel met l’accent sur la simplicité, l’efficacité et une utilisation plus économique d’Internet, avec l’objectif de réduire la pression liée aux achats répétés de forfaits tout en offrant une expérience claire et moderne.</string>
+    <string name="guide_1_text">Barka Tunnel est une application moderne, révolutionnaire et 100 % burkinabè, développée par M.RHAFF pour aider les utilisateurs à mieux maîtriser leurs dépenses Internet. Elle propose une expérience simple et accessible afin de profiter plus facilement des services de connexion disponibles dans l’application et de mieux gérer son temps d’accès au quotidien.\n\nPensée pour les réalités et les besoins des utilisateurs au Burkina Faso, Barka Tunnel met l’accent sur la simplicité, l’efficacité et une utilisation plus économique d’Internet, avec l’objectif de réduire la pression liée aux achats répétés de forfaits tout en offrant une expérience claire et moderne.</string>
     <string name="guide_2_title">2. Choisir le réseau</string>
-    <string name="guide_2_text">1. Activez la SIM et les données mobiles de l’opérateur utilisé.\n2. Touchez RÉSEAU SÉLECTIONNÉ.\n3. Choisissez MOOV-AFRICA BF, ORANGE BF ou TELECEL BF.\n4. Vérifiez que le nom affiché correspond à votre réseau avant de lancer la connexion.\n\nChaque opérateur utilise automatiquement son profil de connexion dédié ; vous n’avez aucun paramètre technique à saisir.</string>
+    <string name="guide_2_text">MOOV-AFRICA BF\n1. Activez la SIM MOOV et les données mobiles.\n2. Sur l’accueil, choisissez MOOV-AFRICA BF.\n3. Regardez l’IP DU RÉSEAU avant de vous connecter. Pour que MOOV fonctionne, l’adresse doit commencer par 10 et son deuxième nombre doit être supérieur ou égal à 100 (par exemple 10.113.x.x).\n4. Si l’IP convient, appuyez simplement sur le grand bouton de connexion.\n\nORANGE BF\n1. Activez la SIM Orange et les données mobiles, puis désactivez le Wi-Fi.\n2. Ouvrez le menu ☰, puis IP Finder.\n3. Appuyez sur DÉFINIR COMME ASSISTANT et choisissez Barka Tunnel comme assistant numérique Android.\n4. Appuyez sur TROUVER UNE IP. Laissez le scan travailler : dès qu’une bonne IP est détectée, il s’arrête automatiquement.\n5. Revenez à l’accueil, choisissez ORANGE BF, puis appuyez sur connexion.\n\nTELECEL BF\n1. Activez la SIM Telecel et les données mobiles.\n2. Choisissez TELECEL BF sur l’accueil.\n3. Appuyez simplement sur le bouton de connexion.\n\nImportant : choisissez toujours dans Barka Tunnel le réseau correspondant à la SIM et aux données mobiles que vous utilisez.</string>
     <string name="guide_3_title">3. IP Finder</string>
     <string name="guide_3_text">IP Finder sert à rechercher une IP mobile correspondant à un motif.\n\n1. Désactivez le Wi‑Fi et gardez les données mobiles actives.\n2. Entrez un motif : ^ commence par, $ se termine par, = exact ; sans symbole = contient. Plusieurs motifs peuvent être séparés par ligne, virgule ou ;.\n3. Touchez DÉFINIR COMME ASSISTANT et choisissez Barka Tunnel comme assistant numérique Android.\n4. Touchez TROUVER UNE IP. L’application relance le réseau mobile jusqu’à trouver une IP compatible ou jusqu’à l’arrêt.\n5. Quand une IP compatible est trouvée, revenez à l’accueil et lancez le VPN sur le réseau concerné.\n\nLa recherche interrompt toute connexion VPN active.</string>
     <string name="guide_4_title">4. Abonnement</string>
@@ -240,7 +242,7 @@
     <string name="notification_waiting">Connexion en cours • vérification du réseau…</string>
     <string name="notification_channel_name">État de la connexion Barka Tunnel</string>
     <string name="notification_channel_description">Affiche l’état de la connexion Barka Tunnel</string>
-    <string name="journal_latency_title">Latence VPN</string>
+    <string name="journal_latency_title">Latence</string>
     <string name="journal_latency_message">%1$d ms</string>
     <string name="journal_latency_failed">Échec du contrôle réseau</string>
     <string name="network_maintenance_badge">MAINTENANCE</string>

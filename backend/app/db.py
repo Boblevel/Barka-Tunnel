@@ -33,7 +33,8 @@ def init_db() -> None:
                     trial_started_at INTEGER,
                     trial_expires_at INTEGER,
                     subscription_started_at INTEGER,
-                    subscription_expires_at INTEGER
+                    subscription_expires_at INTEGER,
+                    access_disabled INTEGER NOT NULL DEFAULT 0
                 );
 
                 CREATE TABLE IF NOT EXISTS payments(
@@ -66,6 +67,9 @@ def init_db() -> None:
                     created_at INTEGER NOT NULL,
                     redeemed_at INTEGER,
                     redeemed_device_id TEXT,
+                    applied_from INTEGER,
+                    applied_until INTEGER,
+                    deleted_at INTEGER,
                     FOREIGN KEY(payment_reference) REFERENCES payments(reference),
                     FOREIGN KEY(redeemed_device_id) REFERENCES devices(device_id)
                 );
@@ -109,6 +113,28 @@ def init_db() -> None:
             columns = {row["name"] for row in cx.execute("PRAGMA table_info(vpn_profiles)").fetchall()}
             if "maintenance" not in columns:
                 cx.execute("ALTER TABLE vpn_profiles ADD COLUMN maintenance INTEGER NOT NULL DEFAULT 0")
+
+            device_columns = {row["name"] for row in cx.execute("PRAGMA table_info(devices)").fetchall()}
+            if "access_disabled" not in device_columns:
+                cx.execute("ALTER TABLE devices ADD COLUMN access_disabled INTEGER NOT NULL DEFAULT 0")
+
+            code_columns = {row["name"] for row in cx.execute("PRAGMA table_info(activation_codes)").fetchall()}
+            if "applied_from" not in code_columns:
+                cx.execute("ALTER TABLE activation_codes ADD COLUMN applied_from INTEGER")
+            if "applied_until" not in code_columns:
+                cx.execute("ALTER TABLE activation_codes ADD COLUMN applied_until INTEGER")
+            if "deleted_at" not in code_columns:
+                cx.execute("ALTER TABLE activation_codes ADD COLUMN deleted_at INTEGER")
+
+            cx.execute(
+                """
+                UPDATE activation_codes
+                SET applied_from=COALESCE(applied_from, redeemed_at),
+                    applied_until=COALESCE(applied_until, redeemed_at + duration_seconds)
+                WHERE redeemed_at IS NOT NULL
+                  AND (applied_from IS NULL OR applied_until IS NULL)
+                """
+            )
 
             now = int(__import__("time").time())
             defaults = (

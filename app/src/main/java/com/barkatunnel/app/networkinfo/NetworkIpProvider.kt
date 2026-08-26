@@ -53,6 +53,25 @@ object NetworkIpProvider {
         )
     }
 
+    fun getCellularIpv4(context: Context): String? {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return cm.allNetworks.asSequence()
+            .mapNotNull { network ->
+                val caps = cm.getNetworkCapabilities(network) ?: return@mapNotNull null
+                if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                    return@mapNotNull null
+                }
+                cm.getLinkProperties(network)
+                    ?.linkAddresses
+                    ?.asSequence()
+                    ?.map { it.address }
+                    ?.filterIsInstance<Inet4Address>()
+                    ?.firstOrNull { !it.isLoopbackAddress }
+                    ?.hostAddress
+            }
+            .firstOrNull()
+    }
+
     private fun findIpv4(): String? {
         return try {
             val interfaces = NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()

@@ -68,3 +68,16 @@ VALIDATION DE RÉFÉRENCE
 - Validation finale VPN : téléphone réel avec MOOV, Orange et Telecel.
 
 Avant toute future modification des moteurs VPN, demander une preuve/log réel et préserver les configurations qui fonctionnent déjà.
+
+DERNIER LOT FONCTIONNEL / ADMINISTRATION
+- Journal utilisateur : le titre de ping est « Latence » (sans le mot VPN).
+- Guide : la présentation mentionne M.RHAFF comme développeur ; la section « Choisir le réseau » explique précisément MOOV (IP 10.x avec deuxième octet >=100), Orange (IP Finder + assistant + scan automatique), et Telecel (sélection puis connexion).
+- Protection Orange sur données mobiles : si ORANGE BF est sélectionné alors que l'IP mobile actuelle n'est pas celle validée par IP Finder, la connexion est refusée avant le démarrage du VPN. Le fonctionnement Orange sur Wi-Fi n'est pas bloqué par cette garde.
+- Paramètres : option « Canal Telegram officiel » ouvrant https://t.me/barkaTunnel.
+- Panel Barka Tunnel : Abonnements issus des paiements et Codes Redeem manuels sont présentés séparément.
+- Les dates visibles de création/expiration des accès sont affichées en JJ-MM-AAAA.
+- Désactiver un code déjà activé gèle réellement l'appareil côté backend : access_state refuse l'accès et aucun profil MOOV/Orange/Telecel n'est livré.
+- Réactiver restaure l'accès si aucune autre révocation ne reste sur l'appareil.
+- Supprimer un code, manuel ou issu d'un paiement, le masque du panel et retire le temps restant encore attribuable à ce code. Une pierre tombale interne empêche un code de paiement supprimé d'être recréé automatiquement par une resynchronisation du paiement.
+- Les migrations DB sont additives : access_disabled sur devices ; applied_from/applied_until/deleted_at sur activation_codes. Elles ont été testées sur une copie de la base VPS sans perte de lignes.
+- Le panel RHAFF SERVICE multiprotocole reste séparé et n'est pas modifié par ce lot.

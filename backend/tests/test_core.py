@@ -236,26 +236,102 @@ def test_admin_can_delete_unused_manual_code(tmp_path):
     assert all(item["code"] != code for item in admin_ops.list_activation_codes(20))
 
 
-def test_admin_cannot_delete_redeemed_or_payment_code(tmp_path):
+def test_admin_can_freeze_and_reactivate_redeemed_access(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    import app.vpn_profiles as vpn_profiles
+    importlib.reload(admin_ops)
+    importlib.reload(vpn_profiles)
+
+    device = "device-freeze-access-abcdef"
+    code = services.issue_activation_code("MANUAL:FREEZE", "24h")
+    ok, _, access = services.redeem_activation_code(device, code)
+    assert ok is True
+    assert access["allowed"] is True
+
+    revoked, _ = admin_ops.revoke_activation_code(code)
+    assert revoked is True
+    assert services.access_state(device)["allowed"] is False
+
+    vpn_profiles.upsert_admin_profile({
+        "network_id": "orange_bf",
+        "display_name": "ORANGE BF",
+        "protocol": "VLESS",
+        "enabled": True,
+        "priority": 10,
+        "config": {"uri": "vless://example-only"},
+    })
+    try:
+        vpn_profiles.get_profile_for_device(device, "orange_bf")
+        assert False, "Un accès désactivé ne doit recevoir aucun profil opérateur"
+    except PermissionError:
+        pass
+
+    restored, _ = admin_ops.reactivate_activation_code(code)
+    assert restored is True
+    assert services.access_state(device)["allowed"] is True
+
+
+def test_admin_delete_redeemed_code_removes_its_remaining_time(tmp_path):
     _, services = load_modules(tmp_path)
     import app.admin_ops as admin_ops
     importlib.reload(admin_ops)
 
-    manual = services.issue_activation_code("MANUAL:USED", "24h")
-    ok, _, _ = services.redeem_activation_code("device-delete-used-abcdef", manual)
-    assert ok is True
-    deleted, message = admin_ops.delete_activation_code(manual)
-    assert deleted is False
-    assert "historique" in message.lower()
+    device = "device-delete-used-abcdef"
+    code1 = services.issue_activation_code("MANUAL:USED-ONE", "24h")
+    code2 = services.issue_activation_code("MANUAL:USED-TWO", "24h")
+    ok1, _, access1 = services.redeem_activation_code(device, code1)
+    ok2, _, access2 = services.redeem_activation_code(device, code2)
+    assert ok1 is True and ok2 is True
+    assert access2["remaining_seconds"] > access1["remaining_seconds"]
 
-    payment_reference = services.create_payment_record("device-payment-audit-abcdef", "24h")
+    deleted, message = admin_ops.delete_activation_code(code2)
+    assert deleted is True
+    assert "temps restant" in message.lower()
+    after = services.access_state(device)
+    assert after["allowed"] is True
+    assert after["remaining_seconds"] < access2["remaining_seconds"]
+    assert abs(after["remaining_seconds"] - access1["remaining_seconds"]) <= 3
+
+
+def test_admin_can_delete_payment_code_without_reissue(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    device = "device-payment-audit-abcdef"
+    payment_reference = services.create_payment_record(device, "24h")
     payment = services.issue_activation_code(
         f"PAYMENT:{payment_reference}", "24h", payment_reference
     )
-    deleted_payment, payment_message = admin_ops.delete_activation_code(payment)
-    assert deleted_payment is False
-    assert "manuellement" in payment_message.lower()
+    ok, _, _ = services.redeem_activation_code(device, payment)
+    assert ok is True
 
+    deleted, message = admin_ops.delete_activation_code(payment)
+    assert deleted is True
+    assert "supprim" in message.lower()
+    assert all(item["code"] != payment for item in admin_ops.list_activation_codes(20))
+
+    same_code = services.issue_activation_code(
+        f"PAYMENT:{payment_reference}", "24h", payment_reference
+    )
+    assert same_code == payment
+    success, _, access = services.redeem_activation_code(device, same_code)
+    assert success is False
+    assert access["remaining_seconds"] == 0
+
+
+def test_admin_listing_has_expiration_date_after_redemption(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    code = services.issue_activation_code("MANUAL:DATES", "1w")
+    ok, _, _ = services.redeem_activation_code("device-dates-abcdefgh", code)
+    assert ok is True
+    item = next(x for x in admin_ops.list_activation_codes(20) if x["code"] == code)
+    assert item["created_at"]
+    assert item["expires_at"]
 
 
 def test_one_week_plan_is_seven_days(tmp_path):
