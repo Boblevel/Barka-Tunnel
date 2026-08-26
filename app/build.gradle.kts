@@ -37,6 +37,11 @@ android {
                 signingConfig = signingConfigs.getByName("stable")
             }
         }
+        getByName("release") {
+            if (!stableStoreFile.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("stable")
+            }
+        }
     }
 
     compileOptions {

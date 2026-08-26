@@ -106,14 +106,14 @@ jobs:
           set -e
           APK_SOURCE="app/build/outputs/apk/release/app-release.apk"
           test -f "$APK_SOURCE"
-          cp "$APK_SOURCE" BarkaTunnel-debug.apk
-          sha256sum BarkaTunnel-debug.apk
+          cp "$APK_SOURCE" BarkaTunnel-release.apk
+          sha256sum BarkaTunnel-release.apk
 
       - name: Publier APK dans Artifacts
         uses: actions/upload-artifact@v7
         with:
           name: BarkaTunnel-APK
-          path: BarkaTunnel-debug.apk
+          path: BarkaTunnel-release.apk
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
