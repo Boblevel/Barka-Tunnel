@@ -119,6 +119,11 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
                 app:cornerRadius="14dp"
+
+                app:icon="@drawable/ic_theme_barka"
+                app:iconGravity="textStart"
+                app:iconPadding="12dp"
+                app:iconTint="@color/barka_blue"
                 app:strokeColor="@color/barka_border"
                 app:strokeWidth="1dp" />
 
@@ -136,6 +141,11 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
                 app:cornerRadius="14dp"
+
+                app:icon="@drawable/ic_language_barka"
+                app:iconGravity="textStart"
+                app:iconPadding="12dp"
+                app:iconTint="@color/barka_blue"
                 app:strokeColor="@color/barka_border"
                 app:strokeWidth="1dp" />
 
@@ -156,6 +166,13 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingHorizontal="18dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="12dp"
+                    android:contentDescription="@string/settings_auto_ping"
+                    android:src="@drawable/ic_ping_barka" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -200,6 +217,11 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
                 app:cornerRadius="14dp"
+
+                app:icon="@drawable/ic_vpn_settings_barka"
+                app:iconGravity="textStart"
+                app:iconPadding="12dp"
+                app:iconTint="@color/barka_blue"
                 app:strokeColor="@color/barka_border"
                 app:strokeWidth="1dp" />
 
@@ -226,6 +248,11 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
                 app:cornerRadius="14dp"
+
+                app:icon="@drawable/ic_refresh_barka"
+                app:iconGravity="textStart"
+                app:iconPadding="12dp"
+                app:iconTint="@color/barka_blue"
                 app:strokeColor="@color/barka_border"
                 app:strokeWidth="1dp" />
 
@@ -264,6 +291,11 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
                 app:cornerRadius="14dp"
+
+                app:icon="@drawable/ic_telegram_barka"
+                app:iconGravity="textStart"
+                app:iconPadding="12dp"
+                app:iconTint="@color/barka_blue"
                 app:strokeColor="@color/barka_border"
                 app:strokeWidth="1dp" />
 

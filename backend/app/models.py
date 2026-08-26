@@ -75,6 +75,29 @@ class AdminCodeResponse(BaseModel):
     codes: list[str]
 
 
+class AdminRedeemCodeRequest(BaseModel):
+    duration_hours: float = Field(gt=0, le=8760)
+    max_users: int = Field(ge=1, le=100000)
+    count: int = Field(default=1, ge=1, le=100)
+
+
+class AdminRedeemCodeResponse(BaseModel):
+    duration_seconds: int
+    max_users: int
+    codes: list[str]
+
+
+class AdminRedeemCodeListItem(BaseModel):
+    code: str
+    status: Literal["active", "revoked"]
+    duration_seconds: int
+    max_users: int
+    usage_count: int
+    created_at: str
+    last_redeemed_at: str | None = None
+    last_expires_at: str | None = None
+
+
 class PlanResponse(BaseModel):
     id: str
     label: str

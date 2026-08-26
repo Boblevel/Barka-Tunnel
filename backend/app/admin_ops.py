@@ -35,7 +35,7 @@ def list_activation_codes(limit: int = 100) -> list[dict]:
                 "redeemed_at": iso(row["redeemed_at"]),
                 "expires_at": iso(row["applied_until"]),
                 "redeemed_device_id": row["redeemed_device_id"],
-                "source_type": "PAIEMENT" if source_ref.startswith("PAYMENT:") else "MANUEL",
+                "source_type": "PAIEMENT" if source_ref.startswith("PAYMENT:") else "ABONNEMENT",
             }
         )
     return result
@@ -157,6 +157,126 @@ def delete_activation_code(code: str) -> tuple[bool, str]:
     return True, "Code supprimé et temps restant associé retiré."
 
 
+def list_redeem_codes(limit: int = 100) -> list[dict]:
+    safe_limit = max(1, min(int(limit), 200))
+    cx = connect()
+    try:
+        rows = cx.execute(
+            """
+            SELECT r.id, r.source_ref, r.duration_seconds, r.max_users, r.status,
+                   r.created_at, COUNT(u.id) AS usage_count,
+                   MAX(u.redeemed_at) AS last_redeemed_at,
+                   MAX(u.applied_until) AS last_expires_at
+            FROM redeem_codes r
+            LEFT JOIN redeem_usages u ON u.redeem_code_id=r.id
+            WHERE r.deleted_at IS NULL
+            GROUP BY r.id
+            ORDER BY r.id DESC
+            LIMIT ?
+            """,
+            (safe_limit,),
+        ).fetchall()
+    finally:
+        cx.close()
+
+    return [
+        {
+            "code": activation_code_for_source(str(row["source_ref"])),
+            "status": row["status"],
+            "duration_seconds": int(row["duration_seconds"]),
+            "max_users": int(row["max_users"]),
+            "usage_count": int(row["usage_count"]),
+            "created_at": iso(int(row["created_at"])),
+            "last_redeemed_at": iso(row["last_redeemed_at"]),
+            "last_expires_at": iso(row["last_expires_at"]),
+        }
+        for row in rows
+    ]
+
+
+def revoke_redeem_code(code: str) -> tuple[bool, str]:
+    hashed = code_hash(code)
+    with transaction() as cx:
+        row = cx.execute(
+            "SELECT id, status FROM redeem_codes WHERE code_hash=? AND deleted_at IS NULL",
+            (hashed,),
+        ).fetchone()
+        if not row:
+            return False, "Code Redeem introuvable."
+        if row["status"] == "revoked":
+            return True, "Ce code Redeem est déjà désactivé."
+        cx.execute(
+            "UPDATE redeem_codes SET status='revoked' WHERE id=?",
+            (row["id"],),
+        )
+    return True, "Code Redeem désactivé. Les nouvelles activations sont bloquées."
+
+
+def reactivate_redeem_code(code: str) -> tuple[bool, str]:
+    hashed = code_hash(code)
+    with transaction() as cx:
+        row = cx.execute(
+            "SELECT id, status FROM redeem_codes WHERE code_hash=? AND deleted_at IS NULL",
+            (hashed,),
+        ).fetchone()
+        if not row:
+            return False, "Code Redeem introuvable."
+        if row["status"] == "active":
+            return True, "Ce code Redeem est déjà actif."
+        cx.execute(
+            "UPDATE redeem_codes SET status='active' WHERE id=?",
+            (row["id"],),
+        )
+    return True, "Code Redeem réactivé."
+
+
+def delete_redeem_code(code: str) -> tuple[bool, str]:
+    hashed = code_hash(code)
+    now = now_ts()
+    with transaction() as cx:
+        row = cx.execute(
+            "SELECT id FROM redeem_codes WHERE code_hash=? AND deleted_at IS NULL",
+            (hashed,),
+        ).fetchone()
+        if not row:
+            return False, "Code Redeem introuvable."
+
+        usages = cx.execute(
+            """
+            SELECT device_id, applied_from, applied_until
+            FROM redeem_usages
+            WHERE redeem_code_id=?
+            """,
+            (row["id"],),
+        ).fetchall()
+        for usage in usages:
+            device = cx.execute(
+                "SELECT subscription_expires_at FROM devices WHERE device_id=?",
+                (usage["device_id"],),
+            ).fetchone()
+            current_exp = int(device["subscription_expires_at"] or 0) if device else 0
+            applied_from = int(usage["applied_from"] or now)
+            applied_until = int(usage["applied_until"] or applied_from)
+            remaining_from_code = max(0, applied_until - max(now, applied_from))
+            if current_exp > now and remaining_from_code > 0:
+                new_exp = max(now, current_exp - remaining_from_code)
+                cx.execute(
+                    """
+                    UPDATE devices
+                    SET subscription_expires_at=?,
+                        subscription_started_at=CASE WHEN ?>? THEN subscription_started_at ELSE NULL END
+                    WHERE device_id=?
+                    """,
+                    (new_exp, new_exp, now, usage["device_id"]),
+                )
+
+        cx.execute(
+            "UPDATE redeem_codes SET status='revoked', deleted_at=? WHERE id=?",
+            (now, row["id"]),
+        )
+    return True, "Code Redeem supprimé et temps restant associé retiré aux utilisateurs concernés."
+
+
 def admin_stats_extended() -> dict:
     now = now_ts()
     cx = connect()
@@ -181,6 +301,10 @@ def admin_stats_extended() -> dict:
             (now, now),
         ).fetchone()["n"]
         enabled_profiles = cx.execute("SELECT COUNT(*) AS n FROM vpn_profiles WHERE enabled=1").fetchone()["n"]
+        redeem_active = cx.execute(
+            "SELECT COUNT(*) AS n FROM redeem_codes WHERE status='active' AND deleted_at IS NULL"
+        ).fetchone()["n"]
+        redeem_usages = cx.execute("SELECT COUNT(*) AS n FROM redeem_usages").fetchone()["n"]
     finally:
         cx.close()
     return {
@@ -192,4 +316,6 @@ def admin_stats_extended() -> dict:
         "active_subscriptions": int(active_subscriptions),
         "active_trials": int(active_trials),
         "vpn_services_enabled": int(enabled_profiles),
+        "redeem_codes_active": int(redeem_active),
+        "redeem_usages": int(redeem_usages),
     }

@@ -553,11 +553,12 @@ class MainActivity : AppCompatActivity() {
             refreshNetworkIp()
             syncVpnRuntimeState()
             refreshHomeState()
+            refreshVpnServices(force = true)
             if (::journalUiBinder.isInitialized && homeJournalPager.currentItem == PAGE_JOURNAL) {
                 journalUiBinder.refresh()
             }
             if (::updateCoordinator.isInitialized) {
-                updateCoordinator.check(showNoUpdate = false)
+                updateCoordinator.check(showNoUpdate = false, force = true)
             }
         }
     }

@@ -221,7 +221,7 @@ def test_admin_code_listing_reconstructs_manual_code(tmp_path):
     items = admin_ops.list_activation_codes(10)
     assert items
     assert items[0]["code"] == code
-    assert items[0]["source_type"] == "MANUEL"
+    assert items[0]["source_type"] == "ABONNEMENT"
     assert items[0]["status"] == "issued"
 
 def test_admin_can_delete_unused_manual_code(tmp_path):
@@ -339,3 +339,75 @@ def test_one_week_plan_is_seven_days(tmp_path):
     import app.plans as plans
     importlib.reload(plans)
     assert plans.PLANS["1w"]["duration_seconds"] == 7 * 24 * 60 * 60
+
+
+def test_redeem_code_supports_multiple_users_with_limit(tmp_path):
+    _, services = load_modules(tmp_path)
+    code = services.issue_redeem_code("REDEEM:MULTI", 6 * 60 * 60, 2)
+
+    first = "device-redeem-first-abcdef"
+    second = "device-redeem-second-abcdef"
+    third = "device-redeem-third-abcdef"
+
+    ok1, _, access1 = services.redeem_activation_code(first, code)
+    ok2, _, access2 = services.redeem_activation_code(second, code)
+    assert ok1 is True and ok2 is True
+    assert 21590 <= access1["remaining_seconds"] <= 21600
+    assert 21590 <= access2["remaining_seconds"] <= 21600
+
+    same_ok, same_message, same_access = services.redeem_activation_code(first, code)
+    assert same_ok is True
+    assert "déjà été utilisé" in same_message
+    assert same_access["expires_at"] == access1["expires_at"]
+
+    ok3, message3, access3 = services.redeem_activation_code(third, code)
+    assert ok3 is False
+    assert "limite" in message3.lower()
+    assert access3["allowed"] is False
+
+
+def test_admin_redeem_disable_reactivate_and_usage_count(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    code = services.issue_redeem_code("REDEEM:CONTROL", 3600, 5)
+    ok, _, _ = services.redeem_activation_code("device-redeem-control-one", code)
+    assert ok is True
+
+    revoked, _ = admin_ops.revoke_redeem_code(code)
+    assert revoked is True
+    blocked, message, _ = services.redeem_activation_code("device-redeem-control-two", code)
+    assert blocked is False
+    assert "désactiv" in message.lower()
+
+    restored, _ = admin_ops.reactivate_redeem_code(code)
+    assert restored is True
+    allowed, _, _ = services.redeem_activation_code("device-redeem-control-two", code)
+    assert allowed is True
+
+    item = next(x for x in admin_ops.list_redeem_codes(20) if x["code"] == code)
+    assert item["usage_count"] == 2
+    assert item["max_users"] == 5
+    assert item["duration_seconds"] == 3600
+
+
+def test_delete_redeem_removes_remaining_time_from_all_users(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    code = services.issue_redeem_code("REDEEM:DELETE", 2 * 60 * 60, 10)
+    devices = ["device-redeem-delete-one", "device-redeem-delete-two"]
+    for device in devices:
+        ok, _, access = services.redeem_activation_code(device, code)
+        assert ok is True
+        assert access["remaining_seconds"] > 7100
+
+    deleted, message = admin_ops.delete_redeem_code(code)
+    assert deleted is True
+    assert "temps restant" in message.lower()
+    for device in devices:
+        assert services.access_state(device)["remaining_seconds"] == 0
+
+    assert all(item["code"] != code for item in admin_ops.list_redeem_codes(20))

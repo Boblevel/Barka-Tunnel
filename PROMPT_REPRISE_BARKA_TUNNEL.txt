@@ -49,10 +49,12 @@ MAINTENANCE PAR RÉSEAU
 - Android mémorise l'état de maintenance, affiche MAINTENANCE pour le réseau concerné et bloque sa sélection/connexion hors ligne ; avec Internet, le serveur reste la source de vérité et une fin de maintenance est récupérée automatiquement.
 - Les autres réseaux continuent de fonctionner normalement.
 
-CODES D'ACTIVATION
-- Le plan 1w existe déjà et vaut exactement 7 jours (7*24*60*60).
-- Le panel Web propose déjà 1 semaine en plus de 24h, 2 semaines et 1 mois.
-- Ne duplique pas ce système.
+ABONNEMENTS ET CODES REDEEM
+- Les Abonnements sont individuels : un code d'abonnement ne peut être utilisé que par un seul appareil. Les codes créés après paiement et les abonnements générés manuellement sont regroupés dans la section Abonnements du panel.
+- Le plan 1w existe et vaut exactement 7 jours (7*24*60*60), avec 24h, 2 semaines et 1 mois.
+- Les Codes Redeem gratuits sont séparés : durée libre en heures, limite maximale d'utilisateurs configurable, compteur utilisations/limite, un usage maximum par appareil pour le même code.
+- Désactiver un Code Redeem bloque les nouvelles activations. Réactiver les autorise à nouveau. Supprimer retire le code et retire le temps restant qu'il a attribué aux utilisateurs concernés.
+- Les dates visibles de création/expiration sont rendues en JJ-MM-AAAA dans le panel.
 
 PANEL RHAFF SERVICE
 - Le gros panel VPS multiprotocole RHAFF SERVICE est séparé de Barka Tunnel.
@@ -81,3 +83,11 @@ DERNIER LOT FONCTIONNEL / ADMINISTRATION
 - Supprimer un code, manuel ou issu d'un paiement, le masque du panel et retire le temps restant encore attribuable à ce code. Une pierre tombale interne empêche un code de paiement supprimé d'être recréé automatiquement par une resynchronisation du paiement.
 - Les migrations DB sont additives : access_disabled sur devices ; applied_from/applied_until/deleted_at sur activation_codes. Elles ont été testées sur une copie de la base VPS sans perte de lignes.
 - Le panel RHAFF SERVICE multiprotocole reste séparé et n'est pas modifié par ce lot.
+
+DERNIER LOT - AUTOMATISATION ET INTERFACE
+- Android force une synchronisation des profils VPN à chaque retour au premier plan avec Internet disponible : une nouvelle version serveur ne dépend plus du bouton de rafraîchissement manuel.
+- Android force également la vérification de mise à jour APK à chaque retour au premier plan. Si le panel publie une APK obligatoire, le dialogue bloquant apparaît automatiquement.
+- Guide « Choisir le réseau » : MOOV-AFRICA / ORANGE / TELECEL sont écrits clairement ; les instructions demandent seulement d'activer les données mobiles de l'opérateur concerné.
+- Paramètres : les options Thème, Langue, Auto Ping, Réglages VPN Android, Vérifier la mise à jour, Partager et Telegram disposent d'icônes représentatives.
+- Panel mobile : le header commun a été corrigé pour que le hamburger reste compact, que le titre/sous-titre ne se chevauchent plus et que le bouton Actualiser reste aligné sur toutes les sections.
+- Les moteurs VPN et leurs configurations fonctionnelles ne doivent pas être modifiés sans une nouvelle demande explicite et des preuves de diagnostic.

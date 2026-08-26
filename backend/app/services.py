@@ -164,6 +164,85 @@ def issue_activation_code(
     return code
 
 
+def issue_redeem_code(source_ref: str, duration_seconds: int, max_users: int) -> str:
+    duration = int(duration_seconds)
+    limit = int(max_users)
+    if duration <= 0:
+        raise ValueError("Durée invalide")
+    if limit <= 0:
+        raise ValueError("Limite utilisateurs invalide")
+
+    code = activation_code_for_source(source_ref)
+    hashed = code_hash(code)
+    now = now_ts()
+    with transaction() as cx:
+        cx.execute(
+            """
+            INSERT OR IGNORE INTO redeem_codes(
+                code_hash, source_ref, duration_seconds, max_users, status, created_at
+            ) VALUES(?,?,?,?,'active',?)
+            """,
+            (hashed, source_ref, duration, limit, now),
+        )
+    return code
+
+
+def _redeem_shared_code(cx, device_id: str, hashed: str, now: int) -> tuple[bool, str] | None:
+    row = cx.execute(
+        "SELECT * FROM redeem_codes WHERE code_hash=? AND deleted_at IS NULL",
+        (hashed,),
+    ).fetchone()
+    if not row:
+        return None
+    if row["status"] != "active":
+        return False, "Ce code Redeem a été désactivé."
+
+    existing = cx.execute(
+        "SELECT applied_until FROM redeem_usages WHERE redeem_code_id=? AND device_id=?",
+        (row["id"], device_id),
+    ).fetchone()
+    if existing:
+        return True, "Ce code Redeem a déjà été utilisé sur cet appareil."
+
+    usage_count = int(cx.execute(
+        "SELECT COUNT(*) AS n FROM redeem_usages WHERE redeem_code_id=?",
+        (row["id"],),
+    ).fetchone()["n"])
+    if usage_count >= int(row["max_users"]):
+        return False, "La limite d’utilisateurs de ce code Redeem est atteinte."
+
+    device = cx.execute(
+        "SELECT * FROM devices WHERE device_id=?",
+        (device_id,),
+    ).fetchone()
+    current_exp = device["subscription_expires_at"]
+    if current_exp is not None and int(current_exp) > now:
+        base = int(current_exp)
+        started = int(device["subscription_started_at"] or now)
+    else:
+        base = now
+        started = now
+    new_exp = base + int(row["duration_seconds"])
+
+    cx.execute(
+        """
+        UPDATE devices
+        SET subscription_started_at=?, subscription_expires_at=?, last_seen_at=?
+        WHERE device_id=?
+        """,
+        (started, new_exp, now, device_id),
+    )
+    cx.execute(
+        """
+        INSERT INTO redeem_usages(
+            redeem_code_id, device_id, redeemed_at, applied_from, applied_until
+        ) VALUES(?,?,?,?,?)
+        """,
+        (row["id"], device_id, now, base, new_exp),
+    )
+    return True, "Code Redeem activé avec succès."
+
+
 def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
     ensure_device(device_id)
     hashed = code_hash(code)
@@ -190,8 +269,12 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
         ).fetchone()
 
         if not row:
-            success = False
-            message = "Code invalide."
+            shared_result = _redeem_shared_code(cx, device_id, hashed, now)
+            if shared_result is None:
+                success = False
+                message = "Code invalide."
+            else:
+                success, message = shared_result
         elif row["status"] == "redeemed":
             if row["redeemed_device_id"] == device_id:
                 success = True

@@ -9,7 +9,17 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import FileResponse, HTMLResponse
 
-from .admin_ops import admin_stats_extended, delete_activation_code, list_activation_codes, reactivate_activation_code, revoke_activation_code
+from .admin_ops import (
+    admin_stats_extended,
+    delete_activation_code,
+    delete_redeem_code,
+    list_activation_codes,
+    list_redeem_codes,
+    reactivate_activation_code,
+    reactivate_redeem_code,
+    revoke_activation_code,
+    revoke_redeem_code,
+)
 from .admin_panel import ADMIN_PANEL_HTML
 from .app_updates import (
     get_app_update_admin,
@@ -28,6 +38,9 @@ from .models import (
     ActivationResponse,
     AdminCodeRequest,
     AdminCodeResponse,
+    AdminRedeemCodeListItem,
+    AdminRedeemCodeRequest,
+    AdminRedeemCodeResponse,
     DeviceRequest,
     PaymentStartRequest,
     PaymentStartResponse,
@@ -56,6 +69,7 @@ from .services import (
     get_payment_by_any_reference,
     get_payment_for_device,
     issue_activation_code,
+    issue_redeem_code,
     mark_payment_error,
     mark_payment_failed,
     mark_payment_paid,
@@ -331,6 +345,63 @@ def admin_codes(body: AdminCodeRequest):
         source_ref = f"MANUAL:{uuid.uuid4().hex}"
         codes.append(issue_activation_code(source_ref, body.plan_id))
     return AdminCodeResponse(plan_id=body.plan_id, codes=codes)
+
+
+@app.post(
+    "/v1/admin/redeem-codes",
+    response_model=AdminRedeemCodeResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_redeem_codes(body: AdminRedeemCodeRequest):
+    duration_seconds = max(1, int(round(body.duration_hours * 60 * 60)))
+    codes: list[str] = []
+    for _ in range(body.count):
+        source_ref = f"REDEEM:{uuid.uuid4().hex}"
+        codes.append(issue_redeem_code(source_ref, duration_seconds, body.max_users))
+    return AdminRedeemCodeResponse(
+        duration_seconds=duration_seconds,
+        max_users=body.max_users,
+        codes=codes,
+    )
+
+
+@app.get(
+    "/v1/admin/redeem-codes",
+    response_model=list[AdminRedeemCodeListItem],
+    dependencies=[Depends(require_admin)],
+)
+def admin_redeem_codes_list(limit: int = 100):
+    return list_redeem_codes(limit)
+
+
+@app.post(
+    "/v1/admin/redeem-codes/revoke",
+    response_model=AdminCodeRevokeResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_redeem_code_revoke(body: AdminCodeRevokeRequest):
+    success, message = revoke_redeem_code(body.code)
+    return AdminCodeRevokeResponse(success=success, message=message)
+
+
+@app.post(
+    "/v1/admin/redeem-codes/reactivate",
+    response_model=AdminCodeRevokeResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_redeem_code_reactivate(body: AdminCodeRevokeRequest):
+    success, message = reactivate_redeem_code(body.code)
+    return AdminCodeRevokeResponse(success=success, message=message)
+
+
+@app.post(
+    "/v1/admin/redeem-codes/delete",
+    response_model=AdminCodeRevokeResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_redeem_code_delete(body: AdminCodeRevokeRequest):
+    success, message = delete_redeem_code(body.code)
+    return AdminCodeRevokeResponse(success=success, message=message)
 
 
 @app.get("/v1/admin/stats", dependencies=[Depends(require_admin)])

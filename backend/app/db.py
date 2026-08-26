@@ -77,6 +77,35 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_activation_codes_hash
                 ON activation_codes(code_hash);
 
+                CREATE TABLE IF NOT EXISTS redeem_codes(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code_hash TEXT NOT NULL UNIQUE,
+                    source_ref TEXT NOT NULL UNIQUE,
+                    duration_seconds INTEGER NOT NULL,
+                    max_users INTEGER NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at INTEGER NOT NULL,
+                    deleted_at INTEGER
+                );
+
+                CREATE TABLE IF NOT EXISTS redeem_usages(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    redeem_code_id INTEGER NOT NULL,
+                    device_id TEXT NOT NULL,
+                    redeemed_at INTEGER NOT NULL,
+                    applied_from INTEGER NOT NULL,
+                    applied_until INTEGER NOT NULL,
+                    UNIQUE(redeem_code_id, device_id),
+                    FOREIGN KEY(redeem_code_id) REFERENCES redeem_codes(id),
+                    FOREIGN KEY(device_id) REFERENCES devices(device_id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_redeem_codes_hash
+                ON redeem_codes(code_hash);
+
+                CREATE INDEX IF NOT EXISTS idx_redeem_usages_code
+                ON redeem_usages(redeem_code_id, redeemed_at DESC);
+
                 CREATE TABLE IF NOT EXISTS webhook_events(
                     event_id TEXT PRIMARY KEY,
                     received_at INTEGER NOT NULL
