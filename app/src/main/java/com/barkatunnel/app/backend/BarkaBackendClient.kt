@@ -123,6 +123,7 @@ class BarkaBackendClient(context: Context) {
             displayName = body.optString("display_name", "").trim(),
             protocol = body.optString("protocol", "").trim().uppercase(),
             enabled = body.optBoolean("enabled", false),
+            maintenance = body.optBoolean("maintenance", false),
             priority = body.optInt("priority", 100),
             version = body.optInt("version", 0),
             updatedAt = body.optString("updated_at", "").trim()
@@ -289,6 +290,7 @@ data class BackendVpnProfileMeta(
     val displayName: String,
     val protocol: String,
     val enabled: Boolean,
+    val maintenance: Boolean,
     val priority: Int,
     val version: Int,
     val updatedAt: String

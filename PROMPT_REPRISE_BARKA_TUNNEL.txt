@@ -1,0 +1,70 @@
+PROMPT DE REPRISE - PROJET BARKA TUNNEL
+
+Tu reprends le projet Barka Tunnel depuis le ZIP complet joint et le PDF de mémoire joint.
+Lis d'abord entièrement le PDF, puis lis réellement les fichiers concernés avant toute modification.
+
+RÈGLES ABSOLUES DE TRAVAIL
+- Toujours lire un fichier existant avant de le modifier.
+- Travailler sur une copie de la dernière base fournie.
+- Faire uniquement des modifications chirurgicales ciblées ; ne jamais réécrire un fichier entier sans nécessité.
+- Ne rien modifier hors de la demande explicite.
+- Ne jamais casser les fonctionnalités déjà validées.
+- Vérifier syntaxe, XML, Python/Bash/Kotlin selon le fichier, puis vérifier les diffs.
+- Faire un triple contrôle avant livraison.
+- Conserver versionName 1.1.9 et versionCode 65 tant qu'une montée de version n'est pas explicitement demandée.
+- Pour les corrections Android, fournir un ZIP complet et un bloc Termux avec git add sur chemins explicites ; ne jamais utiliser git add .
+- Ne jamais exposer dans les réponses, PDF ou Journal : mots de passe VPN, UUID, clés privées/publiques sensibles, tokens admin, secrets de paiement ou contenu de .env.
+
+ÉTAT VALIDÉ À NE PAS CASSER
+- MOOV-AFRICA BF : SlowDNS + SSH fonctionne sur téléphone réel.
+- ORANGE BF : VLESS/Xray fonctionne sur téléphone réel.
+- TELECEL BF : SSH/UDP fonctionne sur téléphone réel.
+- Correctif SSH important : le SOCKS local doit utiliser le vrai localPort de SshSocksProxy, pas ServerSocket.localPort avant bind (qui donnait -1).
+- Orange utilise le coeur Xray stable préparé par scripts/c6_prepare_native.sh et la config VLESS ne doit pas réintroduire allowInsecure rejeté par le coeur actuel.
+- Reconnexion automatique continue jusqu'à déconnexion utilisateur.
+- Un clic pendant CONNEXION demande la déconnexion et l'état réel du service doit rester synchronisé avec l'accueil.
+- Auto Ping fonctionne via le SOCKS actif ; sa latence est affichée dans le Journal.
+- Les diagnostics techniques DNSTT/SSH/Xray/SOCKS/TUN/tun2socks restent disponibles dans les logs internes mais sont masqués du Journal utilisateur.
+
+ARCHITECTURE ACTUELLE
+- Android : app/
+- Backend FastAPI + SQLite : backend/
+- Panel Web Barka Tunnel : backend/app/admin_panel.py
+- Profils VPN dynamiques : backend/app/vpn_profiles.py + Android vpnprofile/
+- API publique : BarkaBackendClient, endpoint /v1/vpn/catalog et /v1/vpn/profile.
+- Profils attendus : moov_bf=SLOWDNS, orange_bf=VLESS, telecel_bf=UDP.
+
+GESTION DISTANTE FINALISÉE
+- Le panel Web Barka Tunnel permet de modifier la configuration JSON d'un réseau.
+- Chaque ENREGISTRER incrémente la version serveur du profil.
+- Android compare/synchronise les versions, valide la configuration avant cache et utilise Android Keystore pour le cache chiffré.
+- Avec Internet validé, une connexion récupère directement la configuration serveur la plus récente ; elle ne retombe pas silencieusement sur une ancienne config si le serveur répond en erreur.
+- Lorsqu'une nouvelle version est détectée pendant une synchronisation, elle est traitée comme une mise à jour de configuration obligatoire, téléchargée puis validée avant remplacement du cache. Une information de mise à jour obligatoire est affichée après synchronisation automatique.
+- Hors ligne, la dernière configuration valide peut rester utilisable seulement si aucune version obligatoire plus récente n'a déjà été détectée.
+
+MAINTENANCE PAR RÉSEAU
+- La table vpn_profiles contient un champ maintenance.
+- Le panel Web possède un interrupteur Maintenance par réseau.
+- Un réseau en maintenance refuse la livraison de sa configuration côté backend.
+- Android mémorise l'état de maintenance, affiche MAINTENANCE pour le réseau concerné et bloque sa sélection/connexion hors ligne ; avec Internet, le serveur reste la source de vérité et une fin de maintenance est récupérée automatiquement.
+- Les autres réseaux continuent de fonctionner normalement.
+
+CODES D'ACTIVATION
+- Le plan 1w existe déjà et vaut exactement 7 jours (7*24*60*60).
+- Le panel Web propose déjà 1 semaine en plus de 24h, 2 semaines et 1 mois.
+- Ne duplique pas ce système.
+
+PANEL RHAFF SERVICE
+- Le gros panel VPS multiprotocole RHAFF SERVICE est séparé de Barka Tunnel.
+- Il n'a pas été modifié pour cette évolution car le centre de gestion nécessaire existe déjà dans le panel Web Barka Tunnel.
+- Ne modifier RHAFF SERVICE que si une future demande l'exige explicitement.
+
+VALIDATION DE RÉFÉRENCE
+- Backend : PYTHONPATH=. pytest -q tests/test_core.py doit être vert.
+- Python : python -m py_compile app/*.py tests/test_core.py.
+- XML Android : parser tous les XML.
+- git diff --check doit être propre.
+- Build Android réel : GitHub Actions.
+- Validation finale VPN : téléphone réel avec MOOV, Orange et Telecel.
+
+Avant toute future modification des moteurs VPN, demander une preuve/log réel et préserver les configurations qui fonctionnent déjà.

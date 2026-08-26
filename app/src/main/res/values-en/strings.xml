@@ -234,4 +234,8 @@
     <string name="journal_latency_title">VPN latency</string>
     <string name="journal_latency_message">%1$d ms</string>
     <string name="journal_latency_failed">Network check failed</string>
+    <string name="network_maintenance_badge">MAINTENANCE</string>
+    <string name="network_maintenance_message">This network is temporarily under maintenance.</string>
+    <string name="config_update_required_title">Required update</string>
+    <string name="config_update_applied_message">The new network configuration was downloaded and synchronized automatically.</string>
 </resources>

@@ -83,6 +83,7 @@ def init_db() -> None:
                     display_name TEXT NOT NULL,
                     protocol TEXT NOT NULL,
                     enabled INTEGER NOT NULL DEFAULT 0,
+                    maintenance INTEGER NOT NULL DEFAULT 0,
                     priority INTEGER NOT NULL DEFAULT 100,
                     version INTEGER NOT NULL DEFAULT 1,
                     config_json TEXT NOT NULL DEFAULT '{}',
@@ -104,6 +105,10 @@ def init_db() -> None:
                 );
                 """
             )
+
+            columns = {row["name"] for row in cx.execute("PRAGMA table_info(vpn_profiles)").fetchall()}
+            if "maintenance" not in columns:
+                cx.execute("ALTER TABLE vpn_profiles ADD COLUMN maintenance INTEGER NOT NULL DEFAULT 0")
 
             now = int(__import__("time").time())
             defaults = (

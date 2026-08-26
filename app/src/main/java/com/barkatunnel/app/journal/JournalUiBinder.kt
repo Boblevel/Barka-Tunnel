@@ -70,8 +70,7 @@ class JournalUiBinder(
             value.startsWith("diagnostic vpn") ||
                 value.startsWith("diagnostic moov") ||
                 value.startsWith("diagnostic orange") ||
-                value.startsWith("diagnostic telecel") ->
-                EventType.DIAGNOSTIC
+                value.startsWith("diagnostic telecel") -> return null
             value.startsWith("ping :") -> EventType.PING
             value.contains("déconnexion en cours") || value.contains("disconnecting") ->
                 EventType.DISCONNECTING

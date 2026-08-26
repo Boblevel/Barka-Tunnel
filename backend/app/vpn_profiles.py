@@ -18,6 +18,7 @@ def _row_to_public(row) -> dict:
         "display_name": row["display_name"],
         "protocol": row["protocol"],
         "enabled": bool(row["enabled"]),
+        "maintenance": bool(row["maintenance"]),
         "priority": int(row["priority"]),
         "version": int(row["version"]),
         "updated_at": iso(int(row["updated_at"])),
@@ -59,6 +60,8 @@ def get_profile_for_device(device_id: str, network_id: str) -> dict:
 
     if not row or not bool(row["enabled"]):
         raise LookupError("Service VPN temporairement indisponible pour ce réseau.")
+    if bool(row["maintenance"]):
+        raise LookupError("Réseau en maintenance. Réessaie plus tard.")
 
     config = _decode_config(row["config_json"] or "{}")
     if not config:
@@ -113,13 +116,14 @@ def upsert_admin_profile(payload: dict) -> dict:
         cx.execute(
             """
             INSERT INTO vpn_profiles(
-                network_id, display_name, protocol, enabled, priority,
+                network_id, display_name, protocol, enabled, maintenance, priority,
                 version, config_json, updated_at
-            ) VALUES(?,?,?,?,?,?,?,?)
+            ) VALUES(?,?,?,?,?,?,?,?,?)
             ON CONFLICT(network_id) DO UPDATE SET
                 display_name=excluded.display_name,
                 protocol=excluded.protocol,
                 enabled=excluded.enabled,
+                maintenance=excluded.maintenance,
                 priority=excluded.priority,
                 version=excluded.version,
                 config_json=excluded.config_json,
@@ -130,6 +134,7 @@ def upsert_admin_profile(payload: dict) -> dict:
                 str(payload["display_name"]).strip(),
                 protocol,
                 1 if payload.get("enabled") else 0,
+                1 if payload.get("maintenance") else 0,
                 int(payload.get("priority", 100)),
                 version,
                 encoded,

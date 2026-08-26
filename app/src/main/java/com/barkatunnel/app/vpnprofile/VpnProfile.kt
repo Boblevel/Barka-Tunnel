@@ -5,6 +5,7 @@ data class VpnProfile(
     val displayName: String,
     val protocol: VpnProfileProtocol,
     val enabled: Boolean,
+    val maintenance: Boolean,
     val priority: Int,
     val version: Int,
     val updatedAt: String,
@@ -16,6 +17,7 @@ data class VpnProfileMeta(
     val displayName: String,
     val protocol: VpnProfileProtocol,
     val enabled: Boolean,
+    val maintenance: Boolean,
     val priority: Int,
     val version: Int,
     val updatedAt: String

@@ -127,6 +127,22 @@ def test_vpn_profiles_are_seeded_and_secrets_require_access(tmp_path):
     assert live["protocol"] == "VLESS"
     assert live["config"]["uri"] == "vless://example-only"
 
+    maintained = vpn_profiles.upsert_admin_profile({
+        "network_id": "orange_bf",
+        "display_name": "ORANGE BF",
+        "protocol": "VLESS",
+        "enabled": True,
+        "maintenance": True,
+        "priority": 10,
+        "config": {"uri": "vless://example-only"},
+    })
+    assert maintained["maintenance"] is True
+    try:
+        vpn_profiles.get_profile_for_device(device, "orange_bf")
+        assert False, "Un réseau en maintenance ne doit pas fournir sa configuration"
+    except LookupError as exc:
+        assert "maintenance" in str(exc).lower()
+
 
 def test_vpn_profile_protocol_is_locked_to_operator(tmp_path):
     load_modules(tmp_path)
@@ -240,3 +256,10 @@ def test_admin_cannot_delete_redeemed_or_payment_code(tmp_path):
     assert deleted_payment is False
     assert "manuellement" in payment_message.lower()
 
+
+
+def test_one_week_plan_is_seven_days(tmp_path):
+    load_modules(tmp_path)
+    import app.plans as plans
+    importlib.reload(plans)
+    assert plans.PLANS["1w"]["duration_seconds"] == 7 * 24 * 60 * 60

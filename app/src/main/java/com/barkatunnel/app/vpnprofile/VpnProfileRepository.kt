@@ -36,6 +36,7 @@ class VpnProfileRepository(
                         displayName = item.displayName,
                         protocol = protocol,
                         enabled = item.enabled,
+                        maintenance = item.maintenance,
                         priority = item.priority,
                         version = item.version,
                         updatedAt = item.updatedAt
@@ -43,13 +44,23 @@ class VpnProfileRepository(
                 }
                 .sortedWith(compareBy<VpnProfileMeta> { it.priority }.thenBy { it.networkId })
 
-            val enabledProfiles = profiles.filter { it.enabled }
+            profiles.forEach { meta ->
+                secureStore.setMaintenance(meta.networkId, meta.maintenance)
+                if (meta.version > secureStore.cachedVersion(meta.networkId)) {
+                    secureStore.markRequiredVersion(meta.networkId, meta.version)
+                }
+            }
+
+            val enabledProfiles = profiles.filter { it.enabled && !it.maintenance }
             var downloadedCount = 0
+            var updatedCount = 0
             var lastError: Exception? = null
             enabledProfiles.forEach { meta ->
                 try {
+                    val before = secureStore.cachedVersion(meta.networkId)
                     fetchAndCache(meta.networkId)
                     downloadedCount += 1
+                    if (meta.version > before) updatedCount += 1
                 } catch (error: Exception) {
                     lastError = error
                 }
@@ -66,7 +77,8 @@ class VpnProfileRepository(
 
             VpnProfileSyncResult.Success(
                 profiles = profiles,
-                enabledCount = downloadedCount
+                enabledCount = downloadedCount,
+                updatedCount = updatedCount
             )
         } catch (e: Exception) {
             VpnProfileSyncResult.Error(e.message ?: "Impossible d'actualiser les services VPN.")
@@ -75,27 +87,32 @@ class VpnProfileRepository(
 
     fun loadForConnection(networkId: String): VpnProfile {
         if (hasValidatedInternet()) {
-            runCatching { fetchAndCache(networkId) }
-                .getOrNull()
-                ?.let { return it }
+            return fetchAndCache(networkId)
         }
 
-        memoryProfiles[networkId]
-            ?.takeIf { isUsable(networkId, it) }
-            ?.let { return it }
-
-        secureStore.load(networkId)
-            ?.takeIf { isUsable(networkId, it) }
-            ?.also { memoryProfiles[networkId] = it }
-            ?.let { return it }
-
-        if (!hasValidatedInternet()) {
-            throw BarkaBackendException(
-                "Connectez une première fois l’application à Internet pour synchroniser ce réseau."
-            )
+        if (secureStore.isMaintenance(networkId)) {
+            throw BarkaBackendException("Réseau en maintenance. Réessaie plus tard.")
         }
 
-        return fetchAndCache(networkId)
+        val cached = memoryProfiles[networkId]
+            ?.takeIf { isUsable(networkId, it) }
+            ?: secureStore.load(networkId)
+                ?.takeIf { isUsable(networkId, it) }
+                ?.also { memoryProfiles[networkId] = it }
+
+        if (cached != null) {
+            val requiredVersion = secureStore.requiredVersion(networkId)
+            if (requiredVersion > cached.version) {
+                throw BarkaBackendException(
+                    "Mise à jour obligatoire de la configuration. Connecte Internet pour synchroniser ce réseau."
+                )
+            }
+            return cached
+        }
+
+        throw BarkaBackendException(
+            "Connecte une première fois l’application à Internet pour synchroniser ce réseau."
+        )
     }
 
     fun shouldRefresh(maxAgeMillis: Long): Boolean =
@@ -129,6 +146,7 @@ class VpnProfileRepository(
             displayName = remote.meta.displayName,
             protocol = protocol,
             enabled = remote.meta.enabled,
+            maintenance = remote.meta.maintenance,
             priority = remote.meta.priority,
             version = remote.meta.version,
             updatedAt = remote.meta.updatedAt,
@@ -136,6 +154,8 @@ class VpnProfileRepository(
         )
         memoryProfiles[networkId] = profile
         secureStore.save(profile)
+        secureStore.setMaintenance(networkId, remote.meta.maintenance)
+        secureStore.clearRequiredVersion(networkId)
         return profile
     }
 
@@ -154,6 +174,8 @@ class VpnProfileRepository(
     }
 
     fun inMemory(networkId: String): VpnProfile? = memoryProfiles[networkId]
+
+    fun isMaintenance(networkId: String): Boolean = secureStore.isMaintenance(networkId)
 
     fun clearSensitiveCache() {
         memoryProfiles.clear()

@@ -25,6 +25,7 @@ class VpnProfileSecureStore(context: Context) {
             .put("display_name", profile.displayName)
             .put("protocol", profile.protocol.name)
             .put("enabled", profile.enabled)
+            .put("maintenance", profile.maintenance)
             .put("priority", profile.priority)
             .put("version", profile.version)
             .put("updated_at", profile.updatedAt)
@@ -52,6 +53,7 @@ class VpnProfileSecureStore(context: Context) {
                 displayName = payload.getString("display_name"),
                 protocol = protocol,
                 enabled = payload.getBoolean("enabled"),
+                maintenance = payload.optBoolean("maintenance", false),
                 priority = payload.getInt("priority"),
                 version = payload.getInt("version"),
                 updatedAt = payload.getString("updated_at"),
@@ -71,6 +73,26 @@ class VpnProfileSecureStore(context: Context) {
             .putLong(KEY_LAST_SUCCESSFUL_SYNC, System.currentTimeMillis())
             .apply()
     }
+
+    fun cachedVersion(networkId: String): Int = load(networkId)?.version ?: 0
+
+    fun setMaintenance(networkId: String, maintenance: Boolean) {
+        preferences.edit().putBoolean(maintenanceKey(networkId), maintenance).apply()
+    }
+
+    fun isMaintenance(networkId: String): Boolean =
+        preferences.getBoolean(maintenanceKey(networkId), false)
+
+    fun markRequiredVersion(networkId: String, version: Int) {
+        preferences.edit().putInt(requiredVersionKey(networkId), version).apply()
+    }
+
+    fun clearRequiredVersion(networkId: String) {
+        preferences.edit().remove(requiredVersionKey(networkId)).apply()
+    }
+
+    fun requiredVersion(networkId: String): Int =
+        preferences.getInt(requiredVersionKey(networkId), 0)
 
     private fun encrypt(value: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
@@ -121,6 +143,12 @@ class VpnProfileSecureStore(context: Context) {
 
     private fun profileKey(networkId: String): String =
         "$KEY_PROFILE_PREFIX$networkId"
+
+    private fun maintenanceKey(networkId: String): String =
+        "maintenance_$networkId"
+
+    private fun requiredVersionKey(networkId: String): String =
+        "required_version_$networkId"
 
     companion object {
         private const val PREFERENCES_NAME = "barka_vpn_profiles_secure"

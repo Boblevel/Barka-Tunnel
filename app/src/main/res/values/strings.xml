@@ -243,4 +243,8 @@
     <string name="journal_latency_title">Latence VPN</string>
     <string name="journal_latency_message">%1$d ms</string>
     <string name="journal_latency_failed">Échec du contrôle réseau</string>
+    <string name="network_maintenance_badge">MAINTENANCE</string>
+    <string name="network_maintenance_message">Ce réseau est temporairement en maintenance.</string>
+    <string name="config_update_required_title">Mise à jour obligatoire</string>
+    <string name="config_update_applied_message">La nouvelle configuration des réseaux a été récupérée et synchronisée automatiquement.</string>
 </resources>

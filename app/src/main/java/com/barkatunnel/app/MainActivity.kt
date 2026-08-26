@@ -631,6 +631,20 @@ class MainActivity : AppCompatActivity() {
         val checkMoov = dialog.findViewById<TextView>(R.id.optionMoovCheck)
         val checkOrange = dialog.findViewById<TextView>(R.id.optionOrangeCheck)
         val checkTelecel = dialog.findViewById<TextView>(R.id.optionTelecelCheck)
+        val nameMoov = dialog.findViewById<TextView>(R.id.optionMoovName)
+        val nameOrange = dialog.findViewById<TextView>(R.id.optionOrangeName)
+        val nameTelecel = dialog.findViewById<TextView>(R.id.optionTelecelName)
+
+        fun showAvailability(name: TextView, networkId: String, label: String) {
+            name.text = if (vpnProfileRepository.isMaintenance(networkId)) {
+                "$label\n${getString(R.string.network_maintenance_badge)}"
+            } else {
+                label
+            }
+        }
+        showAvailability(nameMoov, "moov_bf", "MOOV-AFRICA BF")
+        showAvailability(nameOrange, "orange_bf", "ORANGE BF")
+        showAvailability(nameTelecel, "telecel_bf", "TELECEL BF")
 
         checkMoov.text = if (selectedId == "moov_bf") "✓" else "○"
         checkOrange.text = if (selectedId == "orange_bf") "✓" else "○"
@@ -639,6 +653,10 @@ class MainActivity : AppCompatActivity() {
         fun select(networkId: String) {
             val network = NetworkOption.ALL.firstOrNull { it.id == networkId }
                 ?: return
+            if (vpnProfileRepository.isMaintenance(networkId)) {
+                Toast.makeText(this, R.string.network_maintenance_message, Toast.LENGTH_LONG).show()
+                return
+            }
 
             selectedNetwork = network
             saveSelectedNetwork(network)
@@ -1045,6 +1063,24 @@ class MainActivity : AppCompatActivity() {
                             this,
                             "Services de connexion synchronisés • ${result.enabledCount}."
                         )
+                        runOnUiThread {
+                            selectedNetwork?.let { selected ->
+                                networkSubtitle.text = if (vpnProfileRepository.isMaintenance(selected.id)) {
+                                    getString(R.string.network_maintenance_badge)
+                                } else {
+                                    getString(R.string.selected_network_subtitle)
+                                }
+                            }
+                        }
+                        if (result.updatedCount > 0) {
+                            runOnUiThread {
+                                androidx.appcompat.app.AlertDialog.Builder(this)
+                                    .setTitle(R.string.config_update_required_title)
+                                    .setMessage(R.string.config_update_applied_message)
+                                    .setPositiveButton(android.R.string.ok, null)
+                                    .show()
+                            }
+                        }
                     }
 
                     is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Error -> {

@@ -96,6 +96,7 @@ class VpnProfileCatalogItem(BaseModel):
     display_name: str
     protocol: VpnProtocol
     enabled: bool
+    maintenance: bool = False
     priority: int
     version: int
     updated_at: str
@@ -110,6 +111,7 @@ class AdminVpnProfileUpsert(BaseModel):
     display_name: str = Field(min_length=2, max_length=80)
     protocol: VpnProtocol
     enabled: bool = False
+    maintenance: bool = False
     priority: int = Field(default=100, ge=1, le=1000)
     config: dict[str, Any] = Field(default_factory=dict)
 

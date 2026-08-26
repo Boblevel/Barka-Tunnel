@@ -1,0 +1,28 @@
+BARKA TUNNEL - LIVRAISON FINALE
+
+1) ANDROID / GITHUB
+- Décompresse ce ZIP dans ton dépôt barka-tunnel.
+- Vérifie le SHA256 donné dans la conversation.
+- Utilise le bloc Termux fourni dans la conversation pour git add uniquement les fichiers concernés.
+- Push sur main.
+- Attends GitHub Actions vert, puis installe l'APK.
+
+2) BACKEND / PANEL BARKA TUNNEL
+Le panel Web Barka Tunnel est inclus dans backend/app/admin_panel.py.
+Sur le VPS, sauvegarde /opt/Barka-Tunnel/backend/.env et /opt/Barka-Tunnel/backend/data avant remplacement.
+Copie seulement les fichiers backend modifiés, puis reconstruis le conteneur Docker.
+Voir docs/DEPLOIEMENT_FINAL.md.
+
+3) TESTS À FAIRE APRÈS DÉPLOIEMENT
+- MOOV : connexion toujours fonctionnelle.
+- Orange : connexion toujours fonctionnelle.
+- Telecel : connexion toujours fonctionnelle.
+- Auto Ping : latence visible dans Journal.
+- Journal : aucun Diagnostic VPN visible.
+- Panel : activer Maintenance sur un seul réseau -> MAINTENANCE dans l'app, les 2 autres restent utilisables.
+- Retirer Maintenance -> synchronisation et retour du réseau.
+- Modifier une coordonnée de profil dans le panel -> version augmente -> application synchronise la nouvelle configuration.
+- Code 1 semaine -> durée 7 jours.
+
+4) SÉCURITÉ
+Ne publie jamais .env, data/barka.db, clés privées, tokens ou secrets de paiement.
