@@ -98,13 +98,13 @@ jobs:
           gradle --stop || true
 
       - name: Compiler Barka Tunnel sans cache
-        run: gradle clean assembleDebug --no-daemon --no-build-cache --rerun-tasks --stacktrace
+        run: gradle clean assembleRelease --no-daemon --no-build-cache --rerun-tasks --stacktrace
 
       - name: Preparer APK telechargeable
         shell: bash
         run: |
           set -e
-          APK_SOURCE="app/build/outputs/apk/debug/app-debug.apk"
+          APK_SOURCE="app/build/outputs/apk/release/app-release.apk"
           test -f "$APK_SOURCE"
           cp "$APK_SOURCE" BarkaTunnel-debug.apk
           sha256sum BarkaTunnel-debug.apk
