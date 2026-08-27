@@ -1,11 +1,13 @@
 package com.barkatunnel.app.ipfinder
 
+import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -144,6 +146,28 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     private fun requestAssistantSelection() {
+        // AOSP/Pixel and many OEM ROMs expose the exact "Digital assistant app" page here.
+        val directAssistIntent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
+            setClassName(
+                "com.android.settings",
+                "com.android.settings.Settings\$ManageAssistActivity"
+            )
+        }
+        if (runCatching { startActivity(directAssistIntent) }.isSuccess) {
+            return
+        }
+
+        // Android 10+ provides a standardized assistant-role picker across manufacturers.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(RoleManager::class.java)
+            if (roleManager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true) {
+                val roleIntent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
+                if (runCatching { startActivity(roleIntent) }.isSuccess) {
+                    return
+                }
+            }
+        }
+
         openAssistantSettingsFallback()
     }
 
