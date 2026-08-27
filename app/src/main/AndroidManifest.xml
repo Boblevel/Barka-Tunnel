@@ -99,14 +99,19 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true" />
 
+        <activity-alias
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_barka_logo"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
-        </activity>
+        </activity-alias>
 
     </application>
 
