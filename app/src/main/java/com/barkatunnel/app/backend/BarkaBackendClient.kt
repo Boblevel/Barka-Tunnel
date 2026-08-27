@@ -19,6 +19,13 @@ class BarkaBackendClient(context: Context) {
     private val appContext = context.applicationContext
     val deviceId: String = DeviceIdentity.getDeviceId(appContext)
 
+    fun markConnectionAttempt() {
+        post(
+            path = "/v1/device/connection-attempt",
+            payload = JSONObject().put("device_id", deviceId)
+        )
+    }
+
     fun checkAccess(): BackendAccessState {
         val body = post(
             path = "/v1/access/check",

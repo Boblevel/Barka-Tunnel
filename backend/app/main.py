@@ -73,6 +73,7 @@ from .services import (
     mark_payment_error,
     mark_payment_failed,
     mark_payment_paid,
+    mark_connection_attempt,
     recent_pending_payment,
     redeem_activation_code,
     register_webhook_event,
@@ -126,6 +127,12 @@ def app_update(version_code: int = 1):
 @app.post("/v1/access/check", response_model=AccessResponse)
 def check_access(body: DeviceRequest):
     return access_state(body.device_id)
+
+
+@app.post("/v1/device/connection-attempt")
+def device_connection_attempt(body: DeviceRequest):
+    mark_connection_attempt(body.device_id)
+    return {"ok": True}
 
 
 @app.post("/v1/trial/start", response_model=TrialStartResponse)

@@ -19,11 +19,7 @@ class SupportActivity : AppCompatActivity() {
 
         findViewById<MaterialButton>(R.id.contactSupportButton).setOnClickListener {
             try {
-                val supportUri = Uri.parse(SUPPORT_URL)
-                    .buildUpon()
-                    .appendQueryParameter("text", getString(R.string.support_prefill))
-                    .build()
-                startActivity(Intent(Intent.ACTION_VIEW, supportUri))
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SUPPORT_URL)))
             } catch (_: Exception) {
                 Toast.makeText(this, R.string.support_open_failed, Toast.LENGTH_SHORT).show()
             }

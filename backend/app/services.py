@@ -33,6 +33,16 @@ def ensure_device(device_id: str) -> None:
         )
 
 
+def mark_connection_attempt(device_id: str) -> None:
+    ensure_device(device_id)
+    now = now_ts()
+    with transaction() as cx:
+        cx.execute(
+            "UPDATE devices SET last_connect_attempt_at=?, last_seen_at=? WHERE device_id=?",
+            (now, now, device_id),
+        )
+
+
 def access_state(device_id: str) -> dict:
     ensure_device(device_id)
     now = now_ts()

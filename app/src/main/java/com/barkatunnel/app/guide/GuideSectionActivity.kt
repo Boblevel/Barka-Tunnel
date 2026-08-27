@@ -22,7 +22,6 @@ class GuideSectionActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.guideSectionHeaderTitle).setText(content.titleRes)
         findViewById<ImageView>(R.id.guideSectionIcon).setImageResource(content.iconRes)
-        findViewById<TextView>(R.id.guideSectionTitle).setText(content.titleRes)
         findViewById<TextView>(R.id.guideSectionBody).setText(content.bodyRes)
     }
 

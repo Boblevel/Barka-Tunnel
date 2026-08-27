@@ -282,6 +282,9 @@ def admin_stats_extended() -> dict:
     cx = connect()
     try:
         devices = cx.execute("SELECT COUNT(*) AS n FROM devices").fetchone()["n"]
+        users = cx.execute(
+            "SELECT COUNT(*) AS n FROM devices WHERE last_connect_attempt_at IS NOT NULL"
+        ).fetchone()["n"]
         paid = cx.execute("SELECT COUNT(*) AS n FROM payments WHERE status='paid'").fetchone()["n"]
         pending = cx.execute("SELECT COUNT(*) AS n FROM payments WHERE status='pending'").fetchone()["n"]
         issued = cx.execute(
@@ -309,6 +312,7 @@ def admin_stats_extended() -> dict:
         cx.close()
     return {
         "devices": int(devices),
+        "users": int(users),
         "payments_paid": int(paid),
         "payments_pending": int(pending),
         "codes_issued": int(issued),

@@ -325,6 +325,8 @@ class MainActivity : AppCompatActivity() {
                         currentConnection is HomeConnectionState.Error
 
                 if (!shouldDisconnect) {
+                    recordConnectionAttemptAsync()
+
                     if (
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                         ContextCompat.checkSelfPermission(
@@ -765,6 +767,14 @@ class MainActivity : AppCompatActivity() {
             R.string.orange_ipfinder_required,
             Toast.LENGTH_SHORT
         ).also { it.show() }
+    }
+
+    private fun recordConnectionAttemptAsync() {
+        Thread {
+            runCatching {
+                BarkaBackendClient(applicationContext).markConnectionAttempt()
+            }
+        }.start()
     }
 
     private fun requireController(): HomeController? {

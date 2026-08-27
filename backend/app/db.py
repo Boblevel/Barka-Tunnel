@@ -34,7 +34,8 @@ def init_db() -> None:
                     trial_expires_at INTEGER,
                     subscription_started_at INTEGER,
                     subscription_expires_at INTEGER,
-                    access_disabled INTEGER NOT NULL DEFAULT 0
+                    access_disabled INTEGER NOT NULL DEFAULT 0,
+                    last_connect_attempt_at INTEGER
                 );
 
                 CREATE TABLE IF NOT EXISTS payments(
@@ -146,6 +147,8 @@ def init_db() -> None:
             device_columns = {row["name"] for row in cx.execute("PRAGMA table_info(devices)").fetchall()}
             if "access_disabled" not in device_columns:
                 cx.execute("ALTER TABLE devices ADD COLUMN access_disabled INTEGER NOT NULL DEFAULT 0")
+            if "last_connect_attempt_at" not in device_columns:
+                cx.execute("ALTER TABLE devices ADD COLUMN last_connect_attempt_at INTEGER")
 
             code_columns = {row["name"] for row in cx.execute("PRAGMA table_info(activation_codes)").fetchall()}
             if "applied_from" not in code_columns:
