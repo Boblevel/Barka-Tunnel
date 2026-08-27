@@ -45,27 +45,19 @@
         </LinearLayout>
 
         <TextView android:id="@+id/guide1" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_guide_barka" android:text="@string/guide_1_title" />
-        <TextView android:id="@+id/guide1Details" style="@style/BarkaGuideDetails" android:text="@string/guide_1_text" />
 
         <TextView android:id="@+id/guide2" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_mobile_barka" android:text="@string/guide_2_title" />
-        <TextView android:id="@+id/guide2Details" style="@style/BarkaGuideDetails" android:text="@string/guide_2_text" />
 
         <TextView android:id="@+id/guide3" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_menu_ip_finder" android:text="@string/guide_3_title" />
-        <TextView android:id="@+id/guide3Details" style="@style/BarkaGuideDetails" android:text="@string/guide_3_text" />
 
         <TextView android:id="@+id/guide4" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_menu_card_line" android:text="@string/guide_4_title" />
-        <TextView android:id="@+id/guide4Details" style="@style/BarkaGuideDetails" android:text="@string/guide_4_text" />
 
         <TextView android:id="@+id/guide5" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_menu_key_line" android:text="@string/guide_5_title" />
-        <TextView android:id="@+id/guide5Details" style="@style/BarkaGuideDetails" android:text="@string/guide_5_text" />
 
         <TextView android:id="@+id/guide6" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_guide_connection" android:text="@string/guide_6_title" />
-        <TextView android:id="@+id/guide6Details" style="@style/BarkaGuideDetails" android:text="@string/guide_6_text" />
 
         <TextView android:id="@+id/guide7" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_nav_journal" android:text="@string/guide_7_title" />
-        <TextView android:id="@+id/guide7Details" style="@style/BarkaGuideDetails" android:text="@string/guide_7_text" />
 
         <TextView android:id="@+id/guide8" style="@style/BarkaGuideItem" android:drawableStart="@drawable/ic_menu_settings_line" android:text="@string/guide_8_title" />
-        <TextView android:id="@+id/guide8Details" style="@style/BarkaGuideDetails" android:text="@string/guide_8_text" />
     </LinearLayout>
 </com.barkatunnel.app.ui.common.AdaptiveNoScrollView>

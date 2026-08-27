@@ -98,6 +98,7 @@ class MainActivity : AppCompatActivity() {
     private var networkCallbackRegistered = false
     private val profileSyncInProgress = AtomicBoolean(false)
     private val initialSyncInProgress = AtomicBoolean(false)
+    private var orangeIpWarningToast: Toast? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -305,6 +306,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         connectAction = connectAction@{
+            orangeIpWarningToast?.cancel()
+            orangeIpWarningToast = null
+
             if (updateCoordinator.showBlockingIfNeeded()) {
                 return@connectAction
             }
@@ -321,25 +325,6 @@ class MainActivity : AppCompatActivity() {
                         currentConnection is HomeConnectionState.Error
 
                 if (!shouldDisconnect) {
-                    val selected = controller.currentState().selectedNetwork
-                    if (
-                        selected?.id == "orange_bf" &&
-                        NetworkIpProvider.getCurrent(this).transportType == NetworkTransport.CELLULAR
-                    ) {
-                        val currentCellularIp = NetworkIpProvider.getCellularIpv4(this)
-                        val validatedOrangeIp = getSharedPreferences(
-                            IpFinderActivity.PREFERENCES_NAME,
-                            MODE_PRIVATE
-                        ).getString(IpFinderActivity.KEY_LAST_FOUND_IP, null)
-                        if (currentCellularIp.isNullOrBlank() || currentCellularIp != validatedOrangeIp) {
-                            Toast.makeText(
-                                this,
-                                R.string.orange_ipfinder_required,
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-
                     if (
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                         ContextCompat.checkSelfPermission(
@@ -733,6 +718,9 @@ class MainActivity : AppCompatActivity() {
             }
 
             refreshNetworkIp()
+            if (network.id == "orange_bf") {
+                showOrangeIpWarningIfNeeded()
+            }
             dialog.dismiss()
         }
 
@@ -757,6 +745,26 @@ class MainActivity : AppCompatActivity() {
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }
+    }
+
+    private fun showOrangeIpWarningIfNeeded() {
+        orangeIpWarningToast?.cancel()
+        orangeIpWarningToast = null
+
+        if (NetworkIpProvider.getCurrent(this).transportType != NetworkTransport.CELLULAR) {
+            return
+        }
+
+        val currentCellularIp = NetworkIpProvider.getCellularIpv4(this)
+        if (IpFinderActivity.isIpCompatible(this, currentCellularIp)) {
+            return
+        }
+
+        orangeIpWarningToast = Toast.makeText(
+            this,
+            R.string.orange_ipfinder_required,
+            Toast.LENGTH_SHORT
+        ).also { it.show() }
     }
 
     private fun requireController(): HomeController? {
@@ -809,25 +817,25 @@ class MainActivity : AppCompatActivity() {
     ) {
         when (result) {
             is HomeControllerResult.State -> {
-                selectedNetwork =
-                    result.value.selectedNetwork
+                val latestState = homeController?.currentState() ?: result.value
+                selectedNetwork = latestState.selectedNetwork
 
                 uiBinder.showNetwork(
-                    result.value.selectedNetwork
+                    latestState.selectedNetwork
                 )
                 updateSelectedNetworkLogo(
-                    result.value.selectedNetwork
+                    latestState.selectedNetwork
                 )
 
                 uiBinder.showAccess(
-                    result.value.access
+                    latestState.access
                 )
 
                 uiBinder.showConnection(
-                    result.value.connection
+                    latestState.connection
                 )
-                updatePowerButtonState(result.value.connection)
-                stopConnectionTimerIfInactive(result.value.connection)
+                updatePowerButtonState(latestState.connection)
+                stopConnectionTimerIfInactive(latestState.connection)
             }
 
             is HomeControllerResult.Message -> {

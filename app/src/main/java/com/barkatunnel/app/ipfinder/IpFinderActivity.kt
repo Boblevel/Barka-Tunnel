@@ -408,6 +408,46 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     companion object {
+        fun isIpCompatible(context: Context, ip: String?): Boolean {
+            if (ip.isNullOrBlank()) return false
+
+            val rawPattern = context.getSharedPreferences(
+                PREFERENCES_NAME,
+                Context.MODE_PRIVATE
+            ).getString(KEY_SEARCH_PATTERN, null)
+                .orEmpty()
+                .ifBlank { DEFAULT_SEARCH_PATTERN }
+
+            val patterns = rawPattern
+                .split(Regex("[\\n,;]+"))
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .distinct()
+
+            if (patterns.isEmpty()) return true
+            return patterns.any { pattern ->
+                when {
+                    pattern.startsWith("=") -> {
+                        val expected = pattern.drop(1).trim()
+                        expected.isNotBlank() && ip == expected
+                    }
+                    pattern.startsWith("^") && pattern.endsWith("$") -> {
+                        val expected = pattern.drop(1).dropLast(1).trim()
+                        expected.isNotBlank() && ip == expected
+                    }
+                    pattern.startsWith("^") -> {
+                        val expected = pattern.drop(1).trim()
+                        expected.isNotBlank() && ip.startsWith(expected)
+                    }
+                    pattern.endsWith("$") -> {
+                        val expected = pattern.dropLast(1).trim()
+                        expected.isNotBlank() && ip.endsWith(expected)
+                    }
+                    else -> ip.contains(pattern)
+                }
+            }
+        }
+
         const val PREFERENCES_NAME = "barka_ipfinder"
         private const val KEY_SEARCH_PATTERN = "search_pattern"
         const val KEY_LAST_FOUND_IP = "last_found_ip"

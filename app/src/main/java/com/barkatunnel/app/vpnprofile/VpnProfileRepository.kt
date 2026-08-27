@@ -121,6 +121,12 @@ class VpnProfileRepository(
             return cached
         }
 
+        try {
+            return fetchAndCache(networkId)
+        } catch (error: Exception) {
+            if (hasValidatedInternet()) throw error
+        }
+
         throw BarkaBackendException(
             "Connecte une première fois l’application à Internet pour synchroniser ce réseau."
         )

@@ -50,6 +50,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".guide.GuideSectionActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ipfinder.IpFinderActivity"
             android:exported="true" />
 
