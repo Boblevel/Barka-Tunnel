@@ -37,7 +37,9 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.viewpager2.widget.ViewPager2
 import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.guide.GuideActivity
@@ -94,6 +96,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var connectAction: () -> Unit
     private var networkCallbackRegistered = false
     private val profileSyncInProgress = AtomicBoolean(false)
+    private val initialSyncInProgress = AtomicBoolean(false)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -109,6 +112,19 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
+
+    private val updateNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        AppLogStore.add(
+            this,
+            if (granted) {
+                "Permission de notification des mises à jour accordée."
+            } else {
+                "Permission de notification des mises à jour refusée."
+            }
+        )
     }
 
     private val vpnPermissionLauncher = registerForActivityResult(
@@ -134,11 +150,15 @@ class MainActivity : AppCompatActivity() {
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             refreshNetworkIpAsync()
+            ensureInitialRemoteSync()
             maybeSyncVpnProfiles()
         }
         override fun onLost(network: Network) = refreshNetworkIpAsync()
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             refreshNetworkIpAsync()
+            if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                ensureInitialRemoteSync()
+            }
             if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
                 maybeSyncVpnProfiles()
             }
@@ -154,6 +174,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         applyRecentsTaskIcon()
         setContentView(R.layout.activity_home_journal_pager)
+        applyRootSystemInsets()
         val homePage = layoutInflater.inflate(R.layout.activity_main, null, false)
         val journalPage = layoutInflater.inflate(R.layout.activity_journal, null, false)
         homePage.findViewById<android.view.View>(R.id.pageBottomDivider).visibility =
@@ -231,6 +252,8 @@ class MainActivity : AppCompatActivity() {
         AppLogStore.add(this, "Barka Tunnel démarré.")
         refreshNetworkIp()
         initializeHomeRuntime()
+        requestUpdateNotificationPermissionIfNeeded()
+        ensureInitialRemoteSync()
 
         networkSelector.setOnClickListener {
             showNetworkDialog()
@@ -557,12 +580,16 @@ class MainActivity : AppCompatActivity() {
             refreshNetworkIp()
             syncVpnRuntimeState()
             refreshHomeState()
-            refreshVpnServices(force = true)
+            if (isInitialRemoteSyncComplete()) {
+                refreshVpnServices(force = true)
+                if (::updateCoordinator.isInitialized) {
+                    updateCoordinator.check(showNoUpdate = false, force = true)
+                }
+            } else {
+                ensureInitialRemoteSync()
+            }
             if (::journalUiBinder.isInitialized && homeJournalPager.currentItem == PAGE_JOURNAL) {
                 journalUiBinder.refresh()
-            }
-            if (::updateCoordinator.isInitialized) {
-                updateCoordinator.check(showNoUpdate = false, force = true)
             }
         }
     }
@@ -1071,6 +1098,96 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun applyRootSystemInsets() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val root = findViewById<View>(R.id.homeJournalRoot)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(0, bars.top, 0, bars.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
+    }
+
+    private fun requestUpdateNotificationPermissionIfNeeded() {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            updateNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun isInitialRemoteSyncComplete(): Boolean =
+        getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+            .getBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, false)
+
+    private fun ensureInitialRemoteSync() {
+        if (isInitialRemoteSyncComplete()) return
+        if (!vpnProfileRepository.hasInternetCapability()) return
+        if (!::updateCoordinator.isInitialized) return
+        if (!initialSyncInProgress.compareAndSet(false, true)) return
+
+        Thread {
+            when (val sync = vpnProfileRepository.refreshCatalog()) {
+                is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Success -> {
+                    runOnUiThread {
+                        selectedNetwork?.let { selected ->
+                            networkSubtitle.text = if (vpnProfileRepository.isMaintenance(selected.id)) {
+                                getString(R.string.network_maintenance_badge)
+                            } else {
+                                getString(R.string.selected_network_subtitle)
+                            }
+                        }
+                        updateCoordinator.check(
+                            showNoUpdate = false,
+                            force = true
+                        ) { update ->
+                            if (update != null) {
+                                getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+                                    .edit()
+                                    .putBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, true)
+                                    .apply()
+                                if (!update.updateAvailable) {
+                                    Toast.makeText(
+                                        this,
+                                        R.string.startup_sync_current,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                AppLogStore.add(
+                                    this,
+                                    "Initialisation Internet terminée • services et mises à jour vérifiés."
+                                )
+                            }
+                            initialSyncInProgress.set(false)
+                        }
+                    }
+                }
+
+                is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Error -> {
+                    AppLogStore.add(
+                        this,
+                        "Initialisation Internet reportée • ${sync.message}"
+                    )
+                    runOnUiThread {
+                        updateCoordinator.check(
+                            showNoUpdate = false,
+                            force = true
+                        ) {
+                            initialSyncInProgress.set(false)
+                        }
+                    }
+                }
+            }
+        }.start()
+    }
+
     private fun applySystemBars() {
         window.statusBarColor = ContextCompat.getColor(this, R.color.barka_background)
         window.navigationBarColor = ContextCompat.getColor(this, R.color.barka_background)
@@ -1083,6 +1200,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun maybeSyncVpnProfiles() {
+        if (!isInitialRemoteSyncComplete()) {
+            ensureInitialRemoteSync()
+            return
+        }
         if (
             !vpnProfileRepository.hasValidatedInternet() ||
             !vpnProfileRepository.shouldRefresh(PROFILE_SYNC_INTERVAL_MS)
@@ -1218,6 +1339,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val PREFERENCES_NAME = "barka_home_preferences"
         private const val PREF_SELECTED_NETWORK = "selected_network_id"
+        private const val PREF_INITIAL_REMOTE_SYNC_COMPLETE = "initial_remote_sync_complete"
         private const val PRESS_VIBRATION_MS = 80L
         private const val CONNECTED_VIBRATION_MS = 160L
         private const val MAX_VIBRATION_AMPLITUDE = 255

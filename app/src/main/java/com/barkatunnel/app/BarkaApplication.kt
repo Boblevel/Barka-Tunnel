@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.barkatunnel.app.core.AppContainer
+import com.barkatunnel.app.update.RemoteUpdateScheduler
 
 class BarkaApplication : Application() {
 
@@ -16,6 +17,7 @@ class BarkaApplication : Application() {
         applySavedLanguage()
         applySavedTheme()
         container = AppContainer(this)
+        RemoteUpdateScheduler.schedule(this)
     }
 
     private fun applySavedLanguage() {

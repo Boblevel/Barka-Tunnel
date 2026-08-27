@@ -22,7 +22,11 @@ class AppUpdateCoordinator(
     @Volatile
     private var lastCheckAt = 0L
 
-    fun check(showNoUpdate: Boolean = false, force: Boolean = false) {
+    fun check(
+        showNoUpdate: Boolean = false,
+        force: Boolean = false,
+        onResult: ((BackendAppUpdate?) -> Unit)? = null
+    ) {
         val now = System.currentTimeMillis()
         if (checking) return
         if (!force && now - lastCheckAt < 5 * 60 * 1000L) return
@@ -34,16 +38,18 @@ class AppUpdateCoordinator(
                 lastCheckAt = System.currentTimeMillis()
                 activity.runOnUiThread {
                     applyResult(update, showNoUpdate)
+                    onResult?.invoke(update)
                 }
             } catch (e: Exception) {
-                if (showNoUpdate) {
-                    activity.runOnUiThread {
+                activity.runOnUiThread {
+                    if (showNoUpdate) {
                         Toast.makeText(
                             activity,
                             e.message ?: activity.getString(R.string.update_check_failed),
                             Toast.LENGTH_LONG
                         ).show()
                     }
+                    onResult?.invoke(null)
                 }
             } finally {
                 checking = false

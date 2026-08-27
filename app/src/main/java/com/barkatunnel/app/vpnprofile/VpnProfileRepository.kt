@@ -86,8 +86,19 @@ class VpnProfileRepository(
     }
 
     fun loadForConnection(networkId: String): VpnProfile {
-        if (hasValidatedInternet()) {
-            return fetchAndCache(networkId)
+        // Sur certains téléphones, Android peut annoncer INTERNET quelques instants
+        // avant de marquer le réseau VALIDATED. On tente alors le serveur réel :
+        // l'appel HTTPS reste la source de vérité et évite un faux message
+        // « première synchronisation » alors qu'Internet est déjà utilisable.
+        if (hasInternetCapability()) {
+            try {
+                return fetchAndCache(networkId)
+            } catch (error: Exception) {
+                // Si Android n'a pas encore validé la connectivité, on laisse
+                // la logique hors ligne décider avec le cache. Si Internet est
+                // réellement validé, l'erreur serveur doit rester visible.
+                if (hasValidatedInternet()) throw error
+            }
         }
 
         if (secureStore.isMaintenance(networkId)) {
@@ -117,6 +128,12 @@ class VpnProfileRepository(
 
     fun shouldRefresh(maxAgeMillis: Long): Boolean =
         System.currentTimeMillis() - secureStore.lastSuccessfulSyncAt() >= maxAgeMillis
+
+    fun hasInternetCapability(): Boolean {
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
     fun hasValidatedInternet(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false

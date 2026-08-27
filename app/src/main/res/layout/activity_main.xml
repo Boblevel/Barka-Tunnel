@@ -6,6 +6,99 @@
     android:background="@color/barka_background"
     android:orientation="vertical">
 
+    <LinearLayout
+        android:id="@+id/homeFixedHeader"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/home_header_height"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/home_horizontal_padding"
+        android:paddingEnd="@dimen/home_horizontal_padding">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="@dimen/home_header_logo_size"
+                android:layout_height="@dimen/home_header_logo_size"
+                android:contentDescription="@string/barka_logo_description"
+                android:src="@drawable/ic_barka_logo" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/home_brand_margin_start"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/main_brand_barka"
+                    android:maxLines="1"
+                    android:textColor="@color/barka_text"
+                    android:textSize="@dimen/home_brand_text_size"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/main_brand_tunnel"
+                    android:maxLines="1"
+                    android:textColor="@color/barka_blue"
+                    android:textSize="@dimen/home_brand_text_size"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/buttonFreeTrial"
+            android:layout_width="@dimen/home_header_action_width"
+            android:layout_height="@dimen/home_header_action_height"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="@dimen/home_header_action_icon_size"
+                android:layout_height="@dimen/home_header_action_icon_size"
+                android:contentDescription="@string/free_trial_description"
+                android:src="@drawable/ic_gift_barka"
+                android:tint="@color/barka_red" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/buttonRefresh"
+            android:layout_width="@dimen/home_header_action_width"
+            android:layout_height="@dimen/home_header_action_height"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="@dimen/home_header_action_icon_size"
+                android:layout_height="@dimen/home_header_action_icon_size"
+                android:contentDescription="@string/check_updates_description"
+                android:src="@drawable/ic_refresh_barka" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/buttonMenu"
+            android:layout_width="@dimen/home_header_menu_size"
+            android:layout_height="@dimen/home_header_menu_size"
+            android:clickable="true"
+            android:contentDescription="@string/open_menu_description"
+            android:focusable="true"
+            android:padding="@dimen/home_header_menu_padding"
+            android:src="@drawable/ic_menu_barka" />
+    </LinearLayout>
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -16,112 +109,23 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:paddingStart="18dp"
-            android:paddingTop="40dp"
-            android:paddingEnd="18dp"
-            android:paddingBottom="20dp">
+            android:paddingStart="@dimen/home_horizontal_padding"
+            android:paddingTop="@dimen/home_content_top_padding"
+            android:paddingEnd="@dimen/home_horizontal_padding"
+            android:paddingBottom="@dimen/home_content_bottom_padding">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="72dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
-                        android:contentDescription="@string/barka_logo_description"
-                        android:src="@drawable/ic_barka_logo" />
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/main_brand_barka"
-                            android:maxLines="1"
-                            android:textColor="@color/barka_text"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="4dp"
-                            android:text="@string/main_brand_tunnel"
-                            android:maxLines="1"
-                            android:textColor="@color/barka_blue"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/buttonFreeTrial"
-                    android:layout_width="56dp"
-                    android:layout_height="58dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:orientation="vertical">
-
-                    <ImageView
-                        android:layout_width="34dp"
-                        android:layout_height="34dp"
-                        android:contentDescription="@string/free_trial_description"
-                        android:src="@drawable/ic_gift_barka"
-                        android:tint="@color/barka_red" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/buttonRefresh"
-                    android:layout_width="56dp"
-                    android:layout_height="58dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:orientation="vertical">
-
-                    <ImageView
-                        android:layout_width="34dp"
-                        android:layout_height="34dp"
-                        android:contentDescription="@string/check_updates_description"
-                        android:src="@drawable/ic_refresh_barka" />
-                </LinearLayout>
-
-                <ImageView
-                    android:id="@+id/buttonMenu"
-                    android:layout_width="50dp"
-                    android:layout_height="50dp"
-                    android:clickable="true"
-                    android:contentDescription="@string/open_menu_description"
-                    android:focusable="true"
-                    android:padding="6dp"
-                    android:src="@drawable/ic_menu_barka" />
-            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/networkIpCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="@dimen/home_ip_card_margin_top"
                 android:background="@drawable/bg_card_final"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:padding="16dp">
+                android:padding="@dimen/home_card_padding">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -144,7 +148,7 @@
                         android:layout_marginTop="5dp"
                         android:text="@string/network_ip_offline"
                         android:textColor="@color/barka_text"
-                        android:textSize="22sp"
+                        android:textSize="@dimen/home_ip_value_text_size"
                         android:textStyle="bold" />
 
                     <TextView
@@ -159,8 +163,8 @@
 
                 <ImageView
                     android:id="@+id/networkTransportIcon"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="@dimen/home_transport_icon_size"
+                    android:layout_height="@dimen/home_transport_icon_size"
                     android:contentDescription="@string/network_transport_network"
                     android:src="@drawable/ic_wifi_barka"
                     android:visibility="gone" />
@@ -169,7 +173,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
+                android:layout_marginTop="@dimen/home_network_title_margin_top"
                 android:text="@string/network_title"
                 android:textColor="@color/barka_blue"
                 android:textSize="11sp"
@@ -178,17 +182,17 @@
             <LinearLayout
                 android:id="@+id/networkSelector"
                 android:layout_width="match_parent"
-                android:layout_height="92dp"
+                android:layout_height="@dimen/home_network_selector_height"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_card_final"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="16dp">
+                android:paddingHorizontal="@dimen/home_network_selector_padding">
 
                 <ImageView
                     android:id="@+id/networkLogo"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
+                    android:layout_width="@dimen/home_network_logo_size"
+                    android:layout_height="@dimen/home_network_logo_size"
                     android:adjustViewBounds="true"
                     android:contentDescription="@string/selected_operator_logo_description"
                     android:scaleType="fitCenter"
@@ -197,7 +201,7 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginStart="@dimen/home_network_content_margin_start"
                     android:layout_weight="1"
                     android:orientation="vertical">
 
@@ -210,7 +214,7 @@
                         android:textStyle="bold" />
 
                     <LinearLayout
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
                         android:gravity="center_vertical"
@@ -218,33 +222,39 @@
 
                         <TextView
                             android:id="@+id/networkName"
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:maxLines="1"
                             android:text="MOOV-AFRICA BF"
                             android:textColor="@color/barka_text"
-                            android:textSize="17sp"
-                            android:textStyle="bold" />
+                            android:textSize="@dimen/home_network_name_text_size"
+                            android:textStyle="bold"
+                            app:autoSizeMaxTextSize="@dimen/home_network_name_text_size"
+                            app:autoSizeMinTextSize="12sp"
+                            app:autoSizeStepGranularity="1sp"
+                            app:autoSizeTextType="uniform" />
 
                         <ImageView
                             android:id="@+id/networkFlagBurkina"
-                            android:layout_width="20dp"
-                            android:layout_height="14dp"
+                            android:layout_width="@dimen/home_flag_width"
+                            android:layout_height="@dimen/home_flag_height"
                             android:layout_marginStart="6dp"
                             android:contentDescription="@string/burkina_faso"
                             android:src="@drawable/ic_flag_bf" />
 
                         <ImageView
                             android:id="@+id/networkFlagNiger"
-                            android:layout_width="20dp"
-                            android:layout_height="14dp"
+                            android:layout_width="@dimen/home_flag_width"
+                            android:layout_height="@dimen/home_flag_height"
                             android:layout_marginStart="4dp"
                             android:contentDescription="@string/niger"
                             android:src="@drawable/ic_flag_ne" />
 
                         <ImageView
                             android:id="@+id/networkFlagTogo"
-                            android:layout_width="20dp"
-                            android:layout_height="14dp"
+                            android:layout_width="@dimen/home_flag_width"
+                            android:layout_height="@dimen/home_flag_height"
                             android:layout_marginStart="4dp"
                             android:contentDescription="@string/togo"
                             android:src="@drawable/ic_flag_tg" />
@@ -269,12 +279,12 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="28dp" />
+                android:layout_height="@dimen/home_power_spacer_height" />
 
             <TextView
                 android:id="@+id/powerButton"
-                android:layout_width="220dp"
-                android:layout_height="220dp"
+                android:layout_width="@dimen/home_power_size"
+                android:layout_height="@dimen/home_power_size"
                 android:layout_gravity="center_horizontal"
                 android:background="@drawable/bg_power_final"
                 android:elevation="5dp"
@@ -287,11 +297,11 @@
                 android:id="@+id/vpnStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="@dimen/home_status_margin_top"
                 android:gravity="center"
                 android:text="@string/status_not_connected"
                 android:textColor="@color/barka_text"
-                android:textSize="18sp"
+                android:textSize="@dimen/home_status_text_size"
                 android:textStyle="bold" />
 
             <TextView
@@ -307,16 +317,16 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
+                android:layout_marginTop="@dimen/home_remaining_card_margin_top"
                 android:background="@drawable/bg_card_final"
                 android:gravity="center_vertical"
-                android:minHeight="116dp"
+                android:minHeight="@dimen/home_remaining_card_min_height"
                 android:orientation="horizontal"
-                android:padding="16dp">
+                android:padding="@dimen/home_remaining_card_padding">
 
                 <ImageView
-                    android:layout_width="74dp"
-                    android:layout_height="74dp"
+                    android:layout_width="@dimen/home_clock_size"
+                    android:layout_height="@dimen/home_clock_size"
                     android:contentDescription="@string/remaining_time_description"
                     android:padding="10dp"
                     android:src="@drawable/ic_clock_barka" />
@@ -324,7 +334,7 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
+                    android:layout_marginStart="@dimen/home_remaining_content_margin_start"
                     android:layout_weight="1"
                     android:orientation="vertical">
 
@@ -333,18 +343,23 @@
                         android:layout_height="wrap_content"
                         android:text="@string/remaining_time"
                         android:textColor="@color/barka_blue"
-                        android:textSize="12sp"
+                        android:textSize="@dimen/home_remaining_label_text_size"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/accessRemainingTime"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        android:maxLines="1"
                         android:text="00:00:00"
                         android:textColor="@color/barka_text"
-                        android:textSize="26sp"
-                        android:textStyle="bold" />
+                        android:textSize="@dimen/home_remaining_time_text_size"
+                        android:textStyle="bold"
+                        app:autoSizeMaxTextSize="@dimen/home_remaining_time_text_size"
+                        app:autoSizeMinTextSize="18sp"
+                        app:autoSizeStepGranularity="1sp"
+                        app:autoSizeTextType="uniform" />
 
                     <TextView
                         android:id="@+id/accessStatus"
@@ -356,9 +371,10 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/addAccessButton"
-                    android:layout_width="116dp"
-                    android:layout_height="48dp"
+                    android:layout_width="@dimen/home_add_button_width"
+                    android:layout_height="@dimen/home_add_button_height"
                     android:text="@string/add"
+                    android:textSize="@dimen/home_add_button_text_size"
                     android:textStyle="bold"
                     app:backgroundTint="@color/barka_blue"
                     app:cornerRadius="12dp" />

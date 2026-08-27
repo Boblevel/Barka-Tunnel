@@ -240,4 +240,10 @@
     <string name="network_maintenance_message">This network is temporarily under maintenance.</string>
     <string name="config_update_required_title">Required update</string>
     <string name="config_update_applied_message">The new network configuration was downloaded and synchronized automatically.</string>
+    <string name="startup_sync_current">Barka Tunnel is up to date.</string>
+    <string name="remote_update_channel_name">Barka Tunnel updates</string>
+    <string name="remote_update_channel_description">Notifies you about new server configurations and APK versions.</string>
+    <string name="remote_profile_update_title">Barka Tunnel configuration updated</string>
+    <string name="remote_profile_update_message">A new server configuration was downloaded and synchronized.</string>
+    <string name="remote_apk_update_title">New Barka Tunnel version</string>
 </resources>

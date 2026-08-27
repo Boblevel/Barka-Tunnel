@@ -249,4 +249,10 @@
     <string name="network_maintenance_message">Ce réseau est temporairement en maintenance.</string>
     <string name="config_update_required_title">Mise à jour obligatoire</string>
     <string name="config_update_applied_message">La nouvelle configuration des réseaux a été récupérée et synchronisée automatiquement.</string>
+    <string name="startup_sync_current">Barka Tunnel est à jour.</string>
+    <string name="remote_update_channel_name">Mises à jour Barka Tunnel</string>
+    <string name="remote_update_channel_description">Signale les nouvelles configurations serveur et versions APK.</string>
+    <string name="remote_profile_update_title">Configuration Barka Tunnel mise à jour</string>
+    <string name="remote_profile_update_message">Une nouvelle configuration serveur a été récupérée et synchronisée.</string>
+    <string name="remote_apk_update_title">Nouvelle version Barka Tunnel</string>
 </resources>
