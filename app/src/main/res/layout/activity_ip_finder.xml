@@ -6,7 +6,7 @@
     android:background="@color/barka_background"
     android:orientation="vertical">
 
-    <ScrollView
+    <com.barkatunnel.app.ui.common.AdaptiveNoScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true">
@@ -234,6 +234,6 @@
                 app:strokeColor="@color/barka_red"
                 app:strokeWidth="1dp" />
         </LinearLayout>
-    </ScrollView>
+    </com.barkatunnel.app.ui.common.AdaptiveNoScrollView>
 
 </LinearLayout>
