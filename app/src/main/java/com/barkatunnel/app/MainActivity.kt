@@ -178,6 +178,9 @@ class MainActivity : AppCompatActivity() {
         applyRootSystemInsets()
         val homePage = layoutInflater.inflate(R.layout.activity_main, null, false)
         val journalPage = layoutInflater.inflate(R.layout.activity_journal, null, false)
+        journalPage.findViewById<android.view.View>(R.id.journalContentContainer).apply {
+            setPadding(paddingLeft, 0, paddingRight, paddingBottom)
+        }
         homePage.findViewById<android.view.View>(R.id.pageBottomDivider).visibility =
             android.view.View.GONE
         homePage.findViewById<android.view.View>(R.id.pageBottomNavigation).visibility =
