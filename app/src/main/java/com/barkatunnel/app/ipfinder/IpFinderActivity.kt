@@ -1,13 +1,11 @@
 package com.barkatunnel.app.ipfinder
 
-import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -16,7 +14,6 @@ import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.barkatunnel.app.R
@@ -48,15 +45,6 @@ class IpFinderActivity : AppCompatActivity() {
     private lateinit var resultText: TextView
     private lateinit var wifiWarning: TextView
     private lateinit var ipInput: EditText
-
-    private val roleRequestLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        refreshAssistantState()
-        if (!BarkaAssistantService.isSelected(this)) {
-            openAssistantSettingsFallback()
-        }
-    }
 
     private val cycleReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -156,23 +144,6 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     private fun requestAssistantSelection() {
-        if (BarkaAssistantService.isSelected(this)) {
-            openAssistantSettingsFallback()
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val roleManager = getSystemService(RoleManager::class.java)
-            if (roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
-                val roleIntent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
-                if (roleIntent.resolveActivity(packageManager) != null) {
-                    runCatching { roleRequestLauncher.launch(roleIntent) }
-                        .onFailure { openAssistantSettingsFallback() }
-                    return
-                }
-            }
-        }
-
         openAssistantSettingsFallback()
     }
 
