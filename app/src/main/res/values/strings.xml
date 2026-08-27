@@ -131,6 +131,11 @@
     <string name="settings_check_update">Vérifier la mise à jour</string>
     <string name="settings_share_app">Partager l’application</string>
     <string name="settings_telegram_channel">Canal Telegram officiel</string>
+    <string name="channel_invite_title">Rejoignez Team Barka Tunnel</string>
+    <string name="channel_invite_message">Actualités, nouveautés et informations officielles de Barka Tunnel sur notre canal public.</string>
+    <string name="channel_invite_join">REJOINDRE LE CANAL</string>
+    <string name="channel_invite_close">Fermer l’invitation</string>
+    <string name="channel_invite_open_failed">Impossible d’ouvrir le canal Telegram.</string>
     <string name="orange_ipfinder_required">ORANGE BF nécessite une IP validée par IP Finder sur la connexion mobile actuelle.</string>
     <string name="settings_about">À PROPOS</string>
     <string name="settings_about_format">Barka Tunnel\nVersion %1$s</string>

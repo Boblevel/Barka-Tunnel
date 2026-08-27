@@ -14,6 +14,7 @@ import android.media.AudioAttributes
 import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
+import android.net.Uri
 import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.graphics.Bitmap
@@ -185,6 +186,7 @@ class MainActivity : AppCompatActivity() {
             android.view.View.GONE
         journalPage.findViewById<android.view.View>(R.id.pageBottomNavigation).visibility =
             android.view.View.GONE
+        configureFirstLaunchChannelBanner(homePage)
         homeJournalPager = findViewById(R.id.homeJournalPager)
         homeJournalPager.adapter = StaticPageAdapter(listOf(homePage, journalPage))
         homeJournalPager.offscreenPageLimit = 1
@@ -1080,6 +1082,43 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Suppress("DEPRECATION")
+    private fun configureFirstLaunchChannelBanner(homePage: View) {
+        val banner = homePage.findViewById<View>(R.id.channelInviteBanner)
+        val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+        val currentInstallStamp = runCatching {
+            packageManager.getPackageInfo(packageName, 0).lastUpdateTime
+        }.getOrDefault(0L)
+
+        if (
+            currentInstallStamp <= 0L ||
+            preferences.getLong(PREF_CHANNEL_INVITE_INSTALL_STAMP, Long.MIN_VALUE) == currentInstallStamp
+        ) {
+            banner.visibility = View.GONE
+            return
+        }
+
+        preferences.edit()
+            .putLong(PREF_CHANNEL_INVITE_INSTALL_STAMP, currentInstallStamp)
+            .apply()
+        banner.visibility = View.VISIBLE
+
+        homePage.findViewById<View>(R.id.channelInviteClose).setOnClickListener {
+            banner.visibility = View.GONE
+        }
+        homePage.findViewById<View>(R.id.channelInviteJoinButton).setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(TELEGRAM_CHANNEL_URL))
+            runCatching { startActivity(intent) }.onFailure {
+                Toast.makeText(
+                    this,
+                    R.string.channel_invite_open_failed,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            banner.visibility = View.GONE
+        }
+    }
+
+    @Suppress("DEPRECATION")
     private fun applyRecentsTaskIcon() {
         val drawable = ContextCompat.getDrawable(this, R.drawable.ic_barka_logo) ?: return
         val size = (72f * resources.displayMetrics.density).toInt().coerceAtLeast(72)
@@ -1340,6 +1379,8 @@ class MainActivity : AppCompatActivity() {
         private const val PREFERENCES_NAME = "barka_home_preferences"
         private const val PREF_SELECTED_NETWORK = "selected_network_id"
         private const val PREF_INITIAL_REMOTE_SYNC_COMPLETE = "initial_remote_sync_complete"
+        private const val PREF_CHANNEL_INVITE_INSTALL_STAMP = "channel_invite_install_stamp"
+        private const val TELEGRAM_CHANNEL_URL = "https://t.me/barkaTunnel"
         private const val PRESS_VIBRATION_MS = 80L
         private const val CONNECTED_VIBRATION_MS = 160L
         private const val MAX_VIBRATION_AMPLITUDE = 255
