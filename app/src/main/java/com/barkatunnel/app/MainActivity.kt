@@ -3,6 +3,7 @@ package com.barkatunnel.app
 // BARKA_HOME_RUNTIME_V5_FINAL_NAV_NO_LOGIN
 
 import android.Manifest
+import android.app.ActivityManager
 import android.app.Dialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -15,6 +16,8 @@ import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.VpnService
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
@@ -149,6 +152,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyRecentsTaskIcon()
         setContentView(R.layout.activity_home_journal_pager)
         val homePage = layoutInflater.inflate(R.layout.activity_main, null, false)
         val journalPage = layoutInflater.inflate(R.layout.activity_journal, null, false)
@@ -1046,6 +1050,25 @@ class MainActivity : AppCompatActivity() {
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun applyRecentsTaskIcon() {
+        val drawable = ContextCompat.getDrawable(this, R.drawable.ic_barka_logo) ?: return
+        val size = (72f * resources.displayMetrics.density).toInt().coerceAtLeast(72)
+        val inset = (6f * resources.displayMetrics.density).toInt()
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+        drawable.setBounds(inset, inset, size - inset, size - inset)
+        drawable.draw(canvas)
+        setTaskDescription(
+            ActivityManager.TaskDescription(
+                getString(R.string.app_name),
+                bitmap,
+                Color.WHITE
+            )
+        )
     }
 
     private fun applySystemBars() {
