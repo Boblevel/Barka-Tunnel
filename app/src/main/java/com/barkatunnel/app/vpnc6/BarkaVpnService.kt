@@ -160,10 +160,6 @@ class BarkaVpnService : VpnService() {
                         this,
                         "Diagnostic VPN • tentative $attempt • $technicalMessage"
                     )
-                    AppLogStore.add(
-                        this,
-                        "Connexion refusée${profileName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
-                    )
                     stopTunnel()
                     updateRuntimeState(
                         RuntimeConnectionState.CONNECTING,

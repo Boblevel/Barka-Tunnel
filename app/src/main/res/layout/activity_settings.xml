@@ -46,6 +46,50 @@
                 android:layout_width="46dp"
                 android:layout_height="46dp" />
         </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_settings_header"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="18dp">
+
+            <ImageView
+                android:layout_width="62dp"
+                android:layout_height="62dp"
+                android:background="@drawable/bg_logo_white_circle"
+                android:contentDescription="@string/barka_logo_description"
+                android:padding="6dp"
+                android:src="@drawable/ic_barka_logo" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textColor="@color/barka_card"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/settingsVersionValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/version_format"
+                    android:textColor="#D8E8FF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
     <ScrollView
@@ -64,50 +108,6 @@
             android:paddingTop="0dp"
             android:paddingEnd="20dp"
             android:paddingBottom="24dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:background="@drawable/bg_settings_header"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="18dp">
-
-                <ImageView
-                    android:layout_width="62dp"
-                    android:layout_height="62dp"
-                    android:background="@drawable/bg_logo_white_circle"
-                    android:contentDescription="@string/barka_logo_description"
-                    android:padding="6dp"
-                    android:src="@drawable/ic_barka_logo" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/app_name"
-                        android:textColor="@color/barka_card"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/settingsVersionValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="@string/version_format"
-                        android:textColor="#D8E8FF"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"

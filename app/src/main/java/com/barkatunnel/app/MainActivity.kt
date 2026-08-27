@@ -327,18 +327,6 @@ class MainActivity : AppCompatActivity() {
                 if (!shouldDisconnect) {
                     recordConnectionAttemptAsync()
 
-                    if (
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                        ContextCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.POST_NOTIFICATIONS
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        AppLogStore.add(this, "Demande de permission de notification Android.")
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        return@connectAction
-                    }
-
                     val permissionIntent = VpnService.prepare(this)
                     if (permissionIntent != null) {
                         AppLogStore.add(this, "Demande de permission VPN Android.")
