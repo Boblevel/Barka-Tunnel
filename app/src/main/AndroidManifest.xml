@@ -11,8 +11,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
-        android:icon="@drawable/ic_barka_logo"
-        android:roundIcon="@drawable/ic_barka_logo"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:name=".BarkaApplication"
         android:allowBackup="true"
         android:extractNativeLibs="true"
