@@ -186,11 +186,12 @@ class MainActivity : AppCompatActivity() {
             android.view.View.GONE
         journalPage.findViewById<android.view.View>(R.id.pageBottomNavigation).visibility =
             android.view.View.GONE
-        configureFirstLaunchChannelBanner(homePage)
+        fitHomeContentToViewport(homePage)
         homeJournalPager = findViewById(R.id.homeJournalPager)
         homeJournalPager.adapter = StaticPageAdapter(listOf(homePage, journalPage))
         homeJournalPager.offscreenPageLimit = 1
         homeJournalPager.setCurrentItem(PAGE_HOME, false)
+        homeJournalPager.post { configureFirstLaunchChannelBanner() }
         applySystemBars()
         updateCoordinator = AppUpdateCoordinator(this)
         selectedNetwork = loadSelectedNetwork()
@@ -328,13 +329,11 @@ class MainActivity : AppCompatActivity() {
                             MODE_PRIVATE
                         ).getString(IpFinderActivity.KEY_LAST_FOUND_IP, null)
                         if (currentCellularIp.isNullOrBlank() || currentCellularIp != validatedOrangeIp) {
-                            AppLogStore.add(this, "Connexion refusée • ORANGE BF.")
                             Toast.makeText(
                                 this,
                                 R.string.orange_ipfinder_required,
                                 Toast.LENGTH_LONG
                             ).show()
-                            return@connectAction
                         }
                     }
 
@@ -1081,9 +1080,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun fitHomeContentToViewport(homePage: View) {
+        val viewport = homePage.findViewById<View>(R.id.homeContentViewport)
+        val content = homePage.findViewById<View>(R.id.homeContent)
+
+        fun applyScale() {
+            val availableHeight = viewport.height.toFloat()
+            val contentHeight = content.height.toFloat()
+            if (availableHeight <= 0f || contentHeight <= 0f) return
+
+            val scale = (availableHeight / contentHeight).coerceIn(0.1f, 1f)
+            content.pivotX = content.width / 2f
+            content.pivotY = 0f
+            content.scaleX = scale
+            content.scaleY = scale
+        }
+
+        viewport.addOnLayoutChangeListener { _, left, top, right, bottom,
+            oldLeft, oldTop, oldRight, oldBottom ->
+            if (
+                right - left != oldRight - oldLeft ||
+                bottom - top != oldBottom - oldTop
+            ) {
+                viewport.post { applyScale() }
+            }
+        }
+        viewport.post { applyScale() }
+    }
+
     @Suppress("DEPRECATION")
-    private fun configureFirstLaunchChannelBanner(homePage: View) {
-        val banner = homePage.findViewById<View>(R.id.channelInviteBanner)
+    private fun configureFirstLaunchChannelBanner() {
         val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
         val currentInstallStamp = runCatching {
             packageManager.getPackageInfo(packageName, 0).lastUpdateTime
@@ -1093,28 +1119,51 @@ class MainActivity : AppCompatActivity() {
             currentInstallStamp <= 0L ||
             preferences.getLong(PREF_CHANNEL_INVITE_INSTALL_STAMP, Long.MIN_VALUE) == currentInstallStamp
         ) {
-            banner.visibility = View.GONE
             return
         }
 
-        preferences.edit()
-            .putLong(PREF_CHANNEL_INVITE_INSTALL_STAMP, currentInstallStamp)
-            .apply()
-        banner.visibility = View.VISIBLE
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_channel_invite)
+        dialog.setCancelable(false)
+        dialog.setCanceledOnTouchOutside(false)
 
-        homePage.findViewById<View>(R.id.channelInviteClose).setOnClickListener {
-            banner.visibility = View.GONE
+        fun markHandledAndClose() {
+            preferences.edit()
+                .putLong(PREF_CHANNEL_INVITE_INSTALL_STAMP, currentInstallStamp)
+                .apply()
+            dialog.dismiss()
         }
-        homePage.findViewById<View>(R.id.channelInviteJoinButton).setOnClickListener {
+
+        dialog.findViewById<View>(R.id.channelInviteClose).setOnClickListener {
+            markHandledAndClose()
+        }
+        dialog.findViewById<View>(R.id.channelInviteJoinButton).setOnClickListener {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(TELEGRAM_CHANNEL_URL))
-            runCatching { startActivity(intent) }.onFailure {
+            runCatching {
+                startActivity(intent)
+            }.onSuccess {
+                markHandledAndClose()
+            }.onFailure {
                 Toast.makeText(
                     this,
                     R.string.channel_invite_open_failed,
                     Toast.LENGTH_SHORT
                 ).show()
             }
-            banner.visibility = View.GONE
+        }
+
+        dialog.show()
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            attributes = attributes.apply {
+                dimAmount = 0.58f
+                gravity = Gravity.CENTER
+            }
+            setLayout(
+                (resources.displayMetrics.widthPixels * 0.90f).toInt(),
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
         }
     }
 

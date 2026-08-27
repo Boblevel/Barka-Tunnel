@@ -127,7 +127,7 @@
     <string name="channel_invite_join">JOIN THE CHANNEL</string>
     <string name="channel_invite_close">Close invitation</string>
     <string name="channel_invite_open_failed">Unable to open the Telegram channel.</string>
-    <string name="orange_ipfinder_required">ORANGE BF requires an IP validated by IP Finder on the current mobile connection.</string>
+    <string name="orange_ipfinder_required">This IP address is not suitable for ORANGE BF. Use IP Finder to search for a good IP.</string>
     <string name="settings_about">ABOUT</string>
     <string name="settings_about_format">Barka Tunnel\nVersion %1$s</string>
     <string name="settings_notification_denied">Notifications remain disabled.</string>
