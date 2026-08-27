@@ -1056,7 +1056,7 @@ class MainActivity : AppCompatActivity() {
     private fun applyRecentsTaskIcon() {
         val drawable = ContextCompat.getDrawable(this, R.drawable.ic_barka_logo) ?: return
         val size = (72f * resources.displayMetrics.density).toInt().coerceAtLeast(72)
-        val inset = (6f * resources.displayMetrics.density).toInt()
+        val inset = (4f * resources.displayMetrics.density).toInt()
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
