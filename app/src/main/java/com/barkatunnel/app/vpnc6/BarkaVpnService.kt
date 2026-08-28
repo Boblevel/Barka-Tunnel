@@ -41,8 +41,15 @@ class BarkaVpnService : VpnService() {
 
         when (action) {
             ACTION_CONNECT -> {
-                if (connected) {
-                    C6VpnRuntime.complete(requestId, C6VpnResult.Error("Un tunnel VPN est déjà actif."))
+                if (
+                    connected ||
+                    runtimeState == RuntimeConnectionState.CONNECTING ||
+                    runtimeState == RuntimeConnectionState.DISCONNECTING
+                ) {
+                    C6VpnRuntime.complete(
+                        requestId,
+                        C6VpnResult.Error("Une opération VPN est déjà en cours.")
+                    )
                     return START_NOT_STICKY
                 }
                 stopping = false
@@ -59,6 +66,16 @@ class BarkaVpnService : VpnService() {
                 worker.execute { connect(intent, requestId) }
             }
             ACTION_DISCONNECT -> {
+                if (
+                    runtimeState == RuntimeConnectionState.DISCONNECTED &&
+                    !connected &&
+                    activeConnectRequestId == null
+                ) {
+                    C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
                 stopping = true
                 updateRuntimeState(
                     RuntimeConnectionState.DISCONNECTING,
@@ -96,6 +113,8 @@ class BarkaVpnService : VpnService() {
         keepAliveExecutor.shutdownNow()
         worker.shutdownNow()
         disconnectWorker.shutdownNow()
+        C6VpnRuntime.complete(activeConnectRequestId, C6VpnResult.Disconnected)
+        activeConnectRequestId = null
         updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
         super.onDestroy()
     }

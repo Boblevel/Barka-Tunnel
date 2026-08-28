@@ -146,23 +146,34 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     private fun requestAssistantSelection() {
-        // AOSP/Pixel and many OEM ROMs expose the exact "Digital assistant app" page here.
-        val directAssistIntent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
+        // L'action publique Android est celle déclarée par la page AOSP
+        // « Assistant numérique / Assist & voice input ». On la privilégie
+        // afin de laisser chaque constructeur ouvrir sa propre page équivalente.
+        val publicAssistantSettings = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)
+        if (startIfResolvable(publicAssistantSettings)) {
+            return
+        }
+
+        // Certains ROM conservent la page AOSP sans exposer correctement
+        // l'intent implicite. Ce composant est donc uniquement un secours.
+        val aospAssistantSettings = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
             setClassName(
                 "com.android.settings",
                 "com.android.settings.Settings\$ManageAssistActivity"
             )
         }
-        if (runCatching { startActivity(directAssistIntent) }.isSuccess) {
+        if (startIfResolvable(aospAssistantSettings)) {
             return
         }
 
-        // Android 10+ provides a standardized assistant-role picker across manufacturers.
+        // Android 10+ fournit aussi le rôle officiel ASSISTANT. Il permet
+        // d'afficher un sélecteur système quand la page Réglages n'est pas
+        // directement exposée par le constructeur.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val roleManager = getSystemService(RoleManager::class.java)
             if (roleManager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true) {
                 val roleIntent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
-                if (runCatching { startActivity(roleIntent) }.isSuccess) {
+                if (startIfResolvable(roleIntent)) {
                     return
                 }
             }
@@ -171,28 +182,27 @@ class IpFinderActivity : AppCompatActivity() {
         openAssistantSettingsFallback()
     }
 
+    private fun startIfResolvable(intent: Intent): Boolean {
+        if (intent.resolveActivity(packageManager) == null) return false
+        return runCatching {
+            startActivity(intent)
+            true
+        }.getOrDefault(false)
+    }
+
     private fun openAssistantSettingsFallback() {
         val intents = listOf(
-            Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
             Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
             Intent(Settings.ACTION_SETTINGS)
         )
-        val target = intents.firstOrNull { it.resolveActivity(packageManager) != null }
-        if (target == null) {
+        val opened = intents.any(::startIfResolvable)
+        if (!opened) {
             Toast.makeText(
                 this,
                 R.string.ip_finder_assistant_unavailable,
                 Toast.LENGTH_LONG
             ).show()
-            return
         }
-
-        Toast.makeText(
-            this,
-            R.string.ip_finder_assistant_settings_hint,
-            Toast.LENGTH_LONG
-        ).show()
-        startActivity(target)
     }
 
     private fun refreshAssistantState() {

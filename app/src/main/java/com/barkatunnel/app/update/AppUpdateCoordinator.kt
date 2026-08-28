@@ -28,8 +28,14 @@ class AppUpdateCoordinator(
         onResult: ((BackendAppUpdate?) -> Unit)? = null
     ) {
         val now = System.currentTimeMillis()
-        if (checking) return
-        if (!force && now - lastCheckAt < 5 * 60 * 1000L) return
+        if (checking) {
+            onResult?.invoke(null)
+            return
+        }
+        if (!force && now - lastCheckAt < 5 * 60 * 1000L) {
+            onResult?.invoke(null)
+            return
+        }
 
         checking = true
         Thread {

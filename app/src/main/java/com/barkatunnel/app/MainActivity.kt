@@ -23,6 +23,8 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -98,6 +100,10 @@ class MainActivity : AppCompatActivity() {
     private var networkCallbackRegistered = false
     private val profileSyncInProgress = AtomicBoolean(false)
     private val initialSyncInProgress = AtomicBoolean(false)
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val initialSyncRetryRunnable = Runnable { ensureInitialRemoteSync() }
+    private var pendingConnectAfterInitialSync = false
+    private var pendingConnectAfterVpnPermission = false
     private var orangeIpWarningToast: Toast? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -132,11 +138,17 @@ class MainActivity : AppCompatActivity() {
     private val vpnPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == RESULT_OK) {
+        val wasPending = pendingConnectAfterVpnPermission
+        pendingConnectAfterVpnPermission = false
+        if (result.resultCode == RESULT_OK && wasPending) {
             AppLogStore.add(this, "Permission VPN Android accordée.")
-            if (::connectAction.isInitialized) connectAction()
+            val controller = requireController()
+            if (controller != null) {
+                startVpnConnection(controller)
+            }
         } else {
             AppLogStore.add(this, "Permission VPN Android refusée.")
+            resetPendingConnectionState()
             Toast.makeText(
                 this,
                 R.string.vpn_permission_required,
@@ -162,7 +174,14 @@ class MainActivity : AppCompatActivity() {
                 ensureInitialRemoteSync()
             }
             if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-                maybeSyncVpnProfiles()
+                if (isInitialRemoteSyncComplete()) {
+                    refreshVpnServices(force = true)
+                    if (::updateCoordinator.isInitialized) {
+                        updateCoordinator.check(showNoUpdate = false, force = true)
+                    }
+                } else {
+                    ensureInitialRemoteSync()
+                }
             }
         }
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = refreshNetworkIpAsync()
@@ -309,91 +328,24 @@ class MainActivity : AppCompatActivity() {
             orangeIpWarningToast?.cancel()
             orangeIpWarningToast = null
 
-            if (updateCoordinator.showBlockingIfNeeded()) {
+            val controller = requireController() ?: return@connectAction
+
+            if (pendingConnectAfterInitialSync || pendingConnectAfterVpnPermission) {
+                cancelPendingConnectionStart(controller)
                 return@connectAction
             }
 
-            val controller = requireController()
+            val currentConnection =
+                syncVpnRuntimeState() ?: controller.currentState().connection
 
-            if (controller != null) {
-                val currentConnection =
-                    syncVpnRuntimeState() ?: controller.currentState().connection
-                val shouldDisconnect =
-                    currentConnection is HomeConnectionState.Connected ||
-                        currentConnection is HomeConnectionState.Connecting ||
-                        currentConnection is HomeConnectionState.Disconnecting ||
-                        currentConnection is HomeConnectionState.Error
-
-                if (!shouldDisconnect) {
-                    recordConnectionAttemptAsync()
-
-                    val permissionIntent = VpnService.prepare(this)
-                    if (permissionIntent != null) {
-                        AppLogStore.add(this, "Demande de permission VPN Android.")
-                        vpnPermissionLauncher.launch(permissionIntent)
-                        return@connectAction
-                    }
-
-                    BarkaVpnService.showConnectingNotification(this)
+            when (currentConnection) {
+                HomeConnectionState.Disconnected -> beginVpnConnection(controller)
+                HomeConnectionState.Disconnecting -> {
+                    handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnecting))
                 }
-
-                runHomeAction {
-                    if (shouldDisconnect) {
-                        AppLogStore.add(this, "Déconnexion en cours.")
-                        runOnUiThread {
-                            uiBinder.showConnection(HomeConnectionState.Disconnecting)
-                            updatePowerButtonState(HomeConnectionState.Disconnecting)
-                        }
-                        val result = controller.disconnect()
-
-                        if (
-                            result is HomeControllerResult.State &&
-                            result.value.connection is HomeConnectionState.Disconnected
-                        ) {
-                            timerController.stopConnectionTimer()
-                            AppLogStore.add(this, "VPN déconnecté.")
-                        }
-
-                        result
-                    } else {
-                        val selected = controller.currentState().selectedNetwork
-                        AppLogStore.add(
-                            this,
-                            "Tentative de connexion${selected?.let { " • ${it.displayName}" } ?: ""}."
-                        )
-                        runOnUiThread {
-                            uiBinder.showConnection(HomeConnectionState.Connecting)
-                            updatePowerButtonState(HomeConnectionState.Connecting)
-                        }
-
-                        val result = controller.connect()
-                        val connectedState =
-                            (result as? HomeControllerResult.State)?.value?.connection
-                        val finalConnection = controller.currentState().connection
-
-                        if (connectedState is HomeConnectionState.Connected) {
-                            timerController.startConnectionTimer()
-                            vibrateOnce(CONNECTED_VIBRATION_MS)
-                            AppLogStore.add(
-                                this,
-                                "VPN connecté • ${connectedState.networkName}."
-                            )
-                        } else if (
-                            finalConnection is HomeConnectionState.Connecting ||
-                            finalConnection is HomeConnectionState.Error
-                        ) {
-                            AppLogStore.add(
-                                this,
-                                "Connexion refusée${selected?.let { " • ${it.displayName}" } ?: ""}."
-                            )
-                            BarkaVpnService.showWaitingNotification(this)
-                        } else {
-                            BarkaVpnService.cancelConnectingNotification(this)
-                        }
-
-                        result
-                    }
-                }
+                HomeConnectionState.Connecting,
+                is HomeConnectionState.Connected,
+                is HomeConnectionState.Error -> requestVpnDisconnect(controller)
             }
         }
 
@@ -536,6 +488,7 @@ class MainActivity : AppCompatActivity() {
             connectivityManager.registerDefaultNetworkCallback(networkCallback)
             networkCallbackRegistered = true
         }
+        ensureInitialRemoteSync()
         maybeSyncVpnProfiles()
     }
 
@@ -548,6 +501,7 @@ class MainActivity : AppCompatActivity() {
             runCatching { connectivityManager.unregisterNetworkCallback(networkCallback) }
             networkCallbackRegistered = false
         }
+        mainHandler.removeCallbacks(initialSyncRetryRunnable)
         super.onStop()
     }
 
@@ -557,7 +511,13 @@ class MainActivity : AppCompatActivity() {
         if (::networkIpValue.isInitialized) {
             applySystemBars()
             refreshNetworkIp()
-            syncVpnRuntimeState()
+            if (pendingConnectAfterInitialSync || pendingConnectAfterVpnPermission) {
+                homeController?.let {
+                    handleHomeResult(it.syncConnection(HomeConnectionState.Connecting))
+                }
+            } else {
+                syncVpnRuntimeState()
+            }
             refreshHomeState()
             if (isInitialRemoteSyncComplete()) {
                 refreshVpnServices(force = true)
@@ -574,6 +534,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(initialSyncRetryRunnable)
         if (::timerController.isInitialized) {
             timerController.stop()
         }
@@ -757,6 +718,106 @@ class MainActivity : AppCompatActivity() {
         ).also { it.show() }
     }
 
+    private fun beginVpnConnection(controller: HomeController) {
+        if (!isInitialRemoteSyncComplete()) {
+            pendingConnectAfterInitialSync = true
+            handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
+            AppLogStore.add(this, "Préparation de la première connexion • synchronisation automatique.")
+            ensureInitialRemoteSync()
+            return
+        }
+
+        continueVpnConnection(controller)
+    }
+
+    private fun continueVpnConnection(controller: HomeController) {
+        if (updateCoordinator.showBlockingIfNeeded()) {
+            resetPendingConnectionState()
+            return
+        }
+
+        val permissionIntent = VpnService.prepare(this)
+        if (permissionIntent != null) {
+            pendingConnectAfterVpnPermission = true
+            handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
+            AppLogStore.add(this, "Demande de permission VPN Android.")
+            vpnPermissionLauncher.launch(permissionIntent)
+            return
+        }
+
+        startVpnConnection(controller)
+    }
+
+    private fun startVpnConnection(controller: HomeController) {
+        pendingConnectAfterInitialSync = false
+        pendingConnectAfterVpnPermission = false
+        recordConnectionAttemptAsync()
+        BarkaVpnService.showConnectingNotification(this)
+
+        val selected = controller.currentState().selectedNetwork
+        AppLogStore.add(
+            this,
+            "Tentative de connexion${selected?.let { " • ${it.displayName}" } ?: ""}."
+        )
+        handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
+
+        runHomeAction(disableConnectButton = false) {
+            val result = controller.connect()
+            val connectedState =
+                (result as? HomeControllerResult.State)?.value?.connection
+
+            if (connectedState is HomeConnectionState.Connected) {
+                timerController.startConnectionTimer()
+                vibrateOnce(CONNECTED_VIBRATION_MS)
+                AppLogStore.add(
+                    this,
+                    "VPN connecté • ${connectedState.networkName}."
+                )
+            } else if (connectedState is HomeConnectionState.Disconnected) {
+                BarkaVpnService.cancelConnectingNotification(this)
+            }
+
+            result
+        }
+    }
+
+    private fun requestVpnDisconnect(controller: HomeController) {
+        pendingConnectAfterInitialSync = false
+        pendingConnectAfterVpnPermission = false
+        AppLogStore.add(this, "Déconnexion en cours.")
+        handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnecting))
+
+        runHomeAction(disableConnectButton = false) {
+            val result = controller.disconnect()
+            if (
+                result is HomeControllerResult.State &&
+                result.value.connection is HomeConnectionState.Disconnected
+            ) {
+                timerController.stopConnectionTimer()
+                AppLogStore.add(this, "VPN déconnecté.")
+            }
+            result
+        }
+    }
+
+    private fun cancelPendingConnectionStart(controller: HomeController) {
+        pendingConnectAfterInitialSync = false
+        pendingConnectAfterVpnPermission = false
+        BarkaVpnService.cancelConnectingNotification(this)
+        handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnected))
+        AppLogStore.add(this, "Connexion annulée.")
+    }
+
+    private fun resetPendingConnectionState() {
+        pendingConnectAfterInitialSync = false
+        pendingConnectAfterVpnPermission = false
+        val controller = homeController ?: return
+        val runtimeState = BarkaVpnService.connectionSnapshot().state
+        if (runtimeState == BarkaVpnService.RuntimeConnectionState.DISCONNECTED) {
+            handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnected))
+        }
+    }
+
     private fun recordConnectionAttemptAsync() {
         Thread {
             runCatching {
@@ -785,15 +846,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun runHomeAction(
         successMessage: String? = null,
+        disableConnectButton: Boolean = true,
         action: () -> HomeControllerResult
     ) {
-        connectButton.isEnabled = false
+        if (disableConnectButton) {
+            connectButton.isEnabled = false
+        }
 
         Thread {
             val result = action()
 
             runOnUiThread {
-                connectButton.isEnabled = true
+                if (disableConnectButton) {
+                    connectButton.isEnabled = true
+                }
                 handleHomeResult(result)
 
                 if (
@@ -1225,11 +1291,19 @@ class MainActivity : AppCompatActivity() {
             .getBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, false)
 
     private fun ensureInitialRemoteSync() {
-        if (isInitialRemoteSyncComplete()) return
-        if (!vpnProfileRepository.hasInternetCapability()) return
+        if (isInitialRemoteSyncComplete()) {
+            mainHandler.removeCallbacks(initialSyncRetryRunnable)
+            resumePendingConnectionAfterInitialSync()
+            return
+        }
         if (!::updateCoordinator.isInitialized) return
+        if (!vpnProfileRepository.hasInternetCapability()) {
+            scheduleInitialRemoteSyncRetry()
+            return
+        }
         if (!initialSyncInProgress.compareAndSet(false, true)) return
 
+        mainHandler.removeCallbacks(initialSyncRetryRunnable)
         Thread {
             when (val sync = vpnProfileRepository.refreshCatalog()) {
                 is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Success -> {
@@ -1245,11 +1319,13 @@ class MainActivity : AppCompatActivity() {
                             showNoUpdate = false,
                             force = true
                         ) { update ->
+                            initialSyncInProgress.set(false)
                             if (update != null) {
                                 getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
                                     .edit()
                                     .putBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, true)
                                     .apply()
+                                mainHandler.removeCallbacks(initialSyncRetryRunnable)
                                 if (!update.updateAvailable) {
                                     Toast.makeText(
                                         this,
@@ -1261,8 +1337,10 @@ class MainActivity : AppCompatActivity() {
                                     this,
                                     "Initialisation Internet terminée • services et mises à jour vérifiés."
                                 )
+                                resumePendingConnectionAfterInitialSync()
+                            } else {
+                                scheduleInitialRemoteSyncRetry()
                             }
-                            initialSyncInProgress.set(false)
                         }
                     }
                 }
@@ -1278,11 +1356,25 @@ class MainActivity : AppCompatActivity() {
                             force = true
                         ) {
                             initialSyncInProgress.set(false)
+                            scheduleInitialRemoteSyncRetry()
                         }
                     }
                 }
             }
         }.start()
+    }
+
+    private fun scheduleInitialRemoteSyncRetry() {
+        if (isInitialRemoteSyncComplete() || isFinishing || isDestroyed) return
+        mainHandler.removeCallbacks(initialSyncRetryRunnable)
+        mainHandler.postDelayed(initialSyncRetryRunnable, INITIAL_SYNC_RETRY_DELAY_MS)
+    }
+
+    private fun resumePendingConnectionAfterInitialSync() {
+        if (!pendingConnectAfterInitialSync || !isInitialRemoteSyncComplete()) return
+        pendingConnectAfterInitialSync = false
+        val controller = homeController ?: return
+        continueVpnConnection(controller)
     }
 
     private fun applySystemBars() {
@@ -1445,6 +1537,7 @@ class MainActivity : AppCompatActivity() {
         private const val PAGE_HOME = 0
         private const val PAGE_JOURNAL = 1
         private const val PROFILE_SYNC_INTERVAL_MS = 6L * 60L * 60L * 1000L
+        private const val INITIAL_SYNC_RETRY_DELAY_MS = 2_500L
         private val TECHNICAL_CONNECTION_TERMS = Regex(
             "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
         )

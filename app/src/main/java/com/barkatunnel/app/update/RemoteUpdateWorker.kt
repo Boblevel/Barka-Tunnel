@@ -51,16 +51,18 @@ class RemoteUpdateWorker(
                 }
             val previousFingerprint = prefs.getString(KEY_PROFILE_FINGERPRINT, null)
 
-            if (previousFingerprint != null && previousFingerprint != fingerprint) {
+            if (previousFingerprint == null || previousFingerprint != fingerprint) {
                 when (
                     VpnProfileRepository(backend, applicationContext).refreshCatalog()
                 ) {
                     is VpnProfileSyncResult.Success -> {
-                        showNotification(
-                            NOTIFICATION_PROFILE_ID,
-                            applicationContext.getString(R.string.remote_profile_update_title),
-                            applicationContext.getString(R.string.remote_profile_update_message)
-                        )
+                        if (previousFingerprint != null) {
+                            showNotification(
+                                NOTIFICATION_PROFILE_ID,
+                                applicationContext.getString(R.string.remote_profile_update_title),
+                                applicationContext.getString(R.string.remote_profile_update_message)
+                            )
+                        }
                     }
 
                     is VpnProfileSyncResult.Error -> return Result.retry()
