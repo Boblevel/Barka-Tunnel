@@ -108,6 +108,7 @@ class MainActivity : AppCompatActivity() {
     private var pendingConnectAfterVpnPermission = false
     @Volatile private var connectionStartRequested = false
     @Volatile private var disconnectRequested = false
+    private var lastConnectActionAtElapsedMs = 0L
     private var orangeIpWarningToast: Toast? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -329,6 +330,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         connectAction = connectAction@{
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastConnectActionAtElapsedMs < CONNECT_ACTION_DEBOUNCE_MS) {
+                return@connectAction
+            }
+            lastConnectActionAtElapsedMs = now
+
             orangeIpWarningToast?.cancel()
             orangeIpWarningToast = null
 
@@ -529,6 +536,15 @@ class MainActivity : AppCompatActivity() {
                 }
             } else {
                 syncVpnRuntimeState()
+            }
+            if (
+                BarkaVpnService.connectionSnapshot().state ==
+                    BarkaVpnService.RuntimeConnectionState.DISCONNECTED &&
+                !pendingConnectAfterInitialSync &&
+                !pendingConnectAfterVpnPermission &&
+                !connectionStartRequested
+            ) {
+                BarkaVpnService.cancelConnectingNotification(this)
             }
             refreshHomeState()
             if (isInitialRemoteSyncComplete()) {
@@ -785,7 +801,6 @@ class MainActivity : AppCompatActivity() {
         pendingConnectAfterVpnPermission = false
         val operationGeneration = connectionOperationGeneration.get()
         recordConnectionAttemptAsync()
-        BarkaVpnService.showConnectingNotification(this)
 
         handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
 
@@ -1619,6 +1634,7 @@ class MainActivity : AppCompatActivity() {
         private const val PROFILE_SYNC_INTERVAL_MS = 6L * 60L * 60L * 1000L
         private const val INITIAL_SYNC_RETRY_DELAY_MS = 2_500L
         private const val DISCONNECT_UI_SETTLE_MS = 250L
+        private const val CONNECT_ACTION_DEBOUNCE_MS = 700L
         private val TECHNICAL_CONNECTION_TERMS = Regex(
             "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
         )
