@@ -17,13 +17,14 @@ class VpnProfileRepository(
     context: Context
 ) {
 
+    private val appContext = context.applicationContext
     private val memoryProfiles = ConcurrentHashMap<String, VpnProfile>()
-    private val secureStore = VpnProfileSecureStore(context)
-    private val connectivityManager = context.applicationContext
+    private val secureStore = VpnProfileSecureStore(appContext)
+    private val connectivityManager = appContext
         .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    fun refreshCatalog(): VpnProfileSyncResult {
-        return try {
+    fun refreshCatalog(): VpnProfileSyncResult = synchronized(SYNC_LOCK) {
+        return@synchronized try {
             val profiles = backendClient.getVpnCatalog()
                 .mapNotNull { item ->
                     val protocol = VpnProfileProtocol.fromServer(item.protocol)
@@ -134,6 +135,19 @@ class VpnProfileRepository(
     fun shouldRefresh(maxAgeMillis: Long): Boolean =
         System.currentTimeMillis() - secureStore.lastSuccessfulSyncAt() >= maxAgeMillis
 
+    fun hasSuccessfulSyncForCurrentInstall(): Boolean {
+        val lastSyncAt = secureStore.lastSuccessfulSyncAt()
+        if (lastSyncAt <= 0L) return false
+
+        val firstInstallAt = runCatching {
+            appContext.packageManager
+                .getPackageInfo(appContext.packageName, 0)
+                .firstInstallTime
+        }.getOrDefault(Long.MAX_VALUE)
+
+        return lastSyncAt >= firstInstallAt
+    }
+
     fun hasInternetCapability(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
@@ -201,5 +215,9 @@ class VpnProfileRepository(
 
     fun clearSensitiveCache() {
         memoryProfiles.clear()
+    }
+
+    companion object {
+        private val SYNC_LOCK = Any()
     }
 }

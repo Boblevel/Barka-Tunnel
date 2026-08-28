@@ -24,6 +24,7 @@ import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.MainActivity
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
+import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.barkatunnel.app.vpnprofile.VpnProfileSyncResult
 import java.util.concurrent.TimeUnit
@@ -52,10 +53,12 @@ class RemoteUpdateWorker(
             val previousFingerprint = prefs.getString(KEY_PROFILE_FINGERPRINT, null)
 
             if (previousFingerprint == null || previousFingerprint != fingerprint) {
+                AppLogStore.add(applicationContext, "Synchronisation des profils…")
                 when (
                     VpnProfileRepository(backend, applicationContext).refreshCatalog()
                 ) {
                     is VpnProfileSyncResult.Success -> {
+                        AppLogStore.add(applicationContext, "Profils à jour.")
                         if (previousFingerprint != null) {
                             showNotification(
                                 NOTIFICATION_PROFILE_ID,
@@ -79,6 +82,7 @@ class RemoteUpdateWorker(
                 appUpdate.updateAvailable &&
                 appUpdate.latestVersionCode > lastNotifiedVersion
             ) {
+                AppLogStore.add(applicationContext, "Mise à jour disponible.")
                 showNotification(
                     NOTIFICATION_APK_ID,
                     applicationContext.getString(R.string.remote_apk_update_title),

@@ -104,6 +104,8 @@ class MainActivity : AppCompatActivity() {
     private val initialSyncRetryRunnable = Runnable { ensureInitialRemoteSync() }
     private var pendingConnectAfterInitialSync = false
     private var pendingConnectAfterVpnPermission = false
+    @Volatile private var connectionStartRequested = false
+    @Volatile private var disconnectRequested = false
     private var orangeIpWarningToast: Toast? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -511,7 +513,15 @@ class MainActivity : AppCompatActivity() {
         if (::networkIpValue.isInitialized) {
             applySystemBars()
             refreshNetworkIp()
-            if (pendingConnectAfterInitialSync || pendingConnectAfterVpnPermission) {
+            if (disconnectRequested) {
+                homeController?.let {
+                    handleHomeResult(it.syncConnection(HomeConnectionState.Disconnecting))
+                }
+            } else if (
+                pendingConnectAfterInitialSync ||
+                pendingConnectAfterVpnPermission ||
+                connectionStartRequested
+            ) {
                 homeController?.let {
                     handleHomeResult(it.syncConnection(HomeConnectionState.Connecting))
                 }
@@ -566,17 +576,29 @@ class MainActivity : AppCompatActivity() {
     private fun syncVpnRuntimeState(): HomeConnectionState? {
         val controller = homeController ?: return null
         val snapshot = BarkaVpnService.connectionSnapshot()
-        val connection = when (snapshot.state) {
-            BarkaVpnService.RuntimeConnectionState.DISCONNECTED ->
-                HomeConnectionState.Disconnected
-            BarkaVpnService.RuntimeConnectionState.CONNECTING ->
+        val connection = when {
+            disconnectRequested &&
+                snapshot.state != BarkaVpnService.RuntimeConnectionState.DISCONNECTED ->
+                HomeConnectionState.Disconnecting
+            connectionStartRequested &&
+                snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED ->
                 HomeConnectionState.Connecting
-            BarkaVpnService.RuntimeConnectionState.CONNECTED ->
+            snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED ->
+                HomeConnectionState.Disconnected
+            snapshot.state == BarkaVpnService.RuntimeConnectionState.CONNECTING ->
+                HomeConnectionState.Connecting
+            snapshot.state == BarkaVpnService.RuntimeConnectionState.CONNECTED ->
                 HomeConnectionState.Connected(
                     snapshot.profileName ?: controller.currentState().selectedNetwork?.displayName.orEmpty()
                 )
-            BarkaVpnService.RuntimeConnectionState.DISCONNECTING ->
-                HomeConnectionState.Disconnecting
+            else -> HomeConnectionState.Disconnecting
+        }
+
+        if (snapshot.state == BarkaVpnService.RuntimeConnectionState.CONNECTED) {
+            connectionStartRequested = false
+            disconnectRequested = false
+        } else if (snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED && disconnectRequested) {
+            disconnectRequested = false
         }
 
         handleHomeResult(controller.syncConnection(connection))
@@ -719,10 +741,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun beginVpnConnection(controller: HomeController) {
+        disconnectRequested = false
+        connectionStartRequested = true
+        val selected = controller.currentState().selectedNetwork
+        AppLogStore.add(
+            this,
+            "Connexion en cours${selected?.let { " • ${it.displayName}" } ?: ""}."
+        )
+        handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
+
         if (!isInitialRemoteSyncComplete()) {
             pendingConnectAfterInitialSync = true
-            handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
-            AppLogStore.add(this, "Préparation de la première connexion • synchronisation automatique.")
             ensureInitialRemoteSync()
             return
         }
@@ -754,17 +783,15 @@ class MainActivity : AppCompatActivity() {
         recordConnectionAttemptAsync()
         BarkaVpnService.showConnectingNotification(this)
 
-        val selected = controller.currentState().selectedNetwork
-        AppLogStore.add(
-            this,
-            "Tentative de connexion${selected?.let { " • ${it.displayName}" } ?: ""}."
-        )
         handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
 
         runHomeAction(disableConnectButton = false) {
             val result = controller.connect()
             val connectedState =
                 (result as? HomeControllerResult.State)?.value?.connection
+            if (controller.currentState().connection !is HomeConnectionState.Connecting) {
+                connectionStartRequested = false
+            }
 
             if (connectedState is HomeConnectionState.Connected) {
                 timerController.startConnectionTimer()
@@ -784,6 +811,8 @@ class MainActivity : AppCompatActivity() {
     private fun requestVpnDisconnect(controller: HomeController) {
         pendingConnectAfterInitialSync = false
         pendingConnectAfterVpnPermission = false
+        connectionStartRequested = false
+        disconnectRequested = true
         AppLogStore.add(this, "Déconnexion en cours.")
         handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnecting))
 
@@ -793,6 +822,7 @@ class MainActivity : AppCompatActivity() {
                 result is HomeControllerResult.State &&
                 result.value.connection is HomeConnectionState.Disconnected
             ) {
+                disconnectRequested = false
                 timerController.stopConnectionTimer()
                 AppLogStore.add(this, "VPN déconnecté.")
             }
@@ -803,14 +833,25 @@ class MainActivity : AppCompatActivity() {
     private fun cancelPendingConnectionStart(controller: HomeController) {
         pendingConnectAfterInitialSync = false
         pendingConnectAfterVpnPermission = false
+        connectionStartRequested = false
+        disconnectRequested = true
         BarkaVpnService.cancelConnectingNotification(this)
-        handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnected))
-        AppLogStore.add(this, "Connexion annulée.")
+        AppLogStore.add(this, "Déconnexion en cours.")
+        handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnecting))
+        mainHandler.postDelayed({
+            if (disconnectRequested) {
+                disconnectRequested = false
+                handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnected))
+                AppLogStore.add(this, "VPN déconnecté.")
+            }
+        }, DISCONNECT_UI_SETTLE_MS)
     }
 
     private fun resetPendingConnectionState() {
         pendingConnectAfterInitialSync = false
         pendingConnectAfterVpnPermission = false
+        connectionStartRequested = false
+        disconnectRequested = false
         val controller = homeController ?: return
         val runtimeState = BarkaVpnService.connectionSnapshot().state
         if (runtimeState == BarkaVpnService.RuntimeConnectionState.DISCONNECTED) {
@@ -1286,9 +1327,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isInitialRemoteSyncComplete(): Boolean =
-        getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
-            .getBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, false)
+    private fun isInitialProfileSyncComplete(): Boolean {
+        val prefs = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+        return prefs.getLong(PREF_INITIAL_PROFILE_SYNC_INSTALL_TIME, -1L) == currentInstallTime() &&
+            vpnProfileRepository.hasSuccessfulSyncForCurrentInstall()
+    }
+
+    private fun isInitialRemoteSyncComplete(): Boolean {
+        val prefs = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+        return prefs.getBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, false) &&
+            prefs.getLong(PREF_INITIAL_REMOTE_SYNC_INSTALL_TIME, -1L) == currentInstallTime() &&
+            isInitialProfileSyncComplete()
+    }
+
+    private fun currentInstallTime(): Long = runCatching {
+        packageManager.getPackageInfo(packageName, 0).firstInstallTime
+    }.getOrDefault(0L)
 
     private fun ensureInitialRemoteSync() {
         if (isInitialRemoteSyncComplete()) {
@@ -1304,9 +1358,23 @@ class MainActivity : AppCompatActivity() {
         if (!initialSyncInProgress.compareAndSet(false, true)) return
 
         mainHandler.removeCallbacks(initialSyncRetryRunnable)
+        if (isInitialProfileSyncComplete()) {
+            checkInitialAppUpdate()
+            return
+        }
+
+        AppLogStore.add(this, "Synchronisation des profils…")
         Thread {
             when (val sync = vpnProfileRepository.refreshCatalog()) {
                 is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Success -> {
+                    getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+                        .edit()
+                        .putLong(PREF_INITIAL_PROFILE_SYNC_INSTALL_TIME, currentInstallTime())
+                        .apply()
+                    AppLogStore.add(
+                        this,
+                        if (sync.updatedCount > 0) "Profils mis à jour." else "Profils à jour."
+                    )
                     runOnUiThread {
                         selectedNetwork?.let { selected ->
                             networkSubtitle.text = if (vpnProfileRepository.isMaintenance(selected.id)) {
@@ -1315,33 +1383,7 @@ class MainActivity : AppCompatActivity() {
                                 getString(R.string.selected_network_subtitle)
                             }
                         }
-                        updateCoordinator.check(
-                            showNoUpdate = false,
-                            force = true
-                        ) { update ->
-                            initialSyncInProgress.set(false)
-                            if (update != null) {
-                                getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
-                                    .edit()
-                                    .putBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, true)
-                                    .apply()
-                                mainHandler.removeCallbacks(initialSyncRetryRunnable)
-                                if (!update.updateAvailable) {
-                                    Toast.makeText(
-                                        this,
-                                        R.string.startup_sync_current,
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                                AppLogStore.add(
-                                    this,
-                                    "Initialisation Internet terminée • services et mises à jour vérifiés."
-                                )
-                                resumePendingConnectionAfterInitialSync()
-                            } else {
-                                scheduleInitialRemoteSyncRetry()
-                            }
-                        }
+                        checkInitialAppUpdate()
                     }
                 }
 
@@ -1350,18 +1392,41 @@ class MainActivity : AppCompatActivity() {
                         this,
                         "Initialisation Internet reportée • ${sync.message}"
                     )
-                    runOnUiThread {
-                        updateCoordinator.check(
-                            showNoUpdate = false,
-                            force = true
-                        ) {
-                            initialSyncInProgress.set(false)
-                            scheduleInitialRemoteSyncRetry()
-                        }
-                    }
+                    initialSyncInProgress.set(false)
+                    runOnUiThread { scheduleInitialRemoteSyncRetry() }
                 }
             }
         }.start()
+    }
+
+    private fun checkInitialAppUpdate() {
+        AppLogStore.add(this, "Vérification des mises à jour…")
+        updateCoordinator.check(
+            showNoUpdate = false,
+            force = true
+        ) { update ->
+            initialSyncInProgress.set(false)
+            if (update == null) {
+                scheduleInitialRemoteSyncRetry()
+                return@check
+            }
+
+            getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, true)
+                .putLong(PREF_INITIAL_REMOTE_SYNC_INSTALL_TIME, currentInstallTime())
+                .apply()
+            mainHandler.removeCallbacks(initialSyncRetryRunnable)
+            if (!update.updateAvailable) {
+                Toast.makeText(
+                    this,
+                    R.string.startup_sync_current,
+                    Toast.LENGTH_SHORT
+                ).show()
+                AppLogStore.add(this, "Barka Tunnel est à jour.")
+            }
+            resumePendingConnectionAfterInitialSync()
+        }
     }
 
     private fun scheduleInitialRemoteSyncRetry() {
@@ -1416,7 +1481,7 @@ class MainActivity : AppCompatActivity() {
                     is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Success -> {
                         AppLogStore.add(
                             this,
-                            "Services de connexion synchronisés • ${result.enabledCount}."
+                            if (result.updatedCount > 0) "Profils mis à jour." else "Profils à jour."
                         )
                         runOnUiThread {
                             selectedNetwork?.let { selected ->
@@ -1529,6 +1594,8 @@ class MainActivity : AppCompatActivity() {
         private const val PREFERENCES_NAME = "barka_home_preferences"
         private const val PREF_SELECTED_NETWORK = "selected_network_id"
         private const val PREF_INITIAL_REMOTE_SYNC_COMPLETE = "initial_remote_sync_complete"
+        private const val PREF_INITIAL_PROFILE_SYNC_INSTALL_TIME = "initial_profile_sync_install_time"
+        private const val PREF_INITIAL_REMOTE_SYNC_INSTALL_TIME = "initial_remote_sync_install_time"
         private const val PREF_CHANNEL_INVITE_INSTALL_STAMP = "channel_invite_install_stamp"
         private const val TELEGRAM_CHANNEL_URL = "https://t.me/barkaTunnel"
         private const val PRESS_VIBRATION_MS = 80L
@@ -1538,6 +1605,7 @@ class MainActivity : AppCompatActivity() {
         private const val PAGE_JOURNAL = 1
         private const val PROFILE_SYNC_INTERVAL_MS = 6L * 60L * 60L * 1000L
         private const val INITIAL_SYNC_RETRY_DELAY_MS = 2_500L
+        private const val DISCONNECT_UI_SETTLE_MS = 250L
         private val TECHNICAL_CONNECTION_TERMS = Regex(
             "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
         )

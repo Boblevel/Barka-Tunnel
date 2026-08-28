@@ -162,6 +162,15 @@
     <string name="journal_disconnecting_message">Arrêt du VPN en cours.</string>
     <string name="journal_disconnected_title">Déconnecté</string>
     <string name="journal_disconnected_message">VPN déconnecté.</string>
+    <string name="journal_profile_syncing_title">Synchronisation</string>
+    <string name="journal_profile_syncing_message">Synchronisation des profils VPN…</string>
+    <string name="journal_profile_synced_title">Profils à jour</string>
+    <string name="journal_profile_synced_message">Les profils VPN sont synchronisés.</string>
+    <string name="journal_update_checking_title">Mise à jour</string>
+    <string name="journal_update_checking_message">Vérification des mises à jour…</string>
+    <string name="journal_app_current_title">Application à jour</string>
+    <string name="journal_app_current_message">Barka Tunnel est à jour.</string>
+    <string name="journal_update_available_title">Mise à jour disponible</string>
 
     <string name="support_title">SUPPORT</string>
     <string name="support_description">Support</string>

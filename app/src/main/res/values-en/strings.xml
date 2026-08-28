@@ -153,6 +153,15 @@
     <string name="journal_disconnecting_message">Stopping the VPN.</string>
     <string name="journal_disconnected_title">Disconnected</string>
     <string name="journal_disconnected_message">VPN disconnected.</string>
+    <string name="journal_profile_syncing_title">Synchronization</string>
+    <string name="journal_profile_syncing_message">Synchronizing VPN profiles…</string>
+    <string name="journal_profile_synced_title">Profiles up to date</string>
+    <string name="journal_profile_synced_message">VPN profiles are synchronized.</string>
+    <string name="journal_update_checking_title">Update</string>
+    <string name="journal_update_checking_message">Checking for updates…</string>
+    <string name="journal_app_current_title">App up to date</string>
+    <string name="journal_app_current_message">Barka Tunnel is up to date.</string>
+    <string name="journal_update_available_title">Update available</string>
 
     <string name="support_title">SUPPORT</string>
     <string name="support_description">Support</string>

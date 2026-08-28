@@ -77,6 +77,7 @@ class BarkaVpnService : VpnService() {
                     return START_NOT_STICKY
                 }
                 stopping = true
+                AppLogStore.add(this, "Déconnexion en cours.")
                 updateRuntimeState(
                     RuntimeConnectionState.DISCONNECTING,
                     runtimeProfileName,
@@ -94,6 +95,7 @@ class BarkaVpnService : VpnService() {
 
     override fun onRevoke() {
         stopping = true
+        AppLogStore.add(this, "Déconnexion en cours.")
         updateRuntimeState(
             RuntimeConnectionState.DISCONNECTING,
             runtimeProfileName,
@@ -162,6 +164,10 @@ class BarkaVpnService : VpnService() {
                     )
                     startAutoPing(protocol)
                     updateNotification(getString(R.string.notification_connected))
+                    AppLogStore.add(
+                        this,
+                        "VPN connecté${profileName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
+                    )
                     C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
                     activeConnectRequestId = null
                     return

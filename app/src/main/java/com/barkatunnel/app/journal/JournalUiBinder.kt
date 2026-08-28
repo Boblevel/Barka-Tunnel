@@ -72,6 +72,13 @@ class JournalUiBinder(
                 value.startsWith("diagnostic orange") ||
                 value.startsWith("diagnostic telecel") -> return null
             value.startsWith("ping :") -> EventType.PING
+            value.startsWith("synchronisation des profils") -> EventType.PROFILE_SYNCING
+            value.startsWith("profils à jour") ||
+                value.startsWith("profils mis à jour") ||
+                value.startsWith("services de connexion synchronisés") -> EventType.PROFILE_SYNCED
+            value.startsWith("vérification des mises à jour") -> EventType.UPDATE_CHECKING
+            value.startsWith("barka tunnel est à jour") -> EventType.APP_CURRENT
+            value.startsWith("mise à jour disponible") -> EventType.UPDATE_AVAILABLE
             value.contains("déconnexion en cours") || value.contains("disconnecting") ->
                 EventType.DISCONNECTING
             value.contains("déconnexion") || value.contains("déconnecté") ->
@@ -99,7 +106,11 @@ class JournalUiBinder(
             clock = clock,
             type = type,
             networkName = networkName,
-            detail = if (type == EventType.DIAGNOSTIC || type == EventType.PING) message else null
+            detail = if (
+                type == EventType.DIAGNOSTIC ||
+                type == EventType.PING ||
+                type == EventType.UPDATE_AVAILABLE
+            ) message else null
         )
     }
 
@@ -150,6 +161,31 @@ class JournalUiBinder(
                 message = context.getString(R.string.journal_disconnected_message),
                 colorRes = R.color.barka_blue
             )
+            EventType.PROFILE_SYNCING -> EventPresentation(
+                title = context.getString(R.string.journal_profile_syncing_title),
+                message = context.getString(R.string.journal_profile_syncing_message),
+                colorRes = R.color.barka_blue
+            )
+            EventType.PROFILE_SYNCED -> EventPresentation(
+                title = context.getString(R.string.journal_profile_synced_title),
+                message = context.getString(R.string.journal_profile_synced_message),
+                colorRes = R.color.barka_green
+            )
+            EventType.UPDATE_CHECKING -> EventPresentation(
+                title = context.getString(R.string.journal_update_checking_title),
+                message = context.getString(R.string.journal_update_checking_message),
+                colorRes = R.color.barka_blue
+            )
+            EventType.APP_CURRENT -> EventPresentation(
+                title = context.getString(R.string.journal_app_current_title),
+                message = context.getString(R.string.journal_app_current_message),
+                colorRes = R.color.barka_green
+            )
+            EventType.UPDATE_AVAILABLE -> EventPresentation(
+                title = context.getString(R.string.journal_update_available_title),
+                message = event.detail.orEmpty(),
+                colorRes = R.color.barka_orange
+            )
             EventType.PING -> {
                 val latency = PING_VALUE.find(event.detail.orEmpty())
                     ?.groupValues?.getOrNull(1)?.toLongOrNull()
@@ -187,6 +223,11 @@ class JournalUiBinder(
         CONNECTED,
         DISCONNECTING,
         DISCONNECTED,
+        PROFILE_SYNCING,
+        PROFILE_SYNCED,
+        UPDATE_CHECKING,
+        APP_CURRENT,
+        UPDATE_AVAILABLE,
         PING,
         DIAGNOSTIC
     }

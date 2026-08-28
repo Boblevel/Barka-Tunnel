@@ -22,29 +22,36 @@ class AppUpdateCoordinator(
     @Volatile
     private var lastCheckAt = 0L
 
+    private val callbackLock = Any()
+    private val waitingCallbacks = mutableListOf<(BackendAppUpdate?) -> Unit>()
+
     fun check(
         showNoUpdate: Boolean = false,
         force: Boolean = false,
         onResult: ((BackendAppUpdate?) -> Unit)? = null
     ) {
         val now = System.currentTimeMillis()
-        if (checking) {
-            onResult?.invoke(null)
-            return
+        synchronized(callbackLock) {
+            if (checking) {
+                onResult?.let(waitingCallbacks::add)
+                return
+            }
+            if (!force && now - lastCheckAt < 5 * 60 * 1000L) {
+                onResult?.invoke(null)
+                return
+            }
+            checking = true
         }
-        if (!force && now - lastCheckAt < 5 * 60 * 1000L) {
-            onResult?.invoke(null)
-            return
-        }
-
-        checking = true
         Thread {
             try {
                 val update = backendClient.checkAppUpdate(currentVersionCode())
                 lastCheckAt = System.currentTimeMillis()
                 activity.runOnUiThread {
-                    applyResult(update, showNoUpdate)
-                    onResult?.invoke(update)
+                    try {
+                        applyResult(update, showNoUpdate)
+                    } finally {
+                        finishCheck(update, onResult)
+                    }
                 }
             } catch (e: Exception) {
                 activity.runOnUiThread {
@@ -55,12 +62,24 @@ class AppUpdateCoordinator(
                             Toast.LENGTH_LONG
                         ).show()
                     }
-                    onResult?.invoke(null)
+                    finishCheck(null, onResult)
                 }
-            } finally {
-                checking = false
             }
         }.start()
+    }
+
+    private fun finishCheck(
+        result: BackendAppUpdate?,
+        primaryCallback: ((BackendAppUpdate?) -> Unit)?
+    ) {
+        val callbacks = synchronized(callbackLock) {
+            checking = false
+            buildList {
+                primaryCallback?.let(::add)
+                addAll(waitingCallbacks)
+            }.also { waitingCallbacks.clear() }
+        }
+        callbacks.forEach { it(result) }
     }
 
     fun showBlockingIfNeeded(): Boolean {

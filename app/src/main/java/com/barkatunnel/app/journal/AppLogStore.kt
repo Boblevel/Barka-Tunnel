@@ -12,6 +12,7 @@ object AppLogStore {
     private const val KEY_LOGS = "logs"
     private const val MAX_LINES = 250
 
+    @Synchronized
     fun add(
         context: Context,
         message: String
