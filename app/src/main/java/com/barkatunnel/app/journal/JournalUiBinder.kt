@@ -72,10 +72,10 @@ class JournalUiBinder(
                 value.startsWith("diagnostic orange") ||
                 value.startsWith("diagnostic telecel") -> return null
             value.startsWith("ping :") -> EventType.PING
-            value.startsWith("synchronisation des profils") -> EventType.PROFILE_SYNCING
+            value.startsWith("synchronisation des profils") -> return null
             value.startsWith("profils à jour") ||
                 value.startsWith("profils mis à jour") ||
-                value.startsWith("services de connexion synchronisés") -> EventType.PROFILE_SYNCED
+                value.startsWith("services de connexion synchronisés") -> return null
             value.startsWith("vérification des mises à jour") -> EventType.UPDATE_CHECKING
             value.startsWith("barka tunnel est à jour") -> EventType.APP_CURRENT
             value.startsWith("mise à jour disponible") -> EventType.UPDATE_AVAILABLE
