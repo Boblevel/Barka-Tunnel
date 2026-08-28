@@ -86,25 +86,14 @@ class VpnProfileRepository(
     }
 
     fun loadForConnection(networkId: String): VpnProfile {
-        // Sur certains téléphones, Android peut annoncer INTERNET quelques instants
-        // avant de marquer le réseau VALIDATED. On tente alors le serveur réel :
-        // l'appel HTTPS reste la source de vérité et évite un faux message
-        // « première synchronisation » alors qu'Internet est déjà utilisable.
-        if (hasInternetCapability()) {
-            try {
-                return fetchAndCache(networkId)
-            } catch (error: Exception) {
-                // Si Android n'a pas encore validé la connectivité, on laisse
-                // la logique hors ligne décider avec le cache. Si Internet est
-                // réellement validé, l'erreur serveur doit rester visible.
-                if (hasValidatedInternet()) throw error
-            }
-        }
-
         if (secureStore.isMaintenance(networkId)) {
             throw BarkaBackendException("Réseau en maintenance. Réessaie plus tard.")
         }
 
+        // Une synchronisation réussie a déjà validé et chiffré le profil.
+        // On l'utilise directement pour démarrer le VPN afin qu'un appel HTTPS
+        // transitoire au moment du premier clic ne provoque pas un faux rejet
+        // avant une nouvelle tentative automatique, sur Wi-Fi comme sur mobile.
         val cached = memoryProfiles[networkId]
             ?.takeIf { isUsable(networkId, it) }
             ?: secureStore.load(networkId)
@@ -114,6 +103,14 @@ class VpnProfileRepository(
         if (cached != null) {
             val requiredVersion = secureStore.requiredVersion(networkId)
             if (requiredVersion > cached.version) {
+                if (hasInternetCapability()) {
+                    try {
+                        return fetchAndCache(networkId)
+                    } catch (_: Exception) {
+                        // La version exigée reste bloquante tant que sa récupération
+                        // n'a pas réellement réussi.
+                    }
+                }
                 throw BarkaBackendException(
                     "Mise à jour obligatoire de la configuration. Connecte Internet pour synchroniser ce réseau."
                 )
@@ -121,6 +118,8 @@ class VpnProfileRepository(
             return cached
         }
 
+        // Première installation sans cache : on tente réellement le serveur,
+        // même si Android n'a pas encore marqué le réseau comme VALIDATED.
         try {
             return fetchAndCache(networkId)
         } catch (error: Exception) {
