@@ -5,6 +5,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.backend.BarkaBackendException
+import java.io.File
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -20,6 +22,10 @@ class VpnProfileRepository(
     private val appContext = context.applicationContext
     private val memoryProfiles = ConcurrentHashMap<String, VpnProfile>()
     private val secureStore = VpnProfileSecureStore(appContext)
+    private val installStatePreferences = appContext.getSharedPreferences(
+        INSTALL_STATE_PREFERENCES,
+        Context.MODE_PRIVATE
+    )
     private val connectivityManager = appContext
         .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
@@ -75,6 +81,9 @@ class VpnProfileRepository(
             }
 
             secureStore.markSuccessfulSync()
+            installStatePreferences.edit()
+                .putString(KEY_SUCCESSFUL_SYNC_INSTALL_ID, currentInstallId())
+                .apply()
 
             VpnProfileSyncResult.Success(
                 profiles = profiles,
@@ -136,16 +145,36 @@ class VpnProfileRepository(
         System.currentTimeMillis() - secureStore.lastSuccessfulSyncAt() >= maxAgeMillis
 
     fun hasSuccessfulSyncForCurrentInstall(): Boolean {
-        val lastSyncAt = secureStore.lastSuccessfulSyncAt()
-        if (lastSyncAt <= 0L) return false
+        if (secureStore.lastSuccessfulSyncAt() <= 0L) return false
+        return installStatePreferences.getString(
+            KEY_SUCCESSFUL_SYNC_INSTALL_ID,
+            null
+        ) == currentInstallId()
+    }
 
-        val firstInstallAt = runCatching {
+    fun currentInstallId(): String = synchronized(INSTALL_ID_LOCK) {
+        val marker = File(appContext.noBackupFilesDir, INSTALL_MARKER_FILE)
+        val existing = runCatching {
+            marker.takeIf { it.isFile }
+                ?.readText(Charsets.UTF_8)
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+        if (existing != null) {
+            return@synchronized existing
+        }
+
+        val created = UUID.randomUUID().toString()
+        val stored = runCatching {
+            marker.parentFile?.mkdirs()
+            marker.writeText(created, Charsets.UTF_8)
+            created
+        }.getOrNull()
+        stored ?: "install-${runCatching {
             appContext.packageManager
                 .getPackageInfo(appContext.packageName, 0)
                 .firstInstallTime
-        }.getOrDefault(Long.MAX_VALUE)
-
-        return lastSyncAt >= firstInstallAt
+        }.getOrDefault(System.currentTimeMillis())}"
     }
 
     fun hasInternetCapability(): Boolean {
@@ -218,6 +247,10 @@ class VpnProfileRepository(
     }
 
     companion object {
+        private const val INSTALL_STATE_PREFERENCES = "barka_vpn_install_state"
+        private const val KEY_SUCCESSFUL_SYNC_INSTALL_ID = "successful_sync_install_id"
+        private const val INSTALL_MARKER_FILE = "barka_install_id"
         private val SYNC_LOCK = Any()
+        private val INSTALL_ID_LOCK = Any()
     }
 }

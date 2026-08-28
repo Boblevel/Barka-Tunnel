@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.Build
 import android.os.IBinder
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -21,6 +22,7 @@ import com.barkatunnel.app.vpnprofile.VpnProfileProtocol
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 class BarkaVpnService : VpnService() {
     private val worker = Executors.newSingleThreadExecutor()
@@ -30,6 +32,9 @@ class BarkaVpnService : VpnService() {
     @Volatile private var connected = false
     private var tun2SocksRunner: Tun2SocksRunner? = null
     private var keepAliveFuture: ScheduledFuture<*>? = null
+    private val tunnelLock = Any()
+    private val operationGeneration = AtomicLong(0L)
+    @Volatile private var vpnDescriptor: ParcelFileDescriptor? = null
     @Volatile private var stopping = false
     @Volatile private var activeConnectRequestId: String? = null
 
@@ -52,6 +57,7 @@ class BarkaVpnService : VpnService() {
                     )
                     return START_NOT_STICKY
                 }
+                val connectGeneration = operationGeneration.incrementAndGet()
                 stopping = false
                 activeConnectRequestId = requestId
                 updateRuntimeState(
@@ -63,7 +69,7 @@ class BarkaVpnService : VpnService() {
                     NOTIFICATION_ID,
                     buildNotification(this, getString(R.string.notification_connecting))
                 )
-                worker.execute { connect(intent, requestId) }
+                worker.execute { connect(intent, requestId, connectGeneration) }
             }
             ACTION_DISCONNECT -> {
                 if (
@@ -71,11 +77,16 @@ class BarkaVpnService : VpnService() {
                     !connected &&
                     activeConnectRequestId == null
                 ) {
+                    operationGeneration.incrementAndGet()
+                    stopping = true
+                    stopTunnel()
+                    updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
                     C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                     return START_NOT_STICKY
                 }
+                operationGeneration.incrementAndGet()
                 stopping = true
                 AppLogStore.add(this, "Déconnexion en cours.")
                 updateRuntimeState(
@@ -94,6 +105,7 @@ class BarkaVpnService : VpnService() {
     }
 
     override fun onRevoke() {
+        operationGeneration.incrementAndGet()
         stopping = true
         AppLogStore.add(this, "Déconnexion en cours.")
         updateRuntimeState(
@@ -106,10 +118,9 @@ class BarkaVpnService : VpnService() {
     }
 
     override fun onDestroy() {
-        if (!stopping) {
-            runCatching { tun2SocksRunner?.stop() }
-            runCatching { engine?.stop() }
-        }
+        operationGeneration.incrementAndGet()
+        stopping = true
+        stopTunnel()
         keepAliveFuture?.cancel(true)
         keepAliveFuture = null
         keepAliveExecutor.shutdownNow()
@@ -121,7 +132,11 @@ class BarkaVpnService : VpnService() {
         super.onDestroy()
     }
 
-    private fun connect(intent: Intent, requestId: String?) {
+    private fun connect(
+        intent: Intent,
+        requestId: String?,
+        connectGeneration: Long
+    ) {
         if (connected) {
             C6VpnRuntime.complete(requestId, C6VpnResult.Error("Un tunnel VPN est déjà actif."))
             return
@@ -137,7 +152,7 @@ class BarkaVpnService : VpnService() {
             AppLogStore.add(this, "Diagnostic VPN • profil ${protocol.name} chargé.")
             var attempt = 1
 
-            while (!stopping) {
+            while (isConnectOperationActive(connectGeneration)) {
                 if (attempt > 1) {
                     AppLogStore.add(
                         this,
@@ -145,14 +160,14 @@ class BarkaVpnService : VpnService() {
                     )
                     updateNotification(getString(R.string.notification_connecting))
                     Thread.sleep(CONNECTION_RETRY_DELAY_MS)
-                    if (stopping) break
+                    if (!isConnectOperationActive(connectGeneration)) break
                 }
 
                 try {
                     stopTunnel()
-                    if (stopping) break
-                    connectOnce(protocol, profileConfig)
-                    if (stopping) {
+                    if (!isConnectOperationActive(connectGeneration)) break
+                    connectOnce(protocol, profileConfig, connectGeneration)
+                    if (!isConnectOperationActive(connectGeneration)) {
                         stopTunnel()
                         break
                     }
@@ -172,7 +187,7 @@ class BarkaVpnService : VpnService() {
                     activeConnectRequestId = null
                     return
                 } catch (error: Exception) {
-                    if (stopping) break
+                    if (!isConnectOperationActive(connectGeneration)) break
                     val technicalMessage = sanitizeError(
                         error.message ?: "Échec interne de la connexion."
                     )
@@ -218,12 +233,16 @@ class BarkaVpnService : VpnService() {
 
     private fun connectOnce(
         protocol: VpnProfileProtocol,
-        profileConfig: VpnProfileConfig
+        profileConfig: VpnProfileConfig,
+        connectGeneration: Long
     ) {
         val protocolEngine = createEngine(protocol, profileConfig)
         engine = protocolEngine
         AppLogStore.add(this, "Diagnostic VPN • démarrage moteur ${protocol.name}.")
         protocolEngine.start()
+        if (!isConnectOperationActive(connectGeneration)) {
+            throw InterruptedException("Connexion annulée.")
+        }
         AppLogStore.add(this, "Diagnostic VPN • moteur ${protocol.name} actif.")
 
         if (
@@ -234,6 +253,9 @@ class BarkaVpnService : VpnService() {
             )
         ) {
             throw IllegalStateException("Le tunnel ${protocol.name} n’a pas ouvert son proxy local.")
+        }
+        if (!isConnectOperationActive(connectGeneration)) {
+            throw InterruptedException("Connexion annulée.")
         }
         AppLogStore.add(this, "Diagnostic VPN • proxy SOCKS ${protocol.name} prêt.")
 
@@ -257,6 +279,10 @@ class BarkaVpnService : VpnService() {
             is VpnProfileConfig.SlowDns -> profileConfig.dns
             else -> "1.1.1.1"
         }
+        if (!isConnectOperationActive(connectGeneration)) {
+            throw InterruptedException("Connexion annulée.")
+        }
+
         val descriptor = Builder()
             .setSession("Barka Tunnel")
             .setMtu(VPN_MTU)
@@ -266,6 +292,13 @@ class BarkaVpnService : VpnService() {
             .addDisallowedApplication(packageName)
             .establish()
             ?: throw IllegalStateException("Android n’a pas créé l’interface VPN.")
+        synchronized(tunnelLock) {
+            if (!isConnectOperationActive(connectGeneration)) {
+                runCatching { descriptor.close() }
+                throw InterruptedException("Connexion annulée.")
+            }
+            vpnDescriptor = descriptor
+        }
         AppLogStore.add(this, "Diagnostic VPN • interface TUN Android créée.")
 
         val udpgw = when (profileConfig) {
@@ -278,7 +311,15 @@ class BarkaVpnService : VpnService() {
             this,
             "Diagnostic VPN • démarrage tun2socks • UDP=${if (protocol == VpnProfileProtocol.VLESS) "SOCKS5" else if (udpgw != null) "UDPGW" else "OFF"}."
         )
-        tun2SocksRunner = Tun2SocksRunner(this).also { runner ->
+        synchronized(tunnelLock) {
+            if (!isConnectOperationActive(connectGeneration)) {
+                runCatching { descriptor.close() }
+                vpnDescriptor = null
+                throw InterruptedException("Connexion annulée.")
+            }
+
+            val runner = Tun2SocksRunner(this)
+            tun2SocksRunner = runner
             runner.start(
                 vpnDescriptor = descriptor,
                 mtu = VPN_MTU,
@@ -288,18 +329,23 @@ class BarkaVpnService : VpnService() {
                 udpgwAddress = udpgw,
                 forwardUdpThroughSocks = protocol == VpnProfileProtocol.VLESS
             )
+
+            if (!isConnectOperationActive(connectGeneration)) {
+                throw InterruptedException("Connexion annulée.")
+            }
         }
         AppLogStore.add(this, "Diagnostic VPN • tun2socks actif.")
     }
 
     private fun disconnect(requestId: String?) {
         stopping = true
+        operationGeneration.incrementAndGet()
         stopTunnel()
         C6VpnRuntime.complete(activeConnectRequestId, C6VpnResult.Disconnected)
         activeConnectRequestId = null
         C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
-        AppLogStore.add(this, "VPN déconnecté.")
         updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
+        AppLogStore.add(this, "VPN déconnecté.")
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -307,12 +353,29 @@ class BarkaVpnService : VpnService() {
     private fun stopTunnel() {
         keepAliveFuture?.cancel(true)
         keepAliveFuture = null
-        runCatching { tun2SocksRunner?.stop() }
-        tun2SocksRunner = null
-        runCatching { engine?.stop() }
-        engine = null
-        connected = false
+
+        val descriptor: ParcelFileDescriptor?
+        val runner: Tun2SocksRunner?
+        val activeEngine: C6ProtocolEngine?
+        synchronized(tunnelLock) {
+            descriptor = vpnDescriptor
+            vpnDescriptor = null
+            runner = tun2SocksRunner
+            tun2SocksRunner = null
+            activeEngine = engine
+            engine = null
+            connected = false
+        }
+
+        // Fermer d'abord le TUN force Android à supprimer réellement
+        // l'interface VPN avant que l'état DISCONNECTED soit publié.
+        runCatching { descriptor?.close() }
+        runCatching { runner?.stop() }
+        runCatching { activeEngine?.stop() }
     }
+
+    private fun isConnectOperationActive(connectGeneration: Long): Boolean =
+        !stopping && operationGeneration.get() == connectGeneration
 
     private fun startAutoPing(protocol: VpnProfileProtocol) {
         keepAliveFuture?.cancel(true)

@@ -14,7 +14,6 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.R
-import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.update.AppUpdateCoordinator
 import com.google.android.material.button.MaterialButton
 
@@ -145,7 +144,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun shareApplication() {
-        val apkUrl = "${BarkaBackendClient.BASE_URL}/downloads/BarkaTunnel.apk"
+        val apkUrl = "https://barkatunnel.vercel.app/download"
         val text = getString(R.string.share_download_format, apkUrl)
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

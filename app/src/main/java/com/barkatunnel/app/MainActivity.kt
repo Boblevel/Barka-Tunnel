@@ -69,6 +69,7 @@ import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
 import com.google.android.material.button.MaterialButton
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 class MainActivity : AppCompatActivity() {
 
@@ -100,6 +101,7 @@ class MainActivity : AppCompatActivity() {
     private var networkCallbackRegistered = false
     private val profileSyncInProgress = AtomicBoolean(false)
     private val initialSyncInProgress = AtomicBoolean(false)
+    private val connectionOperationGeneration = AtomicLong(0L)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val initialSyncRetryRunnable = Runnable { ensureInitialRemoteSync() }
     private var pendingConnectAfterInitialSync = false
@@ -741,6 +743,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun beginVpnConnection(controller: HomeController) {
+        connectionOperationGeneration.incrementAndGet()
         disconnectRequested = false
         connectionStartRequested = true
         val selected = controller.currentState().selectedNetwork
@@ -780,35 +783,47 @@ class MainActivity : AppCompatActivity() {
     private fun startVpnConnection(controller: HomeController) {
         pendingConnectAfterInitialSync = false
         pendingConnectAfterVpnPermission = false
+        val operationGeneration = connectionOperationGeneration.get()
         recordConnectionAttemptAsync()
         BarkaVpnService.showConnectingNotification(this)
 
         handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
 
-        runHomeAction(disableConnectButton = false) {
+        Thread {
             val result = controller.connect()
-            val connectedState =
-                (result as? HomeControllerResult.State)?.value?.connection
-            if (controller.currentState().connection !is HomeConnectionState.Connecting) {
-                connectionStartRequested = false
-            }
+            runOnUiThread {
+                if (
+                    operationGeneration != connectionOperationGeneration.get() ||
+                    disconnectRequested
+                ) {
+                    syncVpnRuntimeState()
+                    return@runOnUiThread
+                }
 
-            if (connectedState is HomeConnectionState.Connected) {
-                timerController.startConnectionTimer()
-                vibrateOnce(CONNECTED_VIBRATION_MS)
-                AppLogStore.add(
-                    this,
-                    "VPN connecté • ${connectedState.networkName}."
-                )
-            } else if (connectedState is HomeConnectionState.Disconnected) {
-                BarkaVpnService.cancelConnectingNotification(this)
-            }
+                val connectedState =
+                    (result as? HomeControllerResult.State)?.value?.connection
+                if (controller.currentState().connection !is HomeConnectionState.Connecting) {
+                    connectionStartRequested = false
+                }
 
-            result
-        }
+                if (connectedState is HomeConnectionState.Connected) {
+                    timerController.startConnectionTimer()
+                    vibrateOnce(CONNECTED_VIBRATION_MS)
+                    AppLogStore.add(
+                        this,
+                        "VPN connecté • ${connectedState.networkName}."
+                    )
+                } else if (connectedState is HomeConnectionState.Disconnected) {
+                    BarkaVpnService.cancelConnectingNotification(this)
+                }
+
+                handleHomeResult(result)
+            }
+        }.start()
     }
 
     private fun requestVpnDisconnect(controller: HomeController) {
+        val operationGeneration = connectionOperationGeneration.incrementAndGet()
         pendingConnectAfterInitialSync = false
         pendingConnectAfterVpnPermission = false
         connectionStartRequested = false
@@ -816,21 +831,31 @@ class MainActivity : AppCompatActivity() {
         AppLogStore.add(this, "Déconnexion en cours.")
         handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnecting))
 
-        runHomeAction(disableConnectButton = false) {
+        Thread {
             val result = controller.disconnect()
-            if (
-                result is HomeControllerResult.State &&
-                result.value.connection is HomeConnectionState.Disconnected
-            ) {
-                disconnectRequested = false
-                timerController.stopConnectionTimer()
-                AppLogStore.add(this, "VPN déconnecté.")
+            runOnUiThread {
+                if (operationGeneration != connectionOperationGeneration.get()) {
+                    syncVpnRuntimeState()
+                    return@runOnUiThread
+                }
+
+                val snapshot = BarkaVpnService.connectionSnapshot()
+                if (
+                    result is HomeControllerResult.State &&
+                    snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED
+                ) {
+                    timerController.stopConnectionTimer()
+                    syncVpnRuntimeState()
+                } else {
+                    handleHomeResult(result)
+                    syncVpnRuntimeState()
+                }
             }
-            result
-        }
+        }.start()
     }
 
     private fun cancelPendingConnectionStart(controller: HomeController) {
+        connectionOperationGeneration.incrementAndGet()
         pendingConnectAfterInitialSync = false
         pendingConnectAfterVpnPermission = false
         connectionStartRequested = false
@@ -1327,22 +1352,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isInitialProfileSyncComplete(): Boolean {
-        val prefs = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
-        return prefs.getLong(PREF_INITIAL_PROFILE_SYNC_INSTALL_TIME, -1L) == currentInstallTime() &&
-            vpnProfileRepository.hasSuccessfulSyncForCurrentInstall()
-    }
+    private fun isInitialProfileSyncComplete(): Boolean =
+        vpnProfileRepository.hasSuccessfulSyncForCurrentInstall()
 
     private fun isInitialRemoteSyncComplete(): Boolean {
         val prefs = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
         return prefs.getBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, false) &&
-            prefs.getLong(PREF_INITIAL_REMOTE_SYNC_INSTALL_TIME, -1L) == currentInstallTime() &&
+            prefs.getString(PREF_INITIAL_REMOTE_SYNC_INSTALL_ID, null) ==
+                vpnProfileRepository.currentInstallId() &&
             isInitialProfileSyncComplete()
     }
-
-    private fun currentInstallTime(): Long = runCatching {
-        packageManager.getPackageInfo(packageName, 0).firstInstallTime
-    }.getOrDefault(0L)
 
     private fun ensureInitialRemoteSync() {
         if (isInitialRemoteSyncComplete()) {
@@ -1351,10 +1370,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (!::updateCoordinator.isInitialized) return
-        if (!vpnProfileRepository.hasInternetCapability()) {
-            scheduleInitialRemoteSyncRetry()
-            return
-        }
         if (!initialSyncInProgress.compareAndSet(false, true)) return
 
         mainHandler.removeCallbacks(initialSyncRetryRunnable)
@@ -1367,10 +1382,6 @@ class MainActivity : AppCompatActivity() {
         Thread {
             when (val sync = vpnProfileRepository.refreshCatalog()) {
                 is com.barkatunnel.app.vpnprofile.VpnProfileSyncResult.Success -> {
-                    getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
-                        .edit()
-                        .putLong(PREF_INITIAL_PROFILE_SYNC_INSTALL_TIME, currentInstallTime())
-                        .apply()
                     AppLogStore.add(
                         this,
                         if (sync.updatedCount > 0) "Profils mis à jour." else "Profils à jour."
@@ -1414,7 +1425,10 @@ class MainActivity : AppCompatActivity() {
             getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
                 .edit()
                 .putBoolean(PREF_INITIAL_REMOTE_SYNC_COMPLETE, true)
-                .putLong(PREF_INITIAL_REMOTE_SYNC_INSTALL_TIME, currentInstallTime())
+                .putString(
+                    PREF_INITIAL_REMOTE_SYNC_INSTALL_ID,
+                    vpnProfileRepository.currentInstallId()
+                )
                 .apply()
             mainHandler.removeCallbacks(initialSyncRetryRunnable)
             if (!update.updateAvailable) {
@@ -1594,8 +1608,7 @@ class MainActivity : AppCompatActivity() {
         private const val PREFERENCES_NAME = "barka_home_preferences"
         private const val PREF_SELECTED_NETWORK = "selected_network_id"
         private const val PREF_INITIAL_REMOTE_SYNC_COMPLETE = "initial_remote_sync_complete"
-        private const val PREF_INITIAL_PROFILE_SYNC_INSTALL_TIME = "initial_profile_sync_install_time"
-        private const val PREF_INITIAL_REMOTE_SYNC_INSTALL_TIME = "initial_remote_sync_install_time"
+        private const val PREF_INITIAL_REMOTE_SYNC_INSTALL_ID = "initial_remote_sync_install_id"
         private const val PREF_CHANNEL_INVITE_INSTALL_STAMP = "channel_invite_install_stamp"
         private const val TELEGRAM_CHANNEL_URL = "https://t.me/barkaTunnel"
         private const val PRESS_VIBRATION_MS = 80L
