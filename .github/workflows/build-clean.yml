@@ -109,11 +109,37 @@ jobs:
           cp "$APK_SOURCE" BarkaTunnel-release.apk
           sha256sum BarkaTunnel-release.apk
 
-      - name: Publier APK dans Artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: BarkaTunnel-APK
-          path: BarkaTunnel-release.apk
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
+      - name: Publier APK directement sur le VPS
+        shell: bash
+        env:
+          BARKA_VPS_HOST: ${{ secrets.BARKA_VPS_HOST }}
+          BARKA_VPS_USER: ${{ secrets.BARKA_VPS_USER }}
+          BARKA_VPS_SSH_KEY: ${{ secrets.BARKA_VPS_SSH_KEY }}
+          BARKA_VPS_PORT: ${{ secrets.BARKA_VPS_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "$BARKA_VPS_HOST" || { echo "Secret BARKA_VPS_HOST manquant"; exit 1; }
+          test -n "$BARKA_VPS_USER" || { echo "Secret BARKA_VPS_USER manquant"; exit 1; }
+          test -n "$BARKA_VPS_SSH_KEY" || { echo "Secret BARKA_VPS_SSH_KEY manquant"; exit 1; }
+
+          VPS_PORT="${BARKA_VPS_PORT:-22}"
+          REMOTE_TMP="/tmp/BarkaTunnel-${GITHUB_SHA}.apk"
+          REMOTE_APK="/opt/Barka-Tunnel/backend/data/releases/BarkaTunnel.apk"
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$BARKA_VPS_SSH_KEY" > "$HOME/.ssh/barka_vps_key"
+          chmod 600 "$HOME/.ssh/barka_vps_key"
+          ssh-keyscan -p "$VPS_PORT" -H "$BARKA_VPS_HOST" >> "$HOME/.ssh/known_hosts"
+
+          LOCAL_SHA256="$(sha256sum BarkaTunnel-release.apk | awk '{print $1}')"
+          scp -P "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
+            BarkaTunnel-release.apk \
+            "$BARKA_VPS_USER@$BARKA_VPS_HOST:$REMOTE_TMP"
+
+          REMOTE_SHA256="$(ssh -p "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
+            "$BARKA_VPS_USER@$BARKA_VPS_HOST" \
+            "set -e; install -d -m 755 /opt/Barka-Tunnel/backend/data/releases; install -m 644 '$REMOTE_TMP' '$REMOTE_APK'; rm -f '$REMOTE_TMP'; sha256sum '$REMOTE_APK' | awk '{print \$1}'")"
+
+          test "$LOCAL_SHA256" = "$REMOTE_SHA256" || { echo "SHA256 distant incorrect"; exit 1; }
+          echo "APK publié: https://api.rhaffservice.shop/downloads/BarkaTunnel.apk"
+          echo "SHA256=$REMOTE_SHA256"
