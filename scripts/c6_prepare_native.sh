@@ -7,29 +7,39 @@ JNI="$ROOT/app/src/main/jniLibs"
 rm -rf "$TMP" "$JNI"
 mkdir -p "$TMP" "$JNI/arm64-v8a" "$JNI/armeabi-v7a"
 
-# Xray/VLESS - version épinglée pour un build reproductible.
+# Xray/VLESS - version épinglée.
+# ARM64 utilise le binaire Android officiel. Pour ARMv7, Xray ne publie pas
+# d'asset Android 32 bits ; son binaire Linux ARMv7 officiel est un exécutable
+# Go autonome et est lancé comme processus par Barka Tunnel (jamais chargé via JNI).
 XRAY_TAG="v26.3.27"
-# Les releases Android officielles Xray publient arm64-v8a, mais pas arm32-v7a.
-# C6 embarque donc Xray/VLESS pour arm64-v8a uniquement au lieu d'appeler
-# un asset inexistant qui provoque un HTTP 404 dans GitHub Actions.
-abi="arm64-v8a"
-asset="Xray-android-arm64-v8a.zip"
-url="https://github.com/XTLS/Xray-core/releases/download/${XRAY_TAG}/${asset}"
-curl -fL --retry 3 "$url" -o "$TMP/$asset"
-mkdir -p "$TMP/xray-$abi"
-unzip -q "$TMP/$asset" -d "$TMP/xray-$abi"
-xray_bin="$(find "$TMP/xray-$abi" -type f -name xray | head -1)"
-test -n "$xray_bin"
-cp "$xray_bin" "$JNI/$abi/libbarka_xray.so"
-chmod 0755 "$JNI/$abi/libbarka_xray.so"
+for entry in \
+  "arm64-v8a:Xray-android-arm64-v8a.zip" \
+  "armeabi-v7a:Xray-linux-arm32-v7a.zip"; do
+  IFS=: read -r abi asset <<< "$entry"
+  url="https://github.com/XTLS/Xray-core/releases/download/${XRAY_TAG}/${asset}"
+  curl -fL --retry 3 "$url" -o "$TMP/$asset"
+  mkdir -p "$TMP/xray-$abi"
+  unzip -q "$TMP/$asset" -d "$TMP/xray-$abi"
+  xray_bin="$(find "$TMP/xray-$abi" -type f -name xray | head -1)"
+  test -n "$xray_bin" || { echo "Xray absent pour $abi"; exit 1; }
+  cp "$xray_bin" "$JNI/$abi/libbarka_xray.so"
+  chmod 0755 "$JNI/$abi/libbarka_xray.so"
+done
 
-# DNSTT client - compilé depuis la source officielle pour Android.
+# DNSTT client - compilé depuis la source officielle pour les deux ABI ARM.
+# ARMv7 est construit comme binaire Go Linux autonome pour éviter les problèmes
+# connus du runtime Go android/arm 32 bits sur certains firmwares OEM.
 git clone https://www.bamsoftware.com/git/dnstt.git "$TMP/dnstt"
 (
   cd "$TMP/dnstt"
-  GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -o "$JNI/arm64-v8a/libbarka_dnstt.so" ./dnstt-client
+  GOOS=android GOARCH=arm64 CGO_ENABLED=0 \
+    go build -trimpath -o "$JNI/arm64-v8a/libbarka_dnstt.so" ./dnstt-client
+  GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=0 \
+    go build -trimpath -o "$JNI/armeabi-v7a/libbarka_dnstt.so" ./dnstt-client
 )
-chmod 0755 "$JNI/arm64-v8a/libbarka_dnstt.so"
+chmod 0755 \
+  "$JNI/arm64-v8a/libbarka_dnstt.so" \
+  "$JNI/armeabi-v7a/libbarka_dnstt.so"
 
 # BadVPN tun2socks + UDPGW JNI. Le projet amont utilise un ancien couple
 # Gradle/AGP qui échoue à la configuration sur le runner GitHub actuel.
@@ -64,8 +74,19 @@ for abi in arm64-v8a armeabi-v7a; do
   cp "$so" "$JNI/$abi/libtun2socks.so"
 done
 
-cp "$TMP/tun2socks/tun2socks/src/main/java/com/LondonX/tun2socks/Tun2Socks.java" \
-   "$ROOT/app/src/main/java/com/LondonX/tun2socks/Tun2Socks.java"
+# Le wrapper Java local contient la protection de chargement native de Barka Tunnel.
+# Ne pas l'écraser avec la copie amont pendant le build.
+test -f "$ROOT/app/src/main/java/com/LondonX/tun2socks/Tun2Socks.java"
+
+# Le build doit être complet pour chaque ABI Android supportée.
+for abi in arm64-v8a armeabi-v7a; do
+  for core in libbarka_xray.so libbarka_dnstt.so libtun2socks.so; do
+    test -s "$JNI/$abi/$core" || {
+      echo "Moteur C6 absent : $abi/$core"
+      exit 1
+    }
+  done
+done
 
 echo "===== C6 native cores ====="
-find "$JNI" -type f -maxdepth 2 -print -exec file {} \;
+find "$JNI" -maxdepth 2 -type f -print -exec file {} \;

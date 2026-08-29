@@ -10,14 +10,14 @@ object HomeAccessSnapshotStore {
     fun save(context: Context, state: HomeAccessState) {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!state.allowed || state.remainingSeconds <= 0L) {
-            prefs.edit().clear().apply()
+            prefs.edit().clear().commit()
             return
         }
         val expiry = System.currentTimeMillis() + (state.remainingSeconds * 1000L)
         prefs.edit()
             .putBoolean(KEY_ALLOWED, true)
             .putLong(KEY_EXPIRY_MS, expiry)
-            .apply()
+            .commit()
     }
 
     fun restore(context: Context): HomeAccessState? {
@@ -26,7 +26,7 @@ object HomeAccessSnapshotStore {
         val expiry = prefs.getLong(KEY_EXPIRY_MS, 0L)
         val remaining = ((expiry - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
         if (remaining <= 0L) {
-            prefs.edit().clear().apply()
+            prefs.edit().clear().commit()
             return null
         }
         return HomeAccessState(

@@ -55,6 +55,7 @@ import com.barkatunnel.app.settings.SettingsActivity
 import com.barkatunnel.app.subscription.ActivationActivity
 import com.barkatunnel.app.subscription.SubscriptionActivity
 import com.barkatunnel.app.support.SupportActivity
+import com.barkatunnel.app.ui.home.HomeAccessSnapshotStore
 import com.barkatunnel.app.ui.home.HomeConnectionState
 import com.barkatunnel.app.ui.home.HomeController
 import com.barkatunnel.app.ui.home.HomeControllerResult
@@ -101,6 +102,7 @@ class MainActivity : AppCompatActivity() {
     private var networkCallbackRegistered = false
     private val profileSyncInProgress = AtomicBoolean(false)
     private val initialSyncInProgress = AtomicBoolean(false)
+    private val accessRefreshInProgress = AtomicBoolean(false)
     private val connectionOperationGeneration = AtomicLong(0L)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val initialSyncRetryRunnable = Runnable { ensureInitialRemoteSync() }
@@ -579,7 +581,13 @@ class MainActivity : AppCompatActivity() {
         )
 
         homeController = HomeController(runtime)
-        accessStatus.setText(R.string.waiting_activation)
+        val cachedAccess = HomeAccessSnapshotStore.restore(this)
+        if (cachedAccess != null) {
+            handleHomeResult(homeController!!.syncAccess(cachedAccess))
+            timerController.syncAccessRemaining(cachedAccess.remainingSeconds)
+        } else {
+            accessStatus.setText(R.string.waiting_activation)
+        }
 
         val initialNetwork = selectedNetwork
             ?: NetworkOption.ALL.firstOrNull()
@@ -636,17 +644,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshHomeState() {
         val controller = homeController ?: return
+        if (!accessRefreshInProgress.compareAndSet(false, true)) return
 
         Thread {
-            val accessResult = controller.refreshAccess()
+            val accessResult = runCatching { controller.refreshAccess() }.getOrNull()
 
             runOnUiThread {
-                handleHomeResult(accessResult)
+                try {
+                    if (accessResult != null) {
+                        handleHomeResult(accessResult)
 
-                if (accessResult is HomeControllerResult.State) {
-                    timerController.syncAccessRemaining(
-                        accessResult.value.access.remainingSeconds
-                    )
+                        if (accessResult is HomeControllerResult.State) {
+                            timerController.syncAccessRemaining(
+                                accessResult.value.access.remainingSeconds
+                            )
+                        }
+                    }
+                } finally {
+                    accessRefreshInProgress.set(false)
                 }
             }
         }.start()

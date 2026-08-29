@@ -16,6 +16,11 @@ class HomeController(
         return HomeControllerResult.State(state)
     }
 
+    fun syncAccess(access: HomeAccessState): HomeControllerResult {
+        state = state.copy(access = access)
+        return HomeControllerResult.State(state)
+    }
+
     fun selectNetwork(
         network: NetworkOption
     ): HomeControllerResult {
