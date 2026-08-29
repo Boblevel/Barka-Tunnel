@@ -7,45 +7,6 @@ JNI="$ROOT/app/src/main/jniLibs"
 rm -rf "$TMP" "$JNI"
 mkdir -p "$TMP" "$JNI/arm64-v8a" "$JNI/armeabi-v7a"
 
-# Xray/VLESS - version épinglée.
-# ARM64 utilise le binaire Android officiel. Pour ARMv7, Xray ne publie pas
-# d'asset Android 32 bits ; son binaire Linux ARMv7 officiel est un exécutable
-# Go autonome et est lancé comme processus par Barka Tunnel (jamais chargé via JNI).
-XRAY_TAG="v26.3.27"
-for entry in \
-  "arm64-v8a:Xray-android-arm64-v8a.zip" \
-  "armeabi-v7a:Xray-linux-arm32-v7a.zip"; do
-  IFS=: read -r abi asset <<< "$entry"
-  url="https://github.com/XTLS/Xray-core/releases/download/${XRAY_TAG}/${asset}"
-  curl -fL --retry 3 "$url" -o "$TMP/$asset"
-  mkdir -p "$TMP/xray-$abi"
-  unzip -q "$TMP/$asset" -d "$TMP/xray-$abi"
-  xray_bin="$(find "$TMP/xray-$abi" -type f -name xray | head -1)"
-  test -n "$xray_bin" || { echo "Xray absent pour $abi"; exit 1; }
-  cp "$xray_bin" "$JNI/$abi/libbarka_xray.so"
-  chmod 0755 "$JNI/$abi/libbarka_xray.so"
-done
-
-# DNSTT client - compilé depuis la source officielle pour les deux ABI ARM.
-# ARMv7 est construit comme binaire Go Linux autonome pour éviter les problèmes
-# connus du runtime Go android/arm 32 bits sur certains firmwares OEM.
-git clone https://www.bamsoftware.com/git/dnstt.git "$TMP/dnstt"
-(
-  cd "$TMP/dnstt"
-  GOOS=android GOARCH=arm64 CGO_ENABLED=0 \
-    go build -trimpath -o "$JNI/arm64-v8a/libbarka_dnstt.so" ./dnstt-client
-  GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=0 \
-    go build -trimpath -o "$JNI/armeabi-v7a/libbarka_dnstt.so" ./dnstt-client
-)
-chmod 0755 \
-  "$JNI/arm64-v8a/libbarka_dnstt.so" \
-  "$JNI/armeabi-v7a/libbarka_dnstt.so"
-
-# BadVPN tun2socks + UDPGW JNI. Le projet amont utilise un ancien couple
-# Gradle/AGP qui échoue à la configuration sur le runner GitHub actuel.
-# On compile donc uniquement le module JNI CMake, sans passer par son Gradle.
-git clone --depth 1 https://github.com/LondonX/tun2socks-android.git "$TMP/tun2socks"
-
 ANDROID_SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 test -n "$ANDROID_SDK" || { echo "Android SDK introuvable"; exit 1; }
 NDK_VERSION="25.2.9519653"
@@ -58,6 +19,51 @@ NDK="$ANDROID_SDK/ndk/$NDK_VERSION"
 CMAKE="$ANDROID_SDK/cmake/$CMAKE_VERSION/bin/cmake"
 test -f "$NDK/build/cmake/android.toolchain.cmake" || { echo "NDK Android introuvable"; exit 1; }
 test -x "$CMAKE" || { echo "CMake Android introuvable"; exit 1; }
+ARMV7_CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang"
+test -x "$ARMV7_CC" || { echo "Compilateur Android ARMv7 introuvable"; exit 1; }
+
+# Xray/VLESS - version épinglée.
+# ARM64 conserve l’asset Android officiel. ARMv7 est compilé depuis la même
+# source officielle pour Android afin de ne jamais embarquer un binaire Linux
+# générique dans un APK Android.
+XRAY_TAG="v26.3.27"
+asset="Xray-android-arm64-v8a.zip"
+url="https://github.com/XTLS/Xray-core/releases/download/${XRAY_TAG}/${asset}"
+curl -fL --retry 3 "$url" -o "$TMP/$asset"
+mkdir -p "$TMP/xray-arm64-v8a"
+unzip -q "$TMP/$asset" -d "$TMP/xray-arm64-v8a"
+xray_bin="$(find "$TMP/xray-arm64-v8a" -type f -name xray | head -1)"
+test -n "$xray_bin" || { echo "Xray absent pour arm64-v8a"; exit 1; }
+cp "$xray_bin" "$JNI/arm64-v8a/libbarka_xray.so"
+chmod 0755 "$JNI/arm64-v8a/libbarka_xray.so"
+
+git clone --depth 1 --branch "$XRAY_TAG" https://github.com/XTLS/Xray-core.git "$TMP/xray-src"
+(
+  cd "$TMP/xray-src"
+  GOOS=android GOARCH=arm GOARM=7 CGO_ENABLED=1 CC="$ARMV7_CC" \
+    go build -trimpath -buildvcs=false \
+      -ldflags="-s -w -buildid= -checklinkname=0" \
+      -o "$JNI/armeabi-v7a/libbarka_xray.so" ./main
+)
+chmod 0755 "$JNI/armeabi-v7a/libbarka_xray.so"
+
+# DNSTT client - compilé depuis la source officielle pour les deux ABI Android ARM.
+git clone https://www.bamsoftware.com/git/dnstt.git "$TMP/dnstt"
+(
+  cd "$TMP/dnstt"
+  GOOS=android GOARCH=arm64 CGO_ENABLED=0 \
+    go build -trimpath -o "$JNI/arm64-v8a/libbarka_dnstt.so" ./dnstt-client
+  GOOS=android GOARCH=arm GOARM=7 CGO_ENABLED=0 \
+    go build -trimpath -o "$JNI/armeabi-v7a/libbarka_dnstt.so" ./dnstt-client
+)
+chmod 0755 \
+  "$JNI/arm64-v8a/libbarka_dnstt.so" \
+  "$JNI/armeabi-v7a/libbarka_dnstt.so"
+
+# BadVPN tun2socks + UDPGW JNI. Le projet amont utilise un ancien couple
+# Gradle/AGP qui échoue à la configuration sur le runner GitHub actuel.
+# On compile donc uniquement le module JNI CMake, sans passer par son Gradle.
+git clone --depth 1 https://github.com/LondonX/tun2socks-android.git "$TMP/tun2socks"
 
 TUN_CPP="$TMP/tun2socks/tun2socks/src/main/cpp"
 for abi in arm64-v8a armeabi-v7a; do
@@ -87,6 +93,11 @@ for abi in arm64-v8a armeabi-v7a; do
     }
   done
 done
+
+readelf -h "$JNI/arm64-v8a/libbarka_xray.so" | grep -q 'AArch64' || { echo "Xray ARM64 invalide"; exit 1; }
+readelf -h "$JNI/armeabi-v7a/libbarka_xray.so" | grep -q 'ARM' || { echo "Xray ARMv7 invalide"; exit 1; }
+readelf -h "$JNI/arm64-v8a/libbarka_dnstt.so" | grep -q 'AArch64' || { echo "DNSTT ARM64 invalide"; exit 1; }
+readelf -h "$JNI/armeabi-v7a/libbarka_dnstt.so" | grep -q 'ARM' || { echo "DNSTT ARMv7 invalide"; exit 1; }
 
 echo "===== C6 native cores ====="
 find "$JNI" -maxdepth 2 -type f -print -exec file {} \;

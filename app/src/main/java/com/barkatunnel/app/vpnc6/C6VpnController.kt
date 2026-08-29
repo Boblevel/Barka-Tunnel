@@ -29,11 +29,11 @@ class C6VpnController(context: Context) {
 
         return try {
             ContextCompat.startForegroundService(appContext, intent)
-            future.get()
+            future.get(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         } catch (_: Exception) {
             C6VpnRuntime.cancel(requestId)
             stopWithoutWaiting()
-            C6VpnResult.Error("La connexion VPN a été interrompue.")
+            C6VpnResult.Error("La connexion VPN n’a pas pu être établie dans le délai prévu.")
         }
     }
 
@@ -65,6 +65,7 @@ class C6VpnController(context: Context) {
     }
 
     companion object {
-        private const val DISCONNECT_TIMEOUT_SECONDS = 10L
+        private const val CONNECT_TIMEOUT_SECONDS = 60L
+        private const val DISCONNECT_TIMEOUT_SECONDS = 20L
     }
 }

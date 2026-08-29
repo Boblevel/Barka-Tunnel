@@ -7,7 +7,8 @@ import com.barkatunnel.app.vpnprofile.VpnProfileConfig
 class UdpSshEngine(
     private val context: Context,
     private val config: VpnProfileConfig.UdpCustom,
-    private val socksPort: Int
+    private val socksPort: Int,
+    private val isCancelled: () -> Boolean = { false }
 ) : C6ProtocolEngine {
     override val socksAddress: String = "127.0.0.1:$socksPort"
     private var sshProxy: SshSocksProxy? = null
@@ -26,6 +27,7 @@ class UdpSshEngine(
         var lastFailure: Exception? = null
 
         for (host in hosts) {
+            if (isCancelled()) throw InterruptedException("Connexion annulée.")
             AppLogStore.add(context, "Diagnostic TELECEL • essai SSH • $host:${config.port}.")
             val candidate = SshSocksProxy(
                 sshHost = host,
@@ -40,13 +42,18 @@ class UdpSshEngine(
                     context,
                     "Diagnostic TELECEL • session SSH établie • SOCKS attendu 127.0.0.1:$socksPort."
                 )
-                if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000)) {
+                if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000) { !isCancelled() }) {
+                    if (isCancelled()) throw InterruptedException("Connexion annulée.")
                     throw IllegalStateException("SSH UDP n’a pas ouvert son proxy local.")
                 }
                 AppLogStore.add(context, "Diagnostic TELECEL • SOCKS SSH ouvert • 127.0.0.1:$socksPort.")
                 sshProxy = candidate
                 return
             } catch (error: Exception) {
+                if (error is InterruptedException) {
+                    candidate.stop()
+                    throw error
+                }
                 lastFailure = error
                 AppLogStore.add(
                     context,

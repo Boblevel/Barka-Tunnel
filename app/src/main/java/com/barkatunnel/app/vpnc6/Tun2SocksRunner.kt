@@ -22,7 +22,13 @@ class Tun2SocksRunner(private val context: Context) {
         val (host, portText) = socksAddress.split(':', limit = 2)
         val port = portText.toIntOrNull() ?: throw IllegalStateException("Adresse SOCKS locale invalide.")
         descriptor = vpnDescriptor
-        Tun2Socks.initialize(context.applicationContext)
+        synchronized(NATIVE_STATE_LOCK) {
+            if (nativeBusy) {
+                throw IllegalStateException("tun2socks est encore en cours d’arrêt.")
+            }
+            Tun2Socks.initialize(context.applicationContext)
+            nativeBusy = true
+        }
         val extraArgs = if (udpgwAddress.isNullOrBlank()) {
             emptyList()
         } else {
@@ -49,6 +55,10 @@ class Tun2SocksRunner(private val context: Context) {
                 )
             } catch (error: Throwable) {
                 nativeFailure = error.javaClass.simpleName
+            } finally {
+                synchronized(NATIVE_STATE_LOCK) {
+                    nativeBusy = false
+                }
             }
         }, "BarkaTun2Socks").also { it.start() }
 
@@ -63,12 +73,26 @@ class Tun2SocksRunner(private val context: Context) {
     }
 
     fun stop() {
-        runCatching { Tun2Socks.stopTun2Socks() }
-        runCatching { thread?.join(1_500) }
-        thread = null
-        nativeSuccess = null
-        nativeFailure = null
+        val activeThread = thread
+        val shouldStopNative = synchronized(NATIVE_STATE_LOCK) { nativeBusy }
+        if (shouldStopNative) {
+            runCatching { Tun2Socks.stopTun2Socks() }
+        }
+        runCatching { activeThread?.join(NATIVE_STOP_TIMEOUT_MS) }
+        if (activeThread?.isAlive == true) {
+            nativeFailure = "arrêt natif incomplet"
+        } else {
+            thread = null
+            nativeSuccess = null
+            nativeFailure = null
+        }
         runCatching { descriptor?.close() }
         descriptor = null
+    }
+
+    companion object {
+        private val NATIVE_STATE_LOCK = Any()
+        @Volatile private var nativeBusy = false
+        private const val NATIVE_STOP_TIMEOUT_MS = 5_000L
     }
 }

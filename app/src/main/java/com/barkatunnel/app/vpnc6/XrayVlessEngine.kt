@@ -10,7 +10,8 @@ import java.io.File
 class XrayVlessEngine(
     private val context: Context,
     private val config: VpnProfileConfig.Vless,
-    private val socksPort: Int
+    private val socksPort: Int,
+    private val isCancelled: () -> Boolean = { false }
 ) : C6ProtocolEngine {
 
     override val socksAddress: String = "127.0.0.1:$socksPort"
@@ -19,6 +20,7 @@ class XrayVlessEngine(
     private var logFile: File? = null
 
     override fun start() {
+        if (isCancelled()) throw InterruptedException("Connexion annulée.")
         val outboundAddress = config.ip?.takeIf { it.isNotBlank() }
             ?: config.address
         AppLogStore.add(
@@ -47,7 +49,10 @@ class XrayVlessEngine(
             "Diagnostic ORANGE • processus Xray lancé • SOCKS attendu 127.0.0.1:$socksPort."
         )
 
-        if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 25_000)) {
+        if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 25_000) {
+                !isCancelled() && process?.isAlive == true
+            }) {
+            if (isCancelled()) throw InterruptedException("Connexion annulée.")
             val detail = xrayFailureDetail()
             AppLogStore.add(
                 context,
