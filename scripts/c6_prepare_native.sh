@@ -86,9 +86,19 @@ for abi in arm64-v8a armeabi-v7a; do
   cp "$so" "$JNI/$abi/libtun2socks.so"
 done
 
-# Le wrapper Java local contient la protection de chargement native de Barka Tunnel.
-# Ne pas l'écraser avec la copie amont pendant le build.
-test -f "$ROOT/app/src/main/java/com/LondonX/tun2socks/Tun2Socks.java"
+# Vérifier que le wrapper Java embarqué reste compatible avec la JNI compilée
+# depuis LondonX : le symbole natif exposé est start_tun2socks(String[]), tandis
+# que startTun2Socks(...) doit rester le wrapper Java qui construit les arguments.
+TUN_JAVA="$ROOT/app/src/main/java/com/LondonX/tun2socks/Tun2Socks.java"
+test -f "$TUN_JAVA"
+grep -Fq 'private static native int start_tun2socks(String[] args);' "$TUN_JAVA" || {
+  echo "Wrapper Java tun2socks incompatible avec la JNI LondonX"
+  exit 1
+}
+if grep -Fq 'native boolean startTun2Socks' "$TUN_JAVA"; then
+  echo "Ancienne signature JNI startTun2Socks incompatible détectée"
+  exit 1
+fi
 
 # Le build doit être complet pour chaque ABI Android supportée.
 for abi in arm64-v8a armeabi-v7a; do
