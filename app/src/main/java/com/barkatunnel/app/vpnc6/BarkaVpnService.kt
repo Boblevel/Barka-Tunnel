@@ -422,10 +422,11 @@ class BarkaVpnService : VpnService() {
             connected = false
         }
 
-        // Fermer d'abord le TUN force Android à supprimer réellement
-        // l'interface VPN avant que l'état DISCONNECTED soit publié.
-        runCatching { descriptor?.close() }
+        // Arrêter d'abord tun2socks pendant que le descripteur TUN est encore valide.
+        // Fermer le TUN avant l'arrêt natif peut faire tomber brutalement le pont
+        // TUN -> SOCKS et laisser les tentatives suivantes dans un état incohérent.
         runCatching { runner?.stop() }
+        runCatching { descriptor?.close() }
         runCatching { activeEngine?.stop() }
     }
 
@@ -633,7 +634,7 @@ class BarkaVpnService : VpnService() {
         private const val SOCKS_SLOWDNS = 10809
         private const val SOCKS_UDP = 10810
         private const val LOCAL_PROXY_READY_TIMEOUT_MS = 4_000L
-        private const val MAX_CONNECTION_ATTEMPTS = 3
+        private const val MAX_CONNECTION_ATTEMPTS = 1
         private const val CONNECTION_RETRY_DELAY_MS = 1_500L
         private const val DIAGNOSTIC_SOCKS_TIMEOUT_MS = 4_000
         private const val SETTINGS_PREFS = "barka_settings"
