@@ -168,67 +168,104 @@ class BarkaVpnService : VpnService() {
                 return
             }
 
-            try {
-                stopTunnel()
+            var lastFailure: Throwable? = null
+            for (attempt in 1..MAX_CONNECTION_ATTEMPTS) {
                 if (!isConnectOperationActive(connectGeneration)) {
                     C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
                     activeConnectRequestId = null
                     return
                 }
 
-                connectOnce(protocol, profileConfig, connectGeneration)
-                if (!isConnectOperationActive(connectGeneration)) {
+                try {
                     stopTunnel()
-                    C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+                    if (!isConnectOperationActive(connectGeneration)) {
+                        C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+                        activeConnectRequestId = null
+                        return
+                    }
+
+                    if (attempt > 1) {
+                        AppLogStore.add(
+                            this,
+                            "Tentative de connexion automatique${profileName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
+                        )
+                        updateNotification(getString(R.string.notification_connecting))
+                    }
+
+                    connectOnce(protocol, profileConfig, connectGeneration)
+                    if (!isConnectOperationActive(connectGeneration)) {
+                        stopTunnel()
+                        C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+                        activeConnectRequestId = null
+                        return
+                    }
+
+                    connected = true
+                    updateRuntimeState(
+                        RuntimeConnectionState.CONNECTED,
+                        profileName,
+                        SystemClock.elapsedRealtime()
+                    )
+                    startAutoPing(protocol)
+                    updateNotification(getString(R.string.notification_connected))
+                    AppLogStore.add(
+                        this,
+                        "VPN connecté${profileName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
+                    )
+                    C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
                     activeConnectRequestId = null
                     return
+                } catch (error: Throwable) {
+                    if (error !is Exception && error !is LinkageError) throw error
+                    val cancelled = !isConnectOperationActive(connectGeneration) ||
+                        error is InterruptedException ||
+                        Thread.currentThread().isInterrupted
+                    val technicalMessage = sanitizeError(
+                        error.message ?: "Échec interne de la connexion."
+                    )
+                    Log.w(TAG, "Connection attempt $attempt failed: $technicalMessage", error)
+                    AppLogStore.add(
+                        this,
+                        "Diagnostic VPN • tentative $attempt • $technicalMessage"
+                    )
+                    stopTunnel()
+
+                    if (cancelled) {
+                        updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
+                        C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+                        activeConnectRequestId = null
+                        return
+                    }
+
+                    lastFailure = error
+                    if (attempt < MAX_CONNECTION_ATTEMPTS) {
+                        try {
+                            Thread.sleep(CONNECTION_RETRY_DELAY_MS)
+                        } catch (_: InterruptedException) {
+                            Thread.currentThread().interrupt()
+                            updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
+                            C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+                            activeConnectRequestId = null
+                            return
+                        }
+                    }
                 }
-
-                connected = true
-                updateRuntimeState(
-                    RuntimeConnectionState.CONNECTED,
-                    profileName,
-                    SystemClock.elapsedRealtime()
-                )
-                startAutoPing(protocol)
-                updateNotification(getString(R.string.notification_connected))
-                AppLogStore.add(
-                    this,
-                    "VPN connecté${profileName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
-                )
-                C6VpnRuntime.complete(requestId, C6VpnResult.Connected(protocol.name))
-                activeConnectRequestId = null
-                return
-            } catch (error: Throwable) {
-                if (error !is Exception && error !is LinkageError) throw error
-                val cancelled = !isConnectOperationActive(connectGeneration) ||
-                    error is InterruptedException ||
-                    Thread.currentThread().isInterrupted
-                val technicalMessage = sanitizeError(
-                    error.message ?: "Échec interne de la connexion."
-                )
-                Log.w(TAG, "Connection failed: $technicalMessage", error)
-                AppLogStore.add(this, "Diagnostic VPN • échec • $technicalMessage")
-                stopTunnel()
-
-                if (cancelled) {
-                    updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
-                    C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
-                    activeConnectRequestId = null
-                    return
-                }
-
-                AppLogStore.add(this, "Connexion refusée.")
-                updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
-                C6VpnRuntime.complete(
-                    requestId,
-                    C6VpnResult.Error(getString(R.string.connection_failed_help))
-                )
-                activeConnectRequestId = null
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-                return
             }
+
+            val finalMessage = sanitizeError(
+                lastFailure?.message ?: "Échec interne de la connexion."
+            )
+            Log.w(TAG, "Connection failed after retries: $finalMessage")
+            AppLogStore.add(this, "Connexion refusée.")
+            updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
+            C6VpnRuntime.complete(
+                requestId,
+                C6VpnResult.Error(getString(R.string.connection_failed_help))
+            )
+            activeConnectRequestId = null
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
         } catch (error: Throwable) {
             if (error !is Exception && error !is LinkageError) throw error
             val technicalMessage = sanitizeError(error.message ?: "Échec interne de la connexion.")
@@ -596,6 +633,8 @@ class BarkaVpnService : VpnService() {
         private const val SOCKS_SLOWDNS = 10809
         private const val SOCKS_UDP = 10810
         private const val LOCAL_PROXY_READY_TIMEOUT_MS = 4_000L
+        private const val MAX_CONNECTION_ATTEMPTS = 3
+        private const val CONNECTION_RETRY_DELAY_MS = 1_500L
         private const val DIAGNOSTIC_SOCKS_TIMEOUT_MS = 4_000
         private const val SETTINGS_PREFS = "barka_settings"
         private const val KEY_AUTO_PING = "auto_ping"
