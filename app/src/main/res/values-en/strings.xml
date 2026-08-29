@@ -52,7 +52,7 @@
     <string name="access_refreshed">Access and information updated.</string>
     <string name="notification_permission_help">Allow Barka Tunnel notifications to display the connection status.</string>
     <string name="connection_pending_help">Connection in progress. Tap the button to stop, then try again.</string>
-    <string name="connection_failed_help">The connection could not be established after the automatic attempts.</string>
+    <string name="connection_failed_help">The connection could not be established. Try again.</string>
     <string name="no_access_active">No active access.</string>
     <string name="vpn_still_connected">The VPN is still connected.</string>
     <string name="disconnect_refused">Disconnection refused.</string>

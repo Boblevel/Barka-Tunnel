@@ -200,6 +200,6 @@ class SlowDnsEngine(
     }
 
     companion object {
-        private const val DNSTT_READY_TIMEOUT_MS = 12_000L
+        private const val DNSTT_READY_TIMEOUT_MS = 25_000L
     }
 }

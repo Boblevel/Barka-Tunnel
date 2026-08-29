@@ -59,7 +59,7 @@
     <string name="access_refreshed">Accès et informations actualisés.</string>
     <string name="notification_permission_help">Autorise les notifications de Barka Tunnel pour afficher l’état de connexion.</string>
     <string name="connection_pending_help">Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie.</string>
-    <string name="connection_failed_help">La connexion n’a pas abouti après les tentatives automatiques.</string>
+    <string name="connection_failed_help">La connexion n’a pas pu être établie. Réessaie.</string>
     <string name="no_access_active">Aucun accès actif.</string>
     <string name="vpn_still_connected">Le VPN est toujours connecté.</string>
     <string name="disconnect_refused">Déconnexion refusée.</string>
