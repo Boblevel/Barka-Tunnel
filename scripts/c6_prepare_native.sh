@@ -19,8 +19,11 @@ NDK="$ANDROID_SDK/ndk/$NDK_VERSION"
 CMAKE="$ANDROID_SDK/cmake/$CMAKE_VERSION/bin/cmake"
 test -f "$NDK/build/cmake/android.toolchain.cmake" || { echo "NDK Android introuvable"; exit 1; }
 test -x "$CMAKE" || { echo "CMake Android introuvable"; exit 1; }
-ARMV7_CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang"
-test -x "$ARMV7_CC" || { echo "Compilateur Android ARMv7 introuvable"; exit 1; }
+ARMV7_TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+ARMV7_CC="$ARMV7_TOOLCHAIN/armv7a-linux-androideabi24-clang"
+ARMV7_CXX="$ARMV7_TOOLCHAIN/armv7a-linux-androideabi24-clang++"
+test -x "$ARMV7_CC" || { echo "Compilateur Android ARMv7 C introuvable"; exit 1; }
+test -x "$ARMV7_CXX" || { echo "Compilateur Android ARMv7 C++ introuvable"; exit 1; }
 
 # Xray/VLESS - version épinglée.
 # ARM64 conserve l’asset Android officiel. ARMv7 est compilé depuis la même
@@ -53,7 +56,10 @@ git clone https://www.bamsoftware.com/git/dnstt.git "$TMP/dnstt"
   cd "$TMP/dnstt"
   GOOS=android GOARCH=arm64 CGO_ENABLED=0 \
     go build -trimpath -o "$JNI/arm64-v8a/libbarka_dnstt.so" ./dnstt-client
-  GOOS=android GOARCH=arm GOARM=7 CGO_ENABLED=0 \
+  # android/arm impose l’édition de liens externe via cgo. Utiliser
+  # explicitement le toolchain NDK évite l’échec Go « cgo is not enabled ».
+  GOOS=android GOARCH=arm GOARM=7 CGO_ENABLED=1 \
+    CC="$ARMV7_CC" CXX="$ARMV7_CXX" \
     go build -trimpath -o "$JNI/armeabi-v7a/libbarka_dnstt.so" ./dnstt-client
 )
 chmod 0755 \
