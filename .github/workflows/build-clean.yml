@@ -100,6 +100,22 @@ jobs:
       - name: Compiler Barka Tunnel sans cache
         run: gradle clean assembleRelease --no-daemon --no-build-cache --rerun-tasks --stacktrace
 
+      - name: Verifier les moteurs ARM64 et ARMv7 dans APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_SOURCE="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK_SOURCE"
+          APK_ENTRIES="$(unzip -Z1 "$APK_SOURCE")"
+          for abi in arm64-v8a armeabi-v7a; do
+            for core in libbarka_xray.so libbarka_dnstt.so libtun2socks.so; do
+              grep -Fxq "lib/$abi/$core" <<< "$APK_ENTRIES" || {
+                echo "Moteur absent de APK: lib/$abi/$core"
+                exit 1
+              }
+            done
+          done
+
       - name: Preparer APK telechargeable
         shell: bash
         run: |
@@ -108,6 +124,14 @@ jobs:
           test -f "$APK_SOURCE"
           cp "$APK_SOURCE" BarkaTunnel-release.apk
           sha256sum BarkaTunnel-release.apk
+
+      - name: Publier artifact APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BarkaTunnel-APK
+          path: BarkaTunnel-release.apk
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Publier APK directement sur le VPS
         shell: bash

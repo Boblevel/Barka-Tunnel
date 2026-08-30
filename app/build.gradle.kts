@@ -13,6 +13,10 @@ android {
         targetSdk = 35
         versionCode = 66
         versionName = "1.1.9.5"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     val stableStoreFile = System.getenv("BARKA_SIGNING_STORE_FILE")

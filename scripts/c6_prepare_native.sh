@@ -114,6 +114,8 @@ readelf -h "$JNI/arm64-v8a/libbarka_xray.so" | grep -q 'AArch64' || { echo "Xray
 readelf -h "$JNI/armeabi-v7a/libbarka_xray.so" | grep -q 'ARM' || { echo "Xray ARMv7 invalide"; exit 1; }
 readelf -h "$JNI/arm64-v8a/libbarka_dnstt.so" | grep -q 'AArch64' || { echo "DNSTT ARM64 invalide"; exit 1; }
 readelf -h "$JNI/armeabi-v7a/libbarka_dnstt.so" | grep -q 'ARM' || { echo "DNSTT ARMv7 invalide"; exit 1; }
+readelf -h "$JNI/arm64-v8a/libtun2socks.so" | grep -q 'AArch64' || { echo "tun2socks ARM64 invalide"; exit 1; }
+readelf -h "$JNI/armeabi-v7a/libtun2socks.so" | grep -q 'ARM' || { echo "tun2socks ARMv7 invalide"; exit 1; }
 
 echo "===== C6 native cores ====="
 find "$JNI" -maxdepth 2 -type f -print -exec file {} \;

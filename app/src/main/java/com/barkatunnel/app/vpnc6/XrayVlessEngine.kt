@@ -40,17 +40,17 @@ class XrayVlessEngine(
         val output = File(context.cacheDir, "c6_xray_${System.nanoTime()}.log")
         logFile = output
 
-        process = ProcessBuilder(xray.absolutePath, "run", "-config", file.absolutePath)
-            .redirectErrorStream(true)
-            .redirectOutput(ProcessBuilder.Redirect.appendTo(output))
-            .start()
+        process = ProcessCompat.startWithLog(
+            ProcessBuilder(xray.absolutePath, "run", "-config", file.absolutePath),
+            output
+        )
         AppLogStore.add(
             context,
             "Diagnostic ORANGE • processus Xray lancé • SOCKS attendu 127.0.0.1:$socksPort."
         )
 
         if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 25_000) {
-                !isCancelled() && process?.isAlive == true
+                !isCancelled() && ProcessCompat.isAlive(process)
             }) {
             if (isCancelled()) throw InterruptedException("Connexion annulée.")
             val detail = xrayFailureDetail()
@@ -67,7 +67,7 @@ class XrayVlessEngine(
         }
         AppLogStore.add(context, "Diagnostic ORANGE • SOCKS VLESS ouvert • 127.0.0.1:$socksPort.")
 
-        if (process?.isAlive != true) {
+        if (!ProcessCompat.isAlive(process)) {
             val detail = xrayFailureDetail()
             AppLogStore.add(
                 context,
@@ -84,9 +84,7 @@ class XrayVlessEngine(
     }
 
     override fun stop() {
-        process?.destroy()
-        runCatching { process?.waitFor(700, java.util.concurrent.TimeUnit.MILLISECONDS) }
-        if (process?.isAlive == true) process?.destroyForcibly()
+        ProcessCompat.stop(process)
         process = null
         configFile?.delete()
         configFile = null

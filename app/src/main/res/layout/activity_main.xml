@@ -75,7 +75,7 @@
                 android:layout_height="@dimen/home_header_action_icon_size"
                 android:contentDescription="@string/free_trial_description"
                 android:src="@drawable/ic_gift_barka"
-                android:tint="@color/barka_red" />
+                app:tint="@color/barka_red" />
         </LinearLayout>
 
         <LinearLayout

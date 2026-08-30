@@ -114,6 +114,7 @@ class IpFinderActivity : AppCompatActivity() {
         }
 
         setAssistantButton.setOnClickListener {
+            setAssistantButton.isEnabled = false
             requestAssistantSelection()
         }
 
@@ -130,6 +131,9 @@ class IpFinderActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (::setAssistantButton.isInitialized) {
+            setAssistantButton.isEnabled = true
+        }
         refreshAssistantState()
         refreshNetworkState()
     }
@@ -146,16 +150,9 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     private fun requestAssistantSelection() {
-        // L'action publique Android est celle déclarée par la page AOSP
-        // « Assistant numérique / Assist & voice input ». On la privilégie
-        // afin de laisser chaque constructeur ouvrir sa propre page équivalente.
-        val publicAssistantSettings = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)
-        if (startIfResolvable(publicAssistantSettings)) {
-            return
-        }
-
-        // Certains ROM conservent la page AOSP sans exposer correctement
-        // l'intent implicite. Ce composant est donc uniquement un secours.
+        // La page montrée par Android pour choisir l'assistant numérique.
+        // Le composant AOSP direct est prioritaire sur les ROM Transsion qui
+        // résolvent parfois l'action publique vers une page vocale générique.
         val aospAssistantSettings = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
             setClassName(
                 "com.android.settings",
@@ -163,6 +160,19 @@ class IpFinderActivity : AppCompatActivity() {
             )
         }
         if (startIfResolvable(aospAssistantSettings)) {
+            return
+        }
+
+        // Les autres constructeurs peuvent remplacer la page AOSP tout en
+        // conservant l'action Android publique correspondante.
+        val packagedAssistantSettings = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
+            setPackage("com.android.settings")
+        }
+        if (startIfResolvable(packagedAssistantSettings)) {
+            return
+        }
+
+        if (startIfResolvable(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))) {
             return
         }
 
@@ -179,7 +189,9 @@ class IpFinderActivity : AppCompatActivity() {
             }
         }
 
-        openAssistantSettingsFallback()
+        if (!openAssistantSettingsFallback()) {
+            setAssistantButton.isEnabled = true
+        }
     }
 
     private fun startIfResolvable(intent: Intent): Boolean {
@@ -190,7 +202,7 @@ class IpFinderActivity : AppCompatActivity() {
         }.getOrDefault(false)
     }
 
-    private fun openAssistantSettingsFallback() {
+    private fun openAssistantSettingsFallback(): Boolean {
         val intents = listOf(
             Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
             Intent(Settings.ACTION_SETTINGS)
@@ -203,6 +215,7 @@ class IpFinderActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+        return opened
     }
 
     private fun refreshAssistantState() {

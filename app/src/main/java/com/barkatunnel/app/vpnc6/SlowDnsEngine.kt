@@ -3,7 +3,6 @@ package com.barkatunnel.app.vpnc6
 import android.content.Context
 import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.vpnprofile.VpnProfileConfig
-import java.util.concurrent.TimeUnit
 
 class SlowDnsEngine(
     private val context: Context,
@@ -68,29 +67,26 @@ class SlowDnsEngine(
         val dnsttPort = 22_220
         val output = java.io.File(context.cacheDir, "c6_dnstt_${System.nanoTime()}.log")
         dnsttLogFile = output
-        dnsttProcess = ProcessBuilder(
+        dnsttProcess = ProcessCompat.startWithLog(ProcessBuilder(
             dnstt.absolutePath,
             "-udp", "$resolver:53",
             "-pubkey", config.publicKey,
             config.nameServer,
             "127.0.0.1:$dnsttPort"
-        )
-            .redirectErrorStream(true)
-            .redirectOutput(output)
-            .start()
+        ), output)
 
         val dnsttReady = PortWaiter.waitUntilOpen(
             "127.0.0.1",
             dnsttPort,
             DNSTT_READY_TIMEOUT_MS
         ) {
-            !isCancelled() && dnsttProcess?.isAlive == true
+            !isCancelled() && ProcessCompat.isAlive(dnsttProcess)
         }
         if (!dnsttReady) {
             if (isCancelled()) throw InterruptedException("Connexion annulée.")
             val detail = dnsttFailureDetail()
             throw IllegalStateException(
-                if (dnsttProcess?.isAlive != true) {
+                if (!ProcessCompat.isAlive(dnsttProcess)) {
                     if (detail.isBlank()) "DNSTT s’est arrêté avant d’ouvrir son relais local."
                     else "DNSTT s’est arrêté prématurément : $detail"
                 } else {
@@ -99,7 +95,7 @@ class SlowDnsEngine(
                 }
             )
         }
-        if (dnsttProcess?.isAlive != true) {
+        if (!ProcessCompat.isAlive(dnsttProcess)) {
             val detail = dnsttFailureDetail()
             throw IllegalStateException(
                 if (detail.isBlank()) "DNSTT s’est arrêté prématurément."
@@ -187,9 +183,7 @@ class SlowDnsEngine(
     private fun stopAttempt() {
         sshProxy?.stop()
         sshProxy = null
-        dnsttProcess?.destroy()
-        runCatching { dnsttProcess?.waitFor(700, TimeUnit.MILLISECONDS) }
-        if (dnsttProcess?.isAlive == true) dnsttProcess?.destroyForcibly()
+        ProcessCompat.stop(dnsttProcess)
         dnsttProcess = null
         dnsttLogFile?.delete()
         dnsttLogFile = null

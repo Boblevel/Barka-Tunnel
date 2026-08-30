@@ -2,6 +2,7 @@ package com.barkatunnel.app.ipfinder.assistant
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -17,7 +18,9 @@ class BarkaAssistantSession(
 
     override fun onPrepareShow(args: Bundle?, showFlags: Int) {
         super.onPrepareShow(args, showFlags)
-        setUiEnabled(false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            setUiEnabled(false)
+        }
     }
 
     override fun onShow(args: Bundle?, showFlags: Int) {

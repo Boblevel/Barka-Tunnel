@@ -216,7 +216,6 @@ class MainActivity : AppCompatActivity() {
             android.view.View.GONE
         journalPage.findViewById<android.view.View>(R.id.pageBottomNavigation).visibility =
             android.view.View.GONE
-        fitHomeContentToViewport(homePage)
         homeJournalPager = findViewById(R.id.homeJournalPager)
         homeJournalPager.adapter = StaticPageAdapter(listOf(homePage, journalPage))
         homeJournalPager.offscreenPageLimit = 1
@@ -343,7 +342,12 @@ class MainActivity : AppCompatActivity() {
 
             val controller = requireController() ?: return@connectAction
 
+            if (disconnectRequested) {
+                return@connectAction
+            }
+
             if (pendingConnectAfterInitialSync || pendingConnectAfterVpnPermission) {
+                vibrateOnce(PRESS_VIBRATION_MS)
                 cancelPendingConnectionStart(controller)
                 return@connectAction
             }
@@ -352,22 +356,24 @@ class MainActivity : AppCompatActivity() {
                 syncVpnRuntimeState() ?: controller.currentState().connection
 
             when (currentConnection) {
-                HomeConnectionState.Disconnected -> beginVpnConnection(controller)
-                HomeConnectionState.Disconnecting -> {
-                    handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnecting))
+                HomeConnectionState.Disconnected -> {
+                    vibrateOnce(PRESS_VIBRATION_MS)
+                    beginVpnConnection(controller)
                 }
+                HomeConnectionState.Disconnecting -> Unit
                 HomeConnectionState.Connecting,
                 is HomeConnectionState.Connected,
-                is HomeConnectionState.Error -> requestVpnDisconnect(controller)
+                is HomeConnectionState.Error -> {
+                    vibrateOnce(PRESS_VIBRATION_MS)
+                    requestVpnDisconnect(controller)
+                }
             }
         }
 
         connectButton.setOnClickListener {
-            vibrateOnce(PRESS_VIBRATION_MS)
             connectAction()
         }
         powerButton.setOnClickListener {
-            vibrateOnce(PRESS_VIBRATION_MS)
             connectAction()
         }
 
@@ -1048,32 +1054,36 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun vibrateOnce(durationMs: Long) {
+        if (!::powerButton.isInitialized || isFinishing || isDestroyed) return
         runOnUiThread {
-            val isConnectedPulse = durationMs >= CONNECTED_VIBRATION_MS
-            val feedbackType = if (isConnectedPulse) {
-                HapticFeedbackConstants.LONG_PRESS
-            } else {
-                HapticFeedbackConstants.VIRTUAL_KEY
-            }
-            powerButton.performHapticFeedback(
-                feedbackType,
-                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
-                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
-            )
-
-            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                getSystemService(VibratorManager::class.java).defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                getSystemService(VIBRATOR_SERVICE) as Vibrator
-            }
-
-            if (!vibrator.hasVibrator()) {
-                AppLogStore.add(this, "Vibration indisponible sur cet appareil.")
+            if (!::powerButton.isInitialized || isFinishing || isDestroyed) {
                 return@runOnUiThread
             }
-
             runCatching {
+                val isConnectedPulse = durationMs >= CONNECTED_VIBRATION_MS
+                val feedbackType = if (isConnectedPulse) {
+                    HapticFeedbackConstants.LONG_PRESS
+                } else {
+                    HapticFeedbackConstants.VIRTUAL_KEY
+                }
+                powerButton.performHapticFeedback(
+                    feedbackType,
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                        HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                )
+
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    getSystemService(VibratorManager::class.java).defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    getSystemService(VIBRATOR_SERVICE) as Vibrator
+                }
+
+                if (!vibrator.hasVibrator()) {
+                    AppLogStore.add(this, "Vibration indisponible sur cet appareil.")
+                    return@runCatching
+                }
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val effect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         VibrationEffect.createPredefined(
@@ -1249,34 +1259,6 @@ class MainActivity : AppCompatActivity() {
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }
-    }
-
-    private fun fitHomeContentToViewport(homePage: View) {
-        val viewport = homePage.findViewById<View>(R.id.homeContentViewport)
-        val content = homePage.findViewById<View>(R.id.homeContent)
-
-        fun applyScale() {
-            val availableHeight = viewport.height.toFloat()
-            val contentHeight = content.height.toFloat()
-            if (availableHeight <= 0f || contentHeight <= 0f) return
-
-            val scale = (availableHeight / contentHeight).coerceIn(0.1f, 1f)
-            content.pivotX = content.width / 2f
-            content.pivotY = 0f
-            content.scaleX = scale
-            content.scaleY = scale
-        }
-
-        viewport.addOnLayoutChangeListener { _, left, top, right, bottom,
-            oldLeft, oldTop, oldRight, oldBottom ->
-            if (
-                right - left != oldRight - oldLeft ||
-                bottom - top != oldBottom - oldTop
-            ) {
-                viewport.post { applyScale() }
-            }
-        }
-        viewport.post { applyScale() }
     }
 
     @Suppress("DEPRECATION")
@@ -1649,7 +1631,7 @@ class MainActivity : AppCompatActivity() {
         private const val PROFILE_SYNC_INTERVAL_MS = 6L * 60L * 60L * 1000L
         private const val INITIAL_SYNC_RETRY_DELAY_MS = 2_500L
         private const val DISCONNECT_UI_SETTLE_MS = 250L
-        private const val CONNECT_ACTION_DEBOUNCE_MS = 700L
+        private const val CONNECT_ACTION_DEBOUNCE_MS = 1_200L
         private val TECHNICAL_CONNECTION_TERMS = Regex(
             "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
         )

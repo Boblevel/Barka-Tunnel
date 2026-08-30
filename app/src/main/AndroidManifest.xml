@@ -57,7 +57,12 @@
 
         <activity
             android:name=".ipfinder.IpFinderActivity"
-            android:exported="true" />
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <service
             android:name=".ipfinder.assistant.BarkaAssistantService"
