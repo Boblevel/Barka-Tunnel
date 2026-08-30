@@ -68,10 +68,10 @@ class HomeUiBinder(
             }
 
             is HomeConnectionState.Error -> {
-                vpnStatus.setText(R.string.status_connecting)
-                connectButton.setText(R.string.disconnect)
+                vpnStatus.setText(R.string.status_not_connected)
+                connectButton.setText(R.string.connect)
                 vpnStatus.setTextColor(
-                    ContextCompat.getColor(vpnStatus.context, R.color.barka_blue)
+                    ContextCompat.getColor(vpnStatus.context, R.color.barka_text)
                 )
             }
         }

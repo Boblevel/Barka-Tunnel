@@ -106,11 +106,21 @@ class MainActivity : AppCompatActivity() {
     private val connectionOperationGeneration = AtomicLong(0L)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val initialSyncRetryRunnable = Runnable { ensureInitialRemoteSync() }
+    private val vpnStateReconcileRunnable = object : Runnable {
+        override fun run() {
+            if (!vpnStateReconciliationActive) return
+            syncVpnRuntimeState()
+            mainHandler.postDelayed(this, VPN_STATE_RECONCILE_INTERVAL_MS)
+        }
+    }
     private var pendingConnectAfterInitialSync = false
     private var pendingConnectAfterVpnPermission = false
     @Volatile private var connectionStartRequested = false
     @Volatile private var disconnectRequested = false
     private var lastConnectActionAtElapsedMs = 0L
+    private var lastConnectionTimerStartedAtElapsedMs = -1L
+    private var lastRenderedConnectionState: HomeConnectionState? = null
+    private var vpnStateReconciliationActive = false
     private var orangeIpWarningToast: Toast? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -342,14 +352,18 @@ class MainActivity : AppCompatActivity() {
             }
 
             if (pendingConnectAfterInitialSync || pendingConnectAfterVpnPermission) {
-                lastConnectActionAtElapsedMs = now
+                if (now - lastConnectActionAtElapsedMs < CONNECT_CANCEL_GUARD_MS) {
+                    return@connectAction
+                }
                 vibrateOnce(PRESS_VIBRATION_MS)
                 cancelPendingConnectionStart(controller)
                 return@connectAction
             }
 
             if (connectionStartRequested) {
-                lastConnectActionAtElapsedMs = now
+                if (now - lastConnectActionAtElapsedMs < CONNECT_CANCEL_GUARD_MS) {
+                    return@connectAction
+                }
                 vibrateOnce(PRESS_VIBRATION_MS)
                 requestVpnDisconnect(controller)
                 return@connectAction
@@ -359,23 +373,21 @@ class MainActivity : AppCompatActivity() {
                 syncVpnRuntimeState() ?: controller.currentState().connection
 
             when (currentConnection) {
-                HomeConnectionState.Disconnected -> {
-                    if (now - lastConnectActionAtElapsedMs < CONNECT_ACTION_DEBOUNCE_MS) {
-                        return@connectAction
-                    }
+                HomeConnectionState.Disconnected,
+                is HomeConnectionState.Error -> {
                     lastConnectActionAtElapsedMs = now
                     vibrateOnce(PRESS_VIBRATION_MS)
                     beginVpnConnection(controller)
                 }
                 HomeConnectionState.Connecting -> {
-                    lastConnectActionAtElapsedMs = now
+                    if (now - lastConnectActionAtElapsedMs < CONNECT_CANCEL_GUARD_MS) {
+                        return@connectAction
+                    }
                     vibrateOnce(PRESS_VIBRATION_MS)
                     requestVpnDisconnect(controller)
                 }
                 HomeConnectionState.Disconnecting -> Unit
-                is HomeConnectionState.Connected,
-                is HomeConnectionState.Error -> {
-                    lastConnectActionAtElapsedMs = now
+                is HomeConnectionState.Connected -> {
                     vibrateOnce(PRESS_VIBRATION_MS)
                     requestVpnDisconnect(controller)
                 }
@@ -503,6 +515,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        vpnStateReconciliationActive = true
+        mainHandler.removeCallbacks(vpnStateReconcileRunnable)
+        mainHandler.post(vpnStateReconcileRunnable)
         if (journalLogListener == null) {
             journalLogListener = AppLogStore.registerChangeListener(this) {
                 runOnUiThread {
@@ -524,6 +539,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        vpnStateReconciliationActive = false
+        mainHandler.removeCallbacks(vpnStateReconcileRunnable)
         journalLogListener?.let {
             AppLogStore.unregisterChangeListener(this, it)
         }
@@ -542,21 +559,7 @@ class MainActivity : AppCompatActivity() {
         if (::networkIpValue.isInitialized) {
             applySystemBars()
             refreshNetworkIp()
-            if (disconnectRequested) {
-                homeController?.let {
-                    handleHomeResult(it.syncConnection(HomeConnectionState.Disconnecting))
-                }
-            } else if (
-                pendingConnectAfterInitialSync ||
-                pendingConnectAfterVpnPermission ||
-                connectionStartRequested
-            ) {
-                homeController?.let {
-                    handleHomeResult(it.syncConnection(HomeConnectionState.Connecting))
-                }
-            } else {
-                syncVpnRuntimeState()
-            }
+            syncVpnRuntimeState()
             if (
                 BarkaVpnService.connectionSnapshot().state ==
                     BarkaVpnService.RuntimeConnectionState.DISCONNECTED &&
@@ -582,6 +585,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        vpnStateReconciliationActive = false
+        mainHandler.removeCallbacks(vpnStateReconcileRunnable)
         mainHandler.removeCallbacks(initialSyncRetryRunnable)
         if (::timerController.isInitialized) {
             timerController.stop()
@@ -624,11 +629,12 @@ class MainActivity : AppCompatActivity() {
             disconnectRequested &&
                 snapshot.state != BarkaVpnService.RuntimeConnectionState.DISCONNECTED ->
                 HomeConnectionState.Disconnecting
-            connectionStartRequested &&
-                snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED ->
-                HomeConnectionState.Connecting
             snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED ->
-                HomeConnectionState.Disconnected
+                if (connectionStartRequested) {
+                    HomeConnectionState.Connecting
+                } else {
+                    HomeConnectionState.Disconnected
+                }
             snapshot.state == BarkaVpnService.RuntimeConnectionState.CONNECTING ->
                 HomeConnectionState.Connecting
             snapshot.state == BarkaVpnService.RuntimeConnectionState.CONNECTED ->
@@ -640,12 +646,14 @@ class MainActivity : AppCompatActivity() {
 
         if (snapshot.state == BarkaVpnService.RuntimeConnectionState.CONNECTED) {
             connectionStartRequested = false
-            disconnectRequested = false
         } else if (snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED && disconnectRequested) {
             disconnectRequested = false
         }
 
-        handleHomeResult(controller.syncConnection(connection))
+        val syncedState = controller.syncConnection(connection)
+        if (lastRenderedConnectionState != connection) {
+            handleHomeResult(syncedState)
+        }
 
         if (connection is HomeConnectionState.Connected) {
             val elapsedSeconds = if (snapshot.connectedAtElapsedMs > 0L) {
@@ -654,7 +662,12 @@ class MainActivity : AppCompatActivity() {
             } else {
                 0L
             }
-            timerController.startConnectionTimer(elapsedSeconds)
+            if (lastConnectionTimerStartedAtElapsedMs != snapshot.connectedAtElapsedMs) {
+                lastConnectionTimerStartedAtElapsedMs = snapshot.connectedAtElapsedMs
+                timerController.startConnectionTimer(elapsedSeconds)
+            }
+        } else {
+            lastConnectionTimerStartedAtElapsedMs = -1L
         }
 
         return connection
@@ -851,24 +864,24 @@ class MainActivity : AppCompatActivity() {
                     return@runOnUiThread
                 }
 
-                val connectedState =
-                    (result as? HomeControllerResult.State)?.value?.connection
-                if (controller.currentState().connection !is HomeConnectionState.Connecting) {
-                    connectionStartRequested = false
-                }
-
-                if (connectedState is HomeConnectionState.Connected) {
-                    timerController.startConnectionTimer()
+                connectionStartRequested = false
+                val snapshot = BarkaVpnService.connectionSnapshot()
+                if (snapshot.state == BarkaVpnService.RuntimeConnectionState.CONNECTED) {
+                    val connectedName = snapshot.profileName
+                        ?: controller.currentState().selectedNetwork?.displayName.orEmpty()
                     vibrateOnce(CONNECTED_VIBRATION_MS)
                     AppLogStore.add(
                         this,
-                        "VPN connecté • ${connectedState.networkName}."
+                        "VPN connecté${connectedName.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty()}."
                     )
-                } else if (connectedState is HomeConnectionState.Disconnected) {
+                } else if (snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED) {
                     BarkaVpnService.cancelConnectingNotification(this)
                 }
 
-                handleHomeResult(result)
+                syncVpnRuntimeState()
+                if (result is HomeControllerResult.Message) {
+                    handleHomeResult(result)
+                }
             }
         }.start()
     }
@@ -890,14 +903,13 @@ class MainActivity : AppCompatActivity() {
                     return@runOnUiThread
                 }
 
+                disconnectRequested = false
                 val snapshot = BarkaVpnService.connectionSnapshot()
-                if (
-                    result is HomeControllerResult.State &&
-                    snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED
-                ) {
+                if (snapshot.state == BarkaVpnService.RuntimeConnectionState.DISCONNECTED) {
                     timerController.stopConnectionTimer()
-                    syncVpnRuntimeState()
-                } else {
+                }
+                syncVpnRuntimeState()
+                if (result is HomeControllerResult.Message) {
                     handleHomeResult(result)
                     syncVpnRuntimeState()
                 }
@@ -910,17 +922,12 @@ class MainActivity : AppCompatActivity() {
         pendingConnectAfterInitialSync = false
         pendingConnectAfterVpnPermission = false
         connectionStartRequested = false
-        disconnectRequested = true
+        disconnectRequested = false
         BarkaVpnService.cancelConnectingNotification(this)
         AppLogStore.add(this, "Déconnexion en cours.")
-        handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnecting))
-        mainHandler.postDelayed({
-            if (disconnectRequested) {
-                disconnectRequested = false
-                handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnected))
-                AppLogStore.add(this, "VPN déconnecté.")
-            }
-        }, DISCONNECT_UI_SETTLE_MS)
+        handleHomeResult(controller.syncConnection(HomeConnectionState.Disconnected))
+        timerController.stopConnectionTimer()
+        AppLogStore.add(this, "VPN déconnecté.")
     }
 
     private fun resetPendingConnectionState() {
@@ -1015,6 +1022,7 @@ class MainActivity : AppCompatActivity() {
                 uiBinder.showConnection(
                     latestState.connection
                 )
+                lastRenderedConnectionState = latestState.connection
                 updatePowerButtonState(latestState.connection)
                 stopConnectionTimerIfInactive(latestState.connection)
             }
@@ -1025,6 +1033,7 @@ class MainActivity : AppCompatActivity() {
                     uiBinder.showAccess(it.access)
                     timerController.syncAccessRemaining(it.access.remainingSeconds)
                     uiBinder.showConnection(it.connection)
+                    lastRenderedConnectionState = it.connection
                     updatePowerButtonState(it.connection)
                     stopConnectionTimerIfInactive(it.connection)
                 }
@@ -1645,8 +1654,8 @@ class MainActivity : AppCompatActivity() {
         private const val PAGE_JOURNAL = 1
         private const val PROFILE_SYNC_INTERVAL_MS = 6L * 60L * 60L * 1000L
         private const val INITIAL_SYNC_RETRY_DELAY_MS = 2_500L
-        private const val DISCONNECT_UI_SETTLE_MS = 250L
-        private const val CONNECT_ACTION_DEBOUNCE_MS = 1_200L
+        private const val CONNECT_CANCEL_GUARD_MS = 600L
+        private const val VPN_STATE_RECONCILE_INTERVAL_MS = 400L
         private val TECHNICAL_CONNECTION_TERMS = Regex(
             "(?i)\\b(vless|slowdns|udp|c6|tun2socks|xray|dnstt|socks|udpgw|port)\\b"
         )

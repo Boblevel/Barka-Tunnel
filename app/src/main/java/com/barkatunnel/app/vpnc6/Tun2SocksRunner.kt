@@ -62,6 +62,9 @@ class Tun2SocksRunner(private val context: Context) {
         }
     }
 
+    fun isRunning(): Boolean =
+        thread?.isAlive == true && nativeFailure == null
+
     fun stop() {
         runCatching { Tun2Socks.stopTun2Socks() }
         runCatching { thread?.join(1_500) }

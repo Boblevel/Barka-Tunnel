@@ -6,40 +6,44 @@ class HomeController(
     private val runtime: HomeRuntime
 ) {
 
+    private val stateLock = Any()
     private var state = HomeScreenState()
     private var servers: List<VpnServer> = emptyList()
 
-    fun currentState(): HomeScreenState = state
+    fun currentState(): HomeScreenState = synchronized(stateLock) { state }
 
     fun syncConnection(connection: HomeConnectionState): HomeControllerResult {
-        state = state.copy(connection = connection)
-        return HomeControllerResult.State(state)
+        return HomeControllerResult.State(
+            updateState { it.copy(connection = connection) }
+        )
     }
 
     fun syncAccess(access: HomeAccessState): HomeControllerResult {
-        state = state.copy(access = access)
-        return HomeControllerResult.State(state)
+        return HomeControllerResult.State(
+            updateState { it.copy(access = access) }
+        )
     }
 
     fun selectNetwork(
         network: NetworkOption
     ): HomeControllerResult {
-        state = state.copy(selectedNetwork = network)
-        return HomeControllerResult.State(state)
+        return HomeControllerResult.State(
+            updateState { it.copy(selectedNetwork = network) }
+        )
     }
 
     fun refreshAccess(): HomeControllerResult {
-        state = state.copy(
-            access = runtime.accessController.refreshAccess()
+        val access = runtime.accessController.refreshAccess()
+        return HomeControllerResult.State(
+            updateState { it.copy(access = access) }
         )
-        return HomeControllerResult.State(state)
     }
 
     fun startFreeTrial(): HomeControllerResult {
         val access = runtime.accessController.startFreeTrial()
-        state = state.copy(access = access)
+        updateState { it.copy(access = access) }
         return access.notice?.let { HomeControllerResult.Message(it) }
-            ?: HomeControllerResult.State(state)
+            ?: HomeControllerResult.State(currentState())
     }
 
     fun refreshServers(): HomeControllerResult {
@@ -48,99 +52,97 @@ class HomeController(
 
         return when (refreshState) {
             is ServerRefreshState.Success -> {
-                servers = loadedServers
-                state = state.copy(
-                    serversLoaded = refreshState.serverCount
-                )
-                HomeControllerResult.State(state)
+                val updatedState = synchronized(stateLock) {
+                    servers = loadedServers
+                    state = state.copy(serversLoaded = refreshState.serverCount)
+                    state
+                }
+                HomeControllerResult.State(updatedState)
             }
 
             is ServerRefreshState.Error ->
                 HomeControllerResult.Message(refreshState.message)
 
             else ->
-                HomeControllerResult.State(state)
+                HomeControllerResult.State(currentState())
         }
     }
 
     fun connect(
         isCancellationRequested: () -> Boolean = { false }
     ): HomeControllerResult {
-        val network = state.selectedNetwork
+        val network = currentState().selectedNetwork
             ?: return HomeControllerResult.Message(
                 "Choisis d’abord un réseau."
             )
 
         if (isCancellationRequested()) {
-            state = state.copy(connection = HomeConnectionState.Disconnected)
-            return HomeControllerResult.State(state)
+            return HomeControllerResult.State(currentState())
         }
 
-        state = state.copy(access = runtime.accessController.refreshAccess())
+        val refreshedAccess = runtime.accessController.refreshAccess()
+        updateState { it.copy(access = refreshedAccess) }
 
         if (isCancellationRequested()) {
-            state = state.copy(connection = HomeConnectionState.Disconnected)
-            return HomeControllerResult.State(state)
+            return HomeControllerResult.State(currentState())
         }
 
-        if (!state.access.allowed) {
+        if (!refreshedAccess.allowed) {
+            updateState { it.copy(connection = HomeConnectionState.Disconnected) }
             return HomeControllerResult.Message(
                 "Aucun accès actif."
             )
         }
 
-        state = state.copy(
-            connection = HomeConnectionState.Connecting
+        updateState { it.copy(connection = HomeConnectionState.Connecting) }
+
+        val vpnResult = runtime.vpnCoordinator.connect(
+            network = network,
+            isCancellationRequested = isCancellationRequested
         )
 
-        return when (
-            val result = runtime.vpnCoordinator.connect(
-                network = network,
-                isCancellationRequested = isCancellationRequested
-            )
-        ) {
+        if (isCancellationRequested()) {
+            return HomeControllerResult.State(currentState())
+        }
+
+        return when (vpnResult) {
             is HomeVpnResult.Connected -> {
-                state = state.copy(
-                    connection = HomeConnectionState.Connected(
-                        result.networkName
-                    )
+                HomeControllerResult.State(
+                    updateState {
+                        it.copy(
+                            connection = HomeConnectionState.Connected(
+                                vpnResult.networkName
+                            )
+                        )
+                    }
                 )
-                HomeControllerResult.State(state)
             }
 
             is HomeVpnResult.Disconnected -> {
-                state = state.copy(
-                    connection = HomeConnectionState.Disconnected
+                HomeControllerResult.State(
+                    updateState { it.copy(connection = HomeConnectionState.Disconnected) }
                 )
-                HomeControllerResult.State(state)
             }
 
             is HomeVpnResult.AccessDenied -> {
-                state = state.copy(
-                    connection = HomeConnectionState.Connecting
-                )
+                updateState { it.copy(connection = HomeConnectionState.Disconnected) }
                 HomeControllerResult.Message(CONNECTION_PENDING_MESSAGE)
             }
 
             is HomeVpnResult.Error -> {
-                state = state.copy(
-                    connection = HomeConnectionState.Disconnected
-                )
-                HomeControllerResult.Message(result.message)
+                updateState { it.copy(connection = HomeConnectionState.Disconnected) }
+                HomeControllerResult.Message(vpnResult.message)
             }
         }
     }
 
     fun disconnect(): HomeControllerResult {
-        state = state.copy(
-            connection = HomeConnectionState.Disconnecting
-        )
+        updateState { it.copy(connection = HomeConnectionState.Disconnecting) }
         return when (val result = runtime.vpnCoordinator.disconnect()) {
             is HomeVpnResult.Disconnected -> {
-                state = state.copy(
-                    connection = HomeConnectionState.Disconnected
+                HomeControllerResult.State(
+                    updateState { it.copy(connection = HomeConnectionState.Disconnected) }
                 )
-                HomeControllerResult.State(state)
             }
 
             is HomeVpnResult.Connected ->
@@ -156,6 +158,13 @@ class HomeController(
             is HomeVpnResult.Error ->
                 HomeControllerResult.Message(result.message)
         }
+    }
+
+    private fun updateState(
+        transform: (HomeScreenState) -> HomeScreenState
+    ): HomeScreenState = synchronized(stateLock) {
+        state = transform(state)
+        state
     }
 
     companion object {

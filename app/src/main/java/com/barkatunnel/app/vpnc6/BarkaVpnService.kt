@@ -23,6 +23,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 class BarkaVpnService : VpnService() {
@@ -34,6 +35,7 @@ class BarkaVpnService : VpnService() {
     private var keepAliveFuture: ScheduledFuture<*>? = null
     private val tunnelLock = Any()
     private val operationGeneration = AtomicLong(0L)
+    private val healthDisconnectScheduled = AtomicBoolean(false)
     @Volatile private var vpnDescriptor: ParcelFileDescriptor? = null
     @Volatile private var stopping = false
     @Volatile private var activeConnectRequestId: String? = null
@@ -61,6 +63,7 @@ class BarkaVpnService : VpnService() {
                 }
                 val connectGeneration = operationGeneration.incrementAndGet()
                 stopping = false
+                healthDisconnectScheduled.set(false)
                 activeConnectRequestId = requestId
                 updateRuntimeState(
                     RuntimeConnectionState.CONNECTING,
@@ -87,6 +90,10 @@ class BarkaVpnService : VpnService() {
                     NOTIFICATION_ID,
                     buildNotification(this, getString(R.string.notification_disconnecting))
                 )
+                if (runtimeState == RuntimeConnectionState.DISCONNECTING) {
+                    C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
+                    return START_NOT_STICKY
+                }
                 if (
                     runtimeState == RuntimeConnectionState.DISCONNECTED &&
                     !connected &&
@@ -209,7 +216,7 @@ class BarkaVpnService : VpnService() {
                         profileName,
                         SystemClock.elapsedRealtime()
                     )
-                    startAutoPing(protocol)
+                    startConnectionMonitor(protocol)
                     updateNotification(getString(R.string.notification_connected))
                     AppLogStore.add(
                         this,
@@ -436,19 +443,26 @@ class BarkaVpnService : VpnService() {
     private fun isConnectOperationActive(connectGeneration: Long): Boolean =
         !stopping && operationGeneration.get() == connectGeneration
 
-    private fun startAutoPing(protocol: VpnProfileProtocol) {
+    private fun startConnectionMonitor(protocol: VpnProfileProtocol) {
         keepAliveFuture?.cancel(true)
         val port = socksPort(protocol)
+        var consecutiveFailures = 0
         keepAliveFuture = keepAliveExecutor.scheduleWithFixedDelay(
             {
-                if (connected) {
-                    val enabled = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
-                        .getBoolean(KEY_AUTO_PING, false)
-                    if (enabled) {
-                        // Le contrôle passe volontairement par le proxy SOCKS
-                        // du protocole actif. Il garde donc réellement
-                        // SlowDNS/SSH/VLESS en activité au lieu d'envoyer un
-                        // ping hors du VPN.
+                if (connected && !stopping) {
+                    val runnerHealthy = synchronized(tunnelLock) {
+                        vpnDescriptor != null &&
+                            engine != null &&
+                            tun2SocksRunner?.isRunning() == true
+                    }
+                    if (!runnerHealthy) {
+                        scheduleHealthDisconnect("Le moteur du tunnel s’est arrêté.")
+                    } else {
+                        val enabled = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
+                            .getBoolean(KEY_AUTO_PING, false)
+                        // Le contrôle passe toujours par le proxy SOCKS actif. Il
+                        // garde SlowDNS/SSH/VLESS en activité et vérifie que le
+                        // tunnel transporte encore réellement les requêtes.
                         val startNs = System.nanoTime()
                         val ok = SocksProbe.connectThrough(
                             proxyHost = "127.0.0.1",
@@ -458,10 +472,25 @@ class BarkaVpnService : VpnService() {
                             timeoutMs = AUTO_PING_TIMEOUT_MS
                         )
                         val latencyMs = (System.nanoTime() - startNs) / 1_000_000L
-                        AppLogStore.add(
-                            this,
-                            "Ping : ${latencyMs} ms ${if (ok) "OK" else "Échec"}"
-                        )
+
+                        if (ok) {
+                            consecutiveFailures = 0
+                        } else {
+                            consecutiveFailures += 1
+                        }
+
+                        if (enabled) {
+                            AppLogStore.add(
+                                this,
+                                "Ping : ${latencyMs} ms ${if (ok) "OK" else "Échec"}"
+                            )
+                        }
+
+                        if (!ok && consecutiveFailures >= HEALTH_FAILURE_LIMIT) {
+                            scheduleHealthDisconnect(
+                                "Le proxy VPN ne transmet plus les données."
+                            )
+                        }
                     }
                 }
             },
@@ -469,6 +498,31 @@ class BarkaVpnService : VpnService() {
             AUTO_PING_INTERVAL_SECONDS,
             TimeUnit.SECONDS
         )
+    }
+
+    private fun scheduleHealthDisconnect(reason: String) {
+        if (!connected || stopping) return
+        if (!healthDisconnectScheduled.compareAndSet(false, true)) return
+
+        stopping = true
+        operationGeneration.incrementAndGet()
+        updateRuntimeState(
+            RuntimeConnectionState.DISCONNECTING,
+            runtimeProfileName,
+            runtimeConnectedAtElapsedMs
+        )
+        AppLogStore.add(this, "Connexion VPN interrompue • $reason")
+        updateNotification(getString(R.string.notification_disconnecting))
+
+        worker.execute {
+            stopTunnel()
+            C6VpnRuntime.complete(activeConnectRequestId, C6VpnResult.Disconnected)
+            activeConnectRequestId = null
+            updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
+            AppLogStore.add(this, "VPN déconnecté • tunnel interrompu.")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     private fun createEngine(
@@ -592,20 +646,37 @@ class BarkaVpnService : VpnService() {
                 Intent(context, MainActivity::class.java),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            return NotificationCompat.Builder(context, CHANNEL_ID)
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification_barka)
                 .setContentTitle("Barka Tunnel")
                 .setContentText(text)
                 .setContentIntent(openApp)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .setShowWhen(false)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setColor(ContextCompat.getColor(context, R.color.barka_blue))
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-                .build()
+
+            val connectedAtElapsedMs = runtimeConnectedAtElapsedMs
+            if (
+                runtimeState == RuntimeConnectionState.CONNECTED &&
+                connectedAtElapsedMs > 0L
+            ) {
+                val connectedDurationMs =
+                    (SystemClock.elapsedRealtime() - connectedAtElapsedMs).coerceAtLeast(0L)
+                builder
+                    .setWhen(System.currentTimeMillis() - connectedDurationMs)
+                    .setShowWhen(true)
+                    .setUsesChronometer(true)
+            } else {
+                builder
+                    .setShowWhen(false)
+                    .setUsesChronometer(false)
+            }
+
+            return builder.build()
         }
 
         private fun createNotificationChannel(context: Context) {
@@ -647,5 +718,6 @@ class BarkaVpnService : VpnService() {
         private const val AUTO_PING_TIMEOUT_MS = 4_000
         private const val AUTO_PING_INITIAL_DELAY_SECONDS = 3L
         private const val AUTO_PING_INTERVAL_SECONDS = 15L
+        private const val HEALTH_FAILURE_LIMIT = 3
     }
 }
