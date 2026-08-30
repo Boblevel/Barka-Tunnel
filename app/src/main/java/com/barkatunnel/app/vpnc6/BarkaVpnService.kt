@@ -80,6 +80,13 @@ class BarkaVpnService : VpnService() {
                 }
             }
             ACTION_DISCONNECT -> {
+                // Chaque démarrage via startForegroundService doit publier sa
+                // notification avant tout retour, même si une annulation de
+                // connexion a déjà remis l'état à DISCONNECTED entre-temps.
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(this, getString(R.string.notification_disconnecting))
+                )
                 if (
                     runtimeState == RuntimeConnectionState.DISCONNECTED &&
                     !connected &&
@@ -101,10 +108,6 @@ class BarkaVpnService : VpnService() {
                     RuntimeConnectionState.DISCONNECTING,
                     runtimeProfileName,
                     runtimeConnectedAtElapsedMs
-                )
-                startForeground(
-                    NOTIFICATION_ID,
-                    buildNotification(this, getString(R.string.notification_disconnecting))
                 )
                 connectFuture?.cancel(true)
                 worker.execute { disconnect(requestId) }

@@ -112,6 +112,12 @@ def init_db() -> None:
                     received_at INTEGER NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS admin_state(
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS vpn_profiles(
                     network_id TEXT PRIMARY KEY,
                     display_name TEXT NOT NULL,

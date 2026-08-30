@@ -411,3 +411,50 @@ def test_delete_redeem_removes_remaining_time_from_all_users(tmp_path):
         assert services.access_state(device)["remaining_seconds"] == 0
 
     assert all(item["code"] != code for item in admin_ops.list_redeem_codes(20))
+
+
+def test_unique_device_is_counted_only_once_after_repeat_registration(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    device = "device-unique-install-abcdef"
+    services.access_state(device)
+    services.access_state(device)
+    services.mark_connection_attempt(device)
+    services.mark_connection_attempt(device)
+
+    stats = admin_ops.admin_stats_extended()
+    assert stats["devices"] == 1
+    assert stats["users"] == 1
+
+
+def test_admin_stats_reset_preserves_access_and_known_devices(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    device = "device-reset-preserved-abcdef"
+    code = services.issue_activation_code("MANUAL:RESET-PRESERVE", "24h")
+    ok, _, access = services.redeem_activation_code(device, code)
+    assert ok is True
+    assert access["allowed"] is True
+    services.mark_connection_attempt(device)
+
+    before = admin_ops.admin_stats_extended()
+    assert before["devices"] == 1
+    assert before["active_subscriptions"] == 1
+
+    reset_at = admin_ops.reset_admin_stats()
+    after = admin_ops.admin_stats_extended()
+    assert reset_at
+    assert after["stats_reset_at"] == reset_at
+    assert after["devices"] == 0
+    assert after["users"] == 0
+    assert after["active_subscriptions"] == 0
+    assert services.access_state(device)["allowed"] is True
+    assert any(item["code"] == code for item in admin_ops.list_activation_codes(20))
+    assert admin_ops.admin_stats_extended()["devices"] == 0
+
+    services.access_state("device-new-after-reset-abcdef")
+    assert admin_ops.admin_stats_extended()["devices"] == 1

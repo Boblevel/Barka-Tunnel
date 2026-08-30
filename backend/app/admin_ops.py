@@ -277,37 +277,133 @@ def delete_redeem_code(code: str) -> tuple[bool, str]:
     return True, "Code Redeem supprimé et temps restant associé retiré aux utilisateurs concernés."
 
 
+def _admin_state_int(cx, key: str) -> int:
+    row = cx.execute(
+        "SELECT value FROM admin_state WHERE key=?",
+        (key,),
+    ).fetchone()
+    if not row:
+        return 0
+    try:
+        return max(0, int(row["value"]))
+    except (TypeError, ValueError):
+        return 0
+
+
+def reset_admin_stats() -> str:
+    now = now_ts()
+    with transaction() as cx:
+        snapshots = {
+            "stats_reset_at": now,
+            "stats_devices_rowid": int(
+                cx.execute("SELECT COALESCE(MAX(rowid),0) AS n FROM devices").fetchone()["n"]
+            ),
+            "stats_payments_rowid": int(
+                cx.execute("SELECT COALESCE(MAX(rowid),0) AS n FROM payments").fetchone()["n"]
+            ),
+            "stats_activation_codes_id": int(
+                cx.execute("SELECT COALESCE(MAX(id),0) AS n FROM activation_codes").fetchone()["n"]
+            ),
+            "stats_redeem_codes_id": int(
+                cx.execute("SELECT COALESCE(MAX(id),0) AS n FROM redeem_codes").fetchone()["n"]
+            ),
+            "stats_redeem_usages_id": int(
+                cx.execute("SELECT COALESCE(MAX(id),0) AS n FROM redeem_usages").fetchone()["n"]
+            ),
+        }
+        cx.executemany(
+            """
+            INSERT INTO admin_state(key, value, updated_at)
+            VALUES(?,?,?)
+            ON CONFLICT(key) DO UPDATE SET
+                value=excluded.value,
+                updated_at=excluded.updated_at
+            """,
+            [(key, str(value), now) for key, value in snapshots.items()],
+        )
+    return iso(now) or ""
+
+
 def admin_stats_extended() -> dict:
     now = now_ts()
     cx = connect()
     try:
-        devices = cx.execute("SELECT COUNT(*) AS n FROM devices").fetchone()["n"]
-        users = cx.execute(
-            "SELECT COUNT(*) AS n FROM devices WHERE last_connect_attempt_at IS NOT NULL"
+        reset_at = _admin_state_int(cx, "stats_reset_at")
+        devices_rowid = _admin_state_int(cx, "stats_devices_rowid")
+        payments_rowid = _admin_state_int(cx, "stats_payments_rowid")
+        activation_codes_id = _admin_state_int(cx, "stats_activation_codes_id")
+        redeem_codes_id = _admin_state_int(cx, "stats_redeem_codes_id")
+        redeem_usages_id = _admin_state_int(cx, "stats_redeem_usages_id")
+
+        devices = cx.execute(
+            "SELECT COUNT(*) AS n FROM devices WHERE rowid>?",
+            (devices_rowid,),
         ).fetchone()["n"]
-        paid = cx.execute("SELECT COUNT(*) AS n FROM payments WHERE status='paid'").fetchone()["n"]
-        pending = cx.execute("SELECT COUNT(*) AS n FROM payments WHERE status='pending'").fetchone()["n"]
+        users = cx.execute(
+            """SELECT COUNT(*) AS n FROM devices
+               WHERE last_connect_attempt_at IS NOT NULL
+                 AND (rowid>? OR last_connect_attempt_at>?)""",
+            (devices_rowid, reset_at),
+        ).fetchone()["n"]
+        paid = cx.execute(
+            """SELECT COUNT(*) AS n FROM payments
+               WHERE status='paid' AND (rowid>? OR updated_at>?)""",
+            (payments_rowid, reset_at),
+        ).fetchone()["n"]
+        pending = cx.execute(
+            """SELECT COUNT(*) AS n FROM payments
+               WHERE status='pending' AND (rowid>? OR updated_at>?)""",
+            (payments_rowid, reset_at),
+        ).fetchone()["n"]
         issued = cx.execute(
-            "SELECT COUNT(*) AS n FROM activation_codes WHERE status='issued' AND deleted_at IS NULL"
+            """SELECT COUNT(*) AS n FROM activation_codes
+               WHERE status='issued' AND deleted_at IS NULL AND id>?""",
+            (activation_codes_id,),
         ).fetchone()["n"]
         redeemed = cx.execute(
-            "SELECT COUNT(*) AS n FROM activation_codes WHERE status='redeemed' AND deleted_at IS NULL"
+            """SELECT COUNT(*) AS n FROM activation_codes
+               WHERE status='redeemed' AND deleted_at IS NULL
+                 AND (id>? OR redeemed_at>?)""",
+            (activation_codes_id, reset_at),
         ).fetchone()["n"]
         active_subscriptions = cx.execute(
-            "SELECT COUNT(*) AS n FROM devices WHERE subscription_expires_at>? AND access_disabled=0",
-            (now,),
+            """SELECT COUNT(DISTINCT d.device_id) AS n
+               FROM devices d
+               WHERE d.subscription_expires_at>?
+                 AND d.access_disabled=0
+                 AND (
+                     d.rowid>?
+                     OR EXISTS(
+                         SELECT 1 FROM activation_codes a
+                         WHERE a.redeemed_device_id=d.device_id
+                           AND a.status='redeemed'
+                           AND a.deleted_at IS NULL
+                           AND (a.id>? OR a.redeemed_at>?)
+                     )
+                     OR EXISTS(
+                         SELECT 1 FROM redeem_usages u
+                         WHERE u.device_id=d.device_id AND u.id>?
+                     )
+                 )""",
+            (now, devices_rowid, activation_codes_id, reset_at, redeem_usages_id),
         ).fetchone()["n"]
         active_trials = cx.execute(
             """SELECT COUNT(*) AS n FROM devices
                WHERE trial_expires_at>?
-                 AND (subscription_expires_at IS NULL OR subscription_expires_at<=?)""",
-            (now, now),
+                 AND (subscription_expires_at IS NULL OR subscription_expires_at<=?)
+                 AND (rowid>? OR trial_started_at>?)""",
+            (now, now, devices_rowid, reset_at),
         ).fetchone()["n"]
         enabled_profiles = cx.execute("SELECT COUNT(*) AS n FROM vpn_profiles WHERE enabled=1").fetchone()["n"]
         redeem_active = cx.execute(
-            "SELECT COUNT(*) AS n FROM redeem_codes WHERE status='active' AND deleted_at IS NULL"
+            """SELECT COUNT(*) AS n FROM redeem_codes
+               WHERE status='active' AND deleted_at IS NULL AND id>?""",
+            (redeem_codes_id,),
         ).fetchone()["n"]
-        redeem_usages = cx.execute("SELECT COUNT(*) AS n FROM redeem_usages").fetchone()["n"]
+        redeem_usages = cx.execute(
+            "SELECT COUNT(*) AS n FROM redeem_usages WHERE id>?",
+            (redeem_usages_id,),
+        ).fetchone()["n"]
     finally:
         cx.close()
     return {
@@ -322,4 +418,5 @@ def admin_stats_extended() -> dict:
         "vpn_services_enabled": int(enabled_profiles),
         "redeem_codes_active": int(redeem_active),
         "redeem_usages": int(redeem_usages),
+        "stats_reset_at": iso(reset_at) if reset_at > 0 else None,
     }

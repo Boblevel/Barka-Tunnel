@@ -163,6 +163,10 @@ class AdminCodeRevokeResponse(BaseModel):
     message: str
 
 
+class AdminStatsResetRequest(BaseModel):
+    confirmation: Literal["REINITIALISER"]
+
+
 class AppUpdateAdminUpsert(BaseModel):
     enabled: bool = False
     latest_version_code: int = Field(default=1, ge=1, le=2_000_000_000)

@@ -17,6 +17,7 @@ from .admin_ops import (
     list_redeem_codes,
     reactivate_activation_code,
     reactivate_redeem_code,
+    reset_admin_stats,
     revoke_activation_code,
     revoke_redeem_code,
 )
@@ -51,6 +52,7 @@ from .models import (
     AdminCodeListItem,
     AdminCodeRevokeRequest,
     AdminCodeRevokeResponse,
+    AdminStatsResetRequest,
     AppUpdateAdminResponse,
     AppUpdateAdminUpsert,
     AppUpdateResponse,
@@ -414,6 +416,17 @@ def admin_redeem_code_delete(body: AdminCodeRevokeRequest):
 @app.get("/v1/admin/stats", dependencies=[Depends(require_admin)])
 def admin_stats():
     return admin_stats_extended()
+
+
+@app.post("/v1/admin/stats/reset", dependencies=[Depends(require_admin)])
+def admin_stats_reset(body: AdminStatsResetRequest):
+    reset_at = reset_admin_stats()
+    return {
+        "success": True,
+        "message": "Les statistiques du tableau de bord ont été réinitialisées sans supprimer les données métier.",
+        "reset_at": reset_at,
+        "stats": admin_stats_extended(),
+    }
 
 
 @app.get(
