@@ -14,6 +14,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.R
+import com.barkatunnel.app.ui.SystemBars
 import com.barkatunnel.app.update.AppUpdateCoordinator
 import com.google.android.material.button.MaterialButton
 
@@ -25,6 +26,7 @@ class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
+        SystemBars.apply(this)
         applySystemBars()
         updateCoordinator = AppUpdateCoordinator(this)
 

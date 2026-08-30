@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import com.barkatunnel.app.R
 import com.barkatunnel.app.ipfinder.assistant.BarkaAssistantService
 import com.barkatunnel.app.journal.AppLogStore
+import com.barkatunnel.app.ui.SystemBars
 import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.google.android.material.button.MaterialButton
 import java.net.Inet4Address
@@ -76,6 +77,7 @@ class IpFinderActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_ip_finder)
+        SystemBars.apply(this)
 
         ipInput = findViewById(R.id.ipInput)
         scanButton = findViewById(R.id.scanButton)

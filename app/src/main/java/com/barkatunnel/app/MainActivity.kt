@@ -342,13 +342,12 @@ class MainActivity : AppCompatActivity() {
 
             val controller = requireController() ?: return@connectAction
 
-            if (disconnectRequested) {
-                return@connectAction
-            }
-
-            if (pendingConnectAfterInitialSync || pendingConnectAfterVpnPermission) {
-                vibrateOnce(PRESS_VIBRATION_MS)
-                cancelPendingConnectionStart(controller)
+            if (
+                connectionStartRequested ||
+                disconnectRequested ||
+                pendingConnectAfterInitialSync ||
+                pendingConnectAfterVpnPermission
+            ) {
                 return@connectAction
             }
 
@@ -360,8 +359,8 @@ class MainActivity : AppCompatActivity() {
                     vibrateOnce(PRESS_VIBRATION_MS)
                     beginVpnConnection(controller)
                 }
-                HomeConnectionState.Disconnecting -> Unit
                 HomeConnectionState.Connecting,
+                HomeConnectionState.Disconnecting -> Unit
                 is HomeConnectionState.Connected,
                 is HomeConnectionState.Error -> {
                     vibrateOnce(PRESS_VIBRATION_MS)

@@ -6,6 +6,7 @@ import android.view.MotionEvent
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import com.barkatunnel.app.R
+import com.barkatunnel.app.ui.SystemBars
 import com.google.android.material.button.MaterialButton
 import kotlin.math.abs
 
@@ -22,6 +23,7 @@ class JournalActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_journal)
+        SystemBars.apply(this)
 
         journalList = findViewById(R.id.journalList)
         journalUiBinder = JournalUiBinder(this, journalList)

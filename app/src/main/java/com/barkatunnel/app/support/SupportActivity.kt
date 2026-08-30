@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.barkatunnel.app.R
+import com.barkatunnel.app.ui.SystemBars
 import com.google.android.material.button.MaterialButton
 
 class SupportActivity : AppCompatActivity() {
@@ -15,6 +16,7 @@ class SupportActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_support)
+        SystemBars.apply(this)
         applySystemBars()
 
         findViewById<MaterialButton>(R.id.contactSupportButton).setOnClickListener {

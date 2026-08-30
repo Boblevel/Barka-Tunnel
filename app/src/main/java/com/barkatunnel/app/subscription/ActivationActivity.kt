@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.journal.AppLogStore
+import com.barkatunnel.app.ui.SystemBars
 import com.google.android.material.button.MaterialButton
 import java.util.Locale
 
@@ -20,6 +21,7 @@ class ActivationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_activation)
+        SystemBars.apply(this)
 
         findViewById<android.view.View>(R.id.activationBackButton).setOnClickListener { finish() }
 

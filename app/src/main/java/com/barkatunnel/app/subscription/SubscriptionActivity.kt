@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.journal.AppLogStore
+import com.barkatunnel.app.ui.SystemBars
 import com.google.android.material.button.MaterialButton
 
 class SubscriptionActivity : AppCompatActivity() {
@@ -29,6 +30,7 @@ class SubscriptionActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_subscription)
+        SystemBars.apply(this)
 
         findViewById<android.view.View>(R.id.subscriptionBackButton).setOnClickListener { finish() }
 

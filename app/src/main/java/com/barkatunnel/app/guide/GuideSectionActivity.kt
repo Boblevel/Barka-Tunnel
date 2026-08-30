@@ -8,12 +8,14 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.barkatunnel.app.R
+import com.barkatunnel.app.ui.SystemBars
 
 class GuideSectionActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_guide_section)
+        SystemBars.apply(this)
 
         findViewById<View>(R.id.guideSectionBackButton).setOnClickListener { finish() }
 

@@ -22,7 +22,9 @@ object SystemBars {
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            val referenceStatusBar = (24f * view.resources.displayMetrics.density).toInt()
+            val topPadding = (bars.top - referenceStatusBar).coerceAtLeast(0)
+            view.setPadding(bars.left, topPadding, bars.right, bars.bottom)
             insets
         }
         ViewCompat.requestApplyInsets(content)
