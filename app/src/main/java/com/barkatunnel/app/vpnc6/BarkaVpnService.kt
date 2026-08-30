@@ -19,6 +19,8 @@ import com.barkatunnel.app.journal.AppLogStore
 import com.barkatunnel.app.vpnprofile.VpnProfileConfig
 import com.barkatunnel.app.vpnprofile.VpnProfileConfigParser
 import com.barkatunnel.app.vpnprofile.VpnProfileProtocol
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.ScheduledFuture
@@ -298,6 +300,21 @@ class BarkaVpnService : VpnService() {
         profileConfig: VpnProfileConfig,
         connectGeneration: Long
     ) {
+        val localSocksPort = socksPort(protocol)
+        if (
+            !waitUntilLocalPortClosed(
+                port = localSocksPort,
+                timeoutMs = LOCAL_PROXY_RELEASE_TIMEOUT_MS
+            ) { isConnectOperationActive(connectGeneration) }
+        ) {
+            if (!isConnectOperationActive(connectGeneration)) {
+                throw InterruptedException("Connexion annulée.")
+            }
+            throw IllegalStateException(
+                "Le proxy local de la session précédente n’est pas encore libéré."
+            )
+        }
+
         val protocolEngine = createEngine(protocol, profileConfig, connectGeneration)
         engine = protocolEngine
         AppLogStore.add(this, "Diagnostic VPN • démarrage moteur ${protocol.name}.")
@@ -310,7 +327,7 @@ class BarkaVpnService : VpnService() {
         if (
             !PortWaiter.waitUntilOpen(
                 "127.0.0.1",
-                socksPort(protocol),
+                localSocksPort,
                 LOCAL_PROXY_READY_TIMEOUT_MS
             ) { isConnectOperationActive(connectGeneration) }
         ) {
@@ -327,7 +344,7 @@ class BarkaVpnService : VpnService() {
         if (protocol == VpnProfileProtocol.VLESS || protocol == VpnProfileProtocol.UDP) {
             val probeOk = SocksProbe.connectThrough(
                 proxyHost = "127.0.0.1",
-                proxyPort = socksPort(protocol),
+                proxyPort = localSocksPort,
                 destinationHost = "1.1.1.1",
                 destinationPort = 443,
                 timeoutMs = DIAGNOSTIC_SOCKS_TIMEOUT_MS
@@ -436,9 +453,54 @@ class BarkaVpnService : VpnService() {
         // Fermer le TUN avant l'arrêt natif peut faire tomber brutalement le pont
         // TUN -> SOCKS et laisser les tentatives suivantes dans un état incohérent.
         runCatching { runner?.stop() }
+            .onFailure { Log.w(TAG, "tun2socks shutdown incomplete", it) }
         runCatching { descriptor?.close() }
         runCatching { activeEngine?.stop() }
+            .onFailure { Log.w(TAG, "Protocol engine shutdown incomplete", it) }
+
+        val releasedPort = activeEngine?.socksAddress
+            ?.substringAfterLast(':')
+            ?.toIntOrNull()
+        if (
+            releasedPort != null &&
+            !waitUntilLocalPortClosed(
+                port = releasedPort,
+                timeoutMs = LOCAL_PROXY_RELEASE_TIMEOUT_MS
+            ) { true }
+        ) {
+            Log.w(TAG, "Local proxy port $releasedPort is still open after shutdown")
+        }
     }
+
+    private fun waitUntilLocalPortClosed(
+        port: Int,
+        timeoutMs: Long,
+        shouldContinue: () -> Boolean
+    ): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs.coerceAtLeast(0L)
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (Thread.currentThread().isInterrupted || !shouldContinue()) {
+                return false
+            }
+            if (!isLocalPortOpen(port)) {
+                return true
+            }
+            try {
+                Thread.sleep(100L)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+        }
+        return !isLocalPortOpen(port)
+    }
+
+    private fun isLocalPortOpen(port: Int): Boolean = runCatching {
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress("127.0.0.1", port), 150)
+        }
+        true
+    }.getOrDefault(false)
 
     private fun isConnectOperationActive(connectGeneration: Long): Boolean =
         !stopping && operationGeneration.get() == connectGeneration
@@ -708,6 +770,7 @@ class BarkaVpnService : VpnService() {
         private const val SOCKS_SLOWDNS = 10809
         private const val SOCKS_UDP = 10810
         private const val LOCAL_PROXY_READY_TIMEOUT_MS = 4_000L
+        private const val LOCAL_PROXY_RELEASE_TIMEOUT_MS = 4_000L
         private const val MAX_CONNECTION_ATTEMPTS = 1
         private const val CONNECTION_RETRY_DELAY_MS = 1_500L
         private const val DIAGNOSTIC_SOCKS_TIMEOUT_MS = 4_000

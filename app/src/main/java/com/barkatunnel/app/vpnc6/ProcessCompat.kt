@@ -45,35 +45,58 @@ internal object ProcessCompat {
         }
     }
 
-    fun stop(process: Process?, timeoutMs: Long = 700L) {
-        process ?: return
-        runCatching { process.destroy() }
-        if (waitForExit(process, timeoutMs)) return
+    fun stop(process: Process?, timeoutMs: Long = 700L): Boolean {
+        process ?: return true
+        var interrupted = Thread.interrupted()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            runCatching { process.destroyForcibly() }
-        } else {
+        return try {
             runCatching { process.destroy() }
+            if (waitForExit(process, timeoutMs) { interrupted = true }) {
+                true
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    runCatching { process.destroyForcibly() }
+                } else {
+                    runCatching { process.destroy() }
+                }
+                waitForExit(process, FORCED_STOP_TIMEOUT_MS) {
+                    interrupted = true
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt()
+            }
         }
     }
 
-    private fun waitForExit(process: Process, timeoutMs: Long): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return runCatching {
-                process.waitFor(timeoutMs.coerceAtLeast(0L), TimeUnit.MILLISECONDS)
-            }.getOrDefault(!isAlive(process))
-        }
-
+    private fun waitForExit(
+        process: Process,
+        timeoutMs: Long,
+        onInterrupted: () -> Unit
+    ): Boolean {
         val deadline = SystemClock.elapsedRealtime() + timeoutMs.coerceAtLeast(0L)
         while (isAlive(process) && SystemClock.elapsedRealtime() < deadline) {
             val remainingMs = deadline - SystemClock.elapsedRealtime()
             try {
-                Thread.sleep(minOf(25L, remainingMs.coerceAtLeast(1L)))
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    if (
+                        process.waitFor(
+                            minOf(100L, remainingMs.coerceAtLeast(1L)),
+                            TimeUnit.MILLISECONDS
+                        )
+                    ) {
+                        return true
+                    }
+                } else {
+                    Thread.sleep(minOf(25L, remainingMs.coerceAtLeast(1L)))
+                }
             } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                break
+                onInterrupted()
             }
         }
         return !isAlive(process)
     }
+
+    private const val FORCED_STOP_TIMEOUT_MS = 2_500L
 }

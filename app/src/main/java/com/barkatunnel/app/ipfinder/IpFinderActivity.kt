@@ -11,7 +11,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
@@ -88,10 +92,7 @@ class IpFinderActivity : AppCompatActivity() {
         resultText = findViewById(R.id.scanResult)
         wifiWarning = findViewById(R.id.wifiWarning)
 
-        val savedSearchPattern = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_SEARCH_PATTERN, "")
-            .orEmpty()
-        ipInput.setText(savedSearchPattern.ifBlank { DEFAULT_SEARCH_PATTERN })
+        ipInput.setText(loadSearchPattern(this))
 
         findViewById<android.view.View>(R.id.backButton).setOnClickListener {
             finish()
@@ -288,6 +289,7 @@ class IpFinderActivity : AppCompatActivity() {
         previousIp = currentCellularIpv4()
         attempts = 0
         searching = true
+        vibrateOnce()
         scanButton.isEnabled = false
         stopButton.visibility = View.VISIBLE
         statusText.setText(R.string.ip_finder_searching)
@@ -367,6 +369,7 @@ class IpFinderActivity : AppCompatActivity() {
 
     private fun completeSearch(ip: String) {
         searching = false
+        vibrateOnce()
         handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)
         scanButton.isEnabled = true
@@ -395,6 +398,34 @@ class IpFinderActivity : AppCompatActivity() {
         statusText.text = message
         statusText.setTextColor(ContextCompat.getColor(this, colorRes))
         AppLogStore.add(this, "IP Finder • $message")
+    }
+
+    private fun vibrateOnce() {
+        if (isFinishing || isDestroyed) return
+        runCatching {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                getSystemService(VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            }
+
+            if (vibrator?.hasVibrator() == true) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(
+                        VibrationEffect.createOneShot(
+                            IP_FINDER_VIBRATION_MS,
+                            VibrationEffect.DEFAULT_AMPLITUDE
+                        )
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(IP_FINDER_VIBRATION_MS)
+                }
+            } else if (::scanButton.isInitialized) {
+                scanButton.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            }
+        }
     }
 
     private fun parsePatterns(value: String): List<String> = value
@@ -473,12 +504,7 @@ class IpFinderActivity : AppCompatActivity() {
         fun isIpCompatible(context: Context, ip: String?): Boolean {
             if (ip.isNullOrBlank()) return false
 
-            val rawPattern = context.getSharedPreferences(
-                PREFERENCES_NAME,
-                Context.MODE_PRIVATE
-            ).getString(KEY_SEARCH_PATTERN, null)
-                .orEmpty()
-                .ifBlank { DEFAULT_SEARCH_PATTERN }
+            val rawPattern = loadSearchPattern(context)
 
             val patterns = rawPattern
                 .split(Regex("[\\n,;]+"))
@@ -513,12 +539,36 @@ class IpFinderActivity : AppCompatActivity() {
         const val PREFERENCES_NAME = "barka_ipfinder"
         private const val KEY_SEARCH_PATTERN = "search_pattern"
         const val KEY_LAST_FOUND_IP = "last_found_ip"
-        private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.46;10.75;10.102;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
+        private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.46;10.75;10.102;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
+        private const val LEGACY_IP_SEQUENCE = "10.208;10.210"
+        private const val UPDATED_IP_SEQUENCE = "10.208;10.209;10.210"
+        private const val IP_FINDER_VIBRATION_MS = 70L
         private const val MAX_NETWORK_POLLS = 15
         private const val MAX_SERVICE_READY_RETRIES = 20
         private const val DISCONNECT_SETTLE_DELAY_MS = 900L
         private const val SERVICE_READY_RETRY_DELAY_MS = 500L
         private const val NETWORK_POLL_DELAY_MS = 1_000L
         private const val NEXT_CYCLE_DELAY_MS = 900L
+
+        private fun loadSearchPattern(context: Context): String {
+            val preferences = context.getSharedPreferences(
+                PREFERENCES_NAME,
+                Context.MODE_PRIVATE
+            )
+            val savedPattern = preferences.getString(KEY_SEARCH_PATTERN, "")
+                .orEmpty()
+            val resolvedPattern = savedPattern.ifBlank { DEFAULT_SEARCH_PATTERN }
+            val migratedPattern = resolvedPattern.replace(
+                LEGACY_IP_SEQUENCE,
+                UPDATED_IP_SEQUENCE
+            )
+
+            if (savedPattern.isNotBlank() && migratedPattern != savedPattern) {
+                preferences.edit()
+                    .putString(KEY_SEARCH_PATTERN, migratedPattern)
+                    .apply()
+            }
+            return migratedPattern
+        }
     }
 }
