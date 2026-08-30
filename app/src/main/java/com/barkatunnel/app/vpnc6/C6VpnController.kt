@@ -10,8 +10,16 @@ import java.util.concurrent.TimeUnit
 
 class C6VpnController(context: Context) {
     private val appContext = context.applicationContext
+    private val operationDispatchLock = Any()
 
-    fun connect(profile: VpnProfile): C6VpnResult {
+    fun connect(
+        profile: VpnProfile,
+        isCancellationRequested: () -> Boolean = { false }
+    ): C6VpnResult {
+        if (isCancellationRequested()) {
+            return C6VpnResult.Disconnected
+        }
+
         if (VpnService.prepare(appContext) != null) {
             return C6VpnResult.Error("Permission VPN Android requise.")
         }
@@ -28,8 +36,20 @@ class C6VpnController(context: Context) {
         }
 
         return try {
-            ContextCompat.startForegroundService(appContext, intent)
-            future.get(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            val dispatched = synchronized(operationDispatchLock) {
+                if (isCancellationRequested()) {
+                    false
+                } else {
+                    ContextCompat.startForegroundService(appContext, intent)
+                    true
+                }
+            }
+            if (dispatched) {
+                future.get(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            } else {
+                C6VpnRuntime.cancel(requestId)
+                C6VpnResult.Disconnected
+            }
         } catch (_: Exception) {
             C6VpnRuntime.cancel(requestId)
             stopWithoutWaiting()
@@ -46,7 +66,9 @@ class C6VpnController(context: Context) {
         }
 
         return try {
-            ContextCompat.startForegroundService(appContext, intent)
+            synchronized(operationDispatchLock) {
+                ContextCompat.startForegroundService(appContext, intent)
+            }
             future.get(DISCONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         } catch (_: Exception) {
             C6VpnRuntime.cancel(requestId)

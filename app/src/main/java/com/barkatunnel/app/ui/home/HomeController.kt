@@ -63,13 +63,25 @@ class HomeController(
         }
     }
 
-    fun connect(): HomeControllerResult {
+    fun connect(
+        isCancellationRequested: () -> Boolean = { false }
+    ): HomeControllerResult {
         val network = state.selectedNetwork
             ?: return HomeControllerResult.Message(
                 "Choisis d’abord un réseau."
             )
 
+        if (isCancellationRequested()) {
+            state = state.copy(connection = HomeConnectionState.Disconnected)
+            return HomeControllerResult.State(state)
+        }
+
         state = state.copy(access = runtime.accessController.refreshAccess())
+
+        if (isCancellationRequested()) {
+            state = state.copy(connection = HomeConnectionState.Disconnected)
+            return HomeControllerResult.State(state)
+        }
 
         if (!state.access.allowed) {
             return HomeControllerResult.Message(
@@ -83,7 +95,8 @@ class HomeController(
 
         return when (
             val result = runtime.vpnCoordinator.connect(
-                network = network
+                network = network,
+                isCancellationRequested = isCancellationRequested
             )
         ) {
             is HomeVpnResult.Connected -> {

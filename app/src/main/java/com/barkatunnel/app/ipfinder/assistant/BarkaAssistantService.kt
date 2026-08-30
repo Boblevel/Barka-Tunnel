@@ -1,7 +1,9 @@
 package com.barkatunnel.app.ipfinder.assistant
 
+import android.app.role.RoleManager
 import android.content.ComponentName
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +16,11 @@ class BarkaAssistantService : VoiceInteractionService() {
     private var cycleInProgress = false
     private var requestedAirplaneState: Boolean? = null
     private var restoringOnly = false
+
+    override fun onCreate() {
+        super.onCreate()
+        activeService = this
+    }
 
     override fun onReady() {
         super.onReady()
@@ -177,11 +184,38 @@ class BarkaAssistantService : VoiceInteractionService() {
         @Volatile
         private var activeService: BarkaAssistantService? = null
 
-        fun isSelected(context: Context): Boolean =
-            VoiceInteractionService.isActiveService(
+        fun isSelected(context: Context): Boolean {
+            val serviceComponent = ComponentName(
                 context,
-                ComponentName(context, BarkaAssistantService::class.java)
+                BarkaAssistantService::class.java
             )
+            val activeServiceSelected = runCatching {
+                VoiceInteractionService.isActiveService(context, serviceComponent)
+            }.getOrDefault(false)
+            if (activeServiceSelected) return true
+
+            val secureServiceSelected = runCatching {
+                Settings.Secure.getString(
+                    context.contentResolver,
+                    VOICE_INTERACTION_SERVICE_SETTING
+                )
+                    ?.substringBefore(':')
+                    ?.let { ComponentName.unflattenFromString(it) } == serviceComponent
+            }.getOrDefault(false)
+            if (secureServiceSelected) return true
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val roleSelected = runCatching {
+                    val roleManager = context.getSystemService(RoleManager::class.java)
+                    roleManager != null &&
+                        roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT) &&
+                        roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT)
+                }.getOrDefault(false)
+                if (roleSelected) return true
+            }
+
+            return false
+        }
 
         fun requestAirplaneCycle(context: Context): Boolean {
             if (!isSelected(context)) return false
@@ -204,5 +238,7 @@ class BarkaAssistantService : VoiceInteractionService() {
         private const val SESSION_RETRY_DELAY_MS = 650L
         private const val MAX_STATE_POLLS = 20
         private const val RESTORE_GUARD_POLLS = 8
+        private const val VOICE_INTERACTION_SERVICE_SETTING =
+            "voice_interaction_service"
     }
 }

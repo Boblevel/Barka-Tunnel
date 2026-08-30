@@ -332,22 +332,26 @@ class MainActivity : AppCompatActivity() {
 
         connectAction = connectAction@{
             val now = SystemClock.elapsedRealtime()
-            if (now - lastConnectActionAtElapsedMs < CONNECT_ACTION_DEBOUNCE_MS) {
-                return@connectAction
-            }
-            lastConnectActionAtElapsedMs = now
-
             orangeIpWarningToast?.cancel()
             orangeIpWarningToast = null
 
             val controller = requireController() ?: return@connectAction
 
-            if (
-                connectionStartRequested ||
-                disconnectRequested ||
-                pendingConnectAfterInitialSync ||
-                pendingConnectAfterVpnPermission
-            ) {
+            if (disconnectRequested) {
+                return@connectAction
+            }
+
+            if (pendingConnectAfterInitialSync || pendingConnectAfterVpnPermission) {
+                lastConnectActionAtElapsedMs = now
+                vibrateOnce(PRESS_VIBRATION_MS)
+                cancelPendingConnectionStart(controller)
+                return@connectAction
+            }
+
+            if (connectionStartRequested) {
+                lastConnectActionAtElapsedMs = now
+                vibrateOnce(PRESS_VIBRATION_MS)
+                requestVpnDisconnect(controller)
                 return@connectAction
             }
 
@@ -356,13 +360,22 @@ class MainActivity : AppCompatActivity() {
 
             when (currentConnection) {
                 HomeConnectionState.Disconnected -> {
+                    if (now - lastConnectActionAtElapsedMs < CONNECT_ACTION_DEBOUNCE_MS) {
+                        return@connectAction
+                    }
+                    lastConnectActionAtElapsedMs = now
                     vibrateOnce(PRESS_VIBRATION_MS)
                     beginVpnConnection(controller)
                 }
-                HomeConnectionState.Connecting,
+                HomeConnectionState.Connecting -> {
+                    lastConnectActionAtElapsedMs = now
+                    vibrateOnce(PRESS_VIBRATION_MS)
+                    requestVpnDisconnect(controller)
+                }
                 HomeConnectionState.Disconnecting -> Unit
                 is HomeConnectionState.Connected,
                 is HomeConnectionState.Error -> {
+                    lastConnectActionAtElapsedMs = now
                     vibrateOnce(PRESS_VIBRATION_MS)
                     requestVpnDisconnect(controller)
                 }
@@ -825,7 +838,10 @@ class MainActivity : AppCompatActivity() {
         handleHomeResult(controller.syncConnection(HomeConnectionState.Connecting))
 
         Thread {
-            val result = controller.connect()
+            val result = controller.connect {
+                operationGeneration != connectionOperationGeneration.get() ||
+                    disconnectRequested
+            }
             runOnUiThread {
                 if (
                     operationGeneration != connectionOperationGeneration.get() ||

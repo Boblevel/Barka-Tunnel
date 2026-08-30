@@ -6,4 +6,11 @@
         <item name="android:navigationBarColor">@color/barka_background</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <style name="Theme.BarkaTunnel.Starting" parent="Theme.BarkaTunnel">
+        <item name="android:windowBackground">@drawable/barka_starting_window</item>
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
 </resources>

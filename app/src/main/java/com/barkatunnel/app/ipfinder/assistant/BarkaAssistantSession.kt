@@ -1,5 +1,6 @@
 package com.barkatunnel.app.ipfinder.assistant
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -8,13 +9,18 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.service.voice.VoiceInteractionSession
+import com.barkatunnel.app.ipfinder.IpFinderActivity
 
 class BarkaAssistantSession(
-    appContext: Context
+    private val appContext: Context
 ) : VoiceInteractionSession(appContext) {
 
     private val handler = Handler(Looper.getMainLooper())
     private var commandStarted = false
+    private var commandReported = false
+    private var commandFinished = false
+    private var requestedState = false
+    private var commandIssued = false
 
     override fun onPrepareShow(args: Bundle?, showFlags: Int) {
         super.onPrepareShow(args, showFlags)
@@ -32,12 +38,17 @@ class BarkaAssistantSession(
         }
 
         commandStarted = true
-        val enabled = args.getBoolean(BarkaAssistantService.KEY_AIRPLANE_MODE_ENABLED)
-        val issued = requestAirplaneMode(enabled)
+        requestedState = args.getBoolean(BarkaAssistantService.KEY_AIRPLANE_MODE_ENABLED)
+        commandIssued = requestAirplaneMode(requestedState)
         handler.postDelayed({
-            BarkaAssistantService.reportSessionCommand(enabled, issued)
-            finish()
+            reportCommandIfNeeded()
+            finishAndRestoreIpFinder()
         }, COMMAND_SETTLE_DELAY_MS)
+    }
+
+    override fun onTaskFinished(intent: Intent, taskId: Int) {
+        reportCommandIfNeeded()
+        finishAndRestoreIpFinder()
     }
 
     override fun onDestroy() {
@@ -54,6 +65,63 @@ class BarkaAssistantSession(
             )
             true
         }.getOrDefault(false)
+
+    private fun reportCommandIfNeeded() {
+        if (!commandStarted || commandReported) return
+        commandReported = true
+        BarkaAssistantService.reportSessionCommand(requestedState, commandIssued)
+    }
+
+    private fun finishAndRestoreIpFinder() {
+        if (commandFinished) return
+        commandFinished = true
+        handler.removeCallbacksAndMessages(null)
+        finish()
+        restoreIpFinderTask()
+    }
+
+    private fun restoreIpFinderTask() {
+        val restored = runCatching {
+            val activityManager =
+                appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val appTask = activityManager.appTasks.firstOrNull { task ->
+                task.taskInfo.baseIntent.component?.packageName == appContext.packageName
+            } ?: activityManager.appTasks.firstOrNull()
+            if (appTask == null) {
+                false
+            } else {
+                if (appTask.taskInfo.topActivity?.className != IpFinderActivity::class.java.name) {
+                    appTask.startActivity(
+                        appContext,
+                        ipFinderIntent(flags = 0),
+                        null
+                    )
+                }
+                appTask.moveToFront()
+                true
+            }
+        }.getOrDefault(false)
+
+        if (!restored) {
+            runCatching {
+                appContext.startActivity(
+                    ipFinderIntent(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    )
+                )
+            }
+        }
+    }
+
+    private fun ipFinderIntent(flags: Int): Intent =
+        Intent(appContext, IpFinderActivity::class.java).apply {
+            addFlags(
+                flags or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            )
+        }
 
     companion object {
         private const val COMMAND_SETTLE_DELAY_MS = 450L

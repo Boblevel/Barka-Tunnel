@@ -11,8 +11,13 @@ class HomeVpnCoordinator(
 ) {
 
     fun connect(
-        network: NetworkOption
+        network: NetworkOption,
+        isCancellationRequested: () -> Boolean = { false }
     ): HomeVpnResult {
+
+        if (isCancellationRequested()) {
+            return HomeVpnResult.Disconnected
+        }
 
         val profile = try {
             profileRepository.loadForConnection(network.id)
@@ -22,7 +27,16 @@ class HomeVpnCoordinator(
             )
         }
 
-        return when (val result = c6VpnController.connect(profile)) {
+        if (isCancellationRequested()) {
+            return HomeVpnResult.Disconnected
+        }
+
+        return when (
+            val result = c6VpnController.connect(
+                profile = profile,
+                isCancellationRequested = isCancellationRequested
+            )
+        ) {
             is C6VpnResult.Connected -> HomeVpnResult.Connected(network.displayName)
             is C6VpnResult.Disconnected -> HomeVpnResult.Disconnected
             is C6VpnResult.Error -> HomeVpnResult.Error(result.message)
