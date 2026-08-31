@@ -72,4 +72,6 @@ class UdpSshEngine(
         sshProxy?.stop()
         sshProxy = null
     }
+
+    override fun isRunning(): Boolean = sshProxy?.isRunning() == true
 }

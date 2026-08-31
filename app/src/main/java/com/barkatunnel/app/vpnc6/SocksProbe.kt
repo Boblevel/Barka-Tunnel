@@ -6,6 +6,24 @@ import java.net.InetSocketAddress
 import java.net.Socket
 
 object SocksProbe {
+    fun hasUsableInternet(
+        proxyHost: String,
+        proxyPort: Int,
+        timeoutMs: Int
+    ): Boolean = connectThrough(
+        proxyHost = proxyHost,
+        proxyPort = proxyPort,
+        destinationHost = "1.1.1.1",
+        destinationPort = 443,
+        timeoutMs = timeoutMs
+    ) || connectThrough(
+        proxyHost = proxyHost,
+        proxyPort = proxyPort,
+        destinationHost = "8.8.8.8",
+        destinationPort = 443,
+        timeoutMs = timeoutMs
+    )
+
     fun connectThrough(
         proxyHost: String,
         proxyPort: Int,

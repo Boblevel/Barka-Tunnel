@@ -20,8 +20,8 @@ CMAKE="$ANDROID_SDK/cmake/$CMAKE_VERSION/bin/cmake"
 test -f "$NDK/build/cmake/android.toolchain.cmake" || { echo "NDK Android introuvable"; exit 1; }
 test -x "$CMAKE" || { echo "CMake Android introuvable"; exit 1; }
 ARMV7_TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-ARMV7_CC="$ARMV7_TOOLCHAIN/armv7a-linux-androideabi24-clang"
-ARMV7_CXX="$ARMV7_TOOLCHAIN/armv7a-linux-androideabi24-clang++"
+ARMV7_CC="$ARMV7_TOOLCHAIN/armv7a-linux-androideabi23-clang"
+ARMV7_CXX="$ARMV7_TOOLCHAIN/armv7a-linux-androideabi23-clang++"
 test -x "$ARMV7_CC" || { echo "Compilateur Android ARMv7 C introuvable"; exit 1; }
 test -x "$ARMV7_CXX" || { echo "Compilateur Android ARMv7 C++ introuvable"; exit 1; }
 
@@ -77,7 +77,7 @@ for abi in arm64-v8a armeabi-v7a; do
   "$CMAKE" -S "$TUN_CPP" -B "$build_dir" \
     -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI="$abi" \
-    -DANDROID_PLATFORM=android-24 \
+    -DANDROID_PLATFORM=android-23 \
     -DANDROID_STL=c++_static \
     -DCMAKE_BUILD_TYPE=Release
   "$CMAKE" --build "$build_dir" --config Release --parallel

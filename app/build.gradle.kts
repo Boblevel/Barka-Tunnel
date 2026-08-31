@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.barkatunnel.app"
-        minSdk = 24
+        minSdk = 23
         targetSdk = 35
         versionCode = 66
         versionName = "1.1.9.5"

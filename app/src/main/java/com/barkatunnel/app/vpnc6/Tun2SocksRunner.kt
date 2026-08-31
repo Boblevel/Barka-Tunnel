@@ -187,8 +187,8 @@ class Tun2SocksRunner(private val context: Context) {
     companion object {
         private val nativeLifecycleLock = Any()
         private var activeNativeThread: Thread? = null
-        private const val STARTUP_STABILITY_DELAY_MS = 1_200L
-        private const val GRACEFUL_STOP_TIMEOUT_MS = 5_000L
-        private const val DESCRIPTOR_CLOSE_TIMEOUT_MS = 3_000L
+        private const val STARTUP_STABILITY_DELAY_MS = 800L
+        private const val GRACEFUL_STOP_TIMEOUT_MS = 1_500L
+        private const val DESCRIPTOR_CLOSE_TIMEOUT_MS = 3_500L
     }
 }

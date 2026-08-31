@@ -193,7 +193,13 @@ class SlowDnsEngine(
         stopAttempt()
     }
 
+    override fun isRunning(): Boolean {
+        val activeDnstt = dnsttProcess
+        return sshProxy?.isRunning() == true &&
+            (activeDnstt == null || ProcessCompat.isAlive(activeDnstt))
+    }
+
     companion object {
-        private const val DNSTT_READY_TIMEOUT_MS = 25_000L
+        private const val DNSTT_READY_TIMEOUT_MS = 12_000L
     }
 }

@@ -14,6 +14,7 @@ import android.media.AudioAttributes
 import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
+import android.net.NetworkRequest
 import android.net.Uri
 import android.net.NetworkCapabilities
 import android.net.VpnService
@@ -531,8 +532,22 @@ class MainActivity : AppCompatActivity() {
             }
         }
         if (!networkCallbackRegistered) {
-            connectivityManager.registerDefaultNetworkCallback(networkCallback)
-            networkCallbackRegistered = true
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    connectivityManager.registerDefaultNetworkCallback(networkCallback)
+                } else {
+                    connectivityManager.registerNetworkCallback(
+                        NetworkRequest.Builder()
+                            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                            .build(),
+                        networkCallback
+                    )
+                }
+            }.onSuccess {
+                networkCallbackRegistered = true
+            }.onFailure {
+                AppLogStore.add(this, "Surveillance réseau Android indisponible.")
+            }
         }
         ensureInitialRemoteSync()
         maybeSyncVpnProfiles()
@@ -558,6 +573,7 @@ class MainActivity : AppCompatActivity() {
 
         if (::networkIpValue.isInitialized) {
             applySystemBars()
+            restoreSelectedNetworkSelection()
             refreshNetworkIp()
             syncVpnRuntimeState()
             if (
@@ -1202,7 +1218,21 @@ class MainActivity : AppCompatActivity() {
         getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
             .edit()
             .putString(PREF_SELECTED_NETWORK, network.id)
-            .apply()
+            .commit()
+    }
+
+    private fun restoreSelectedNetworkSelection() {
+        val persistedNetwork = loadSelectedNetwork()
+        selectedNetwork = persistedNetwork
+        val controller = homeController
+        if (controller == null) {
+            uiBinder.showNetwork(persistedNetwork)
+            updateSelectedNetworkLogo(persistedNetwork)
+            return
+        }
+        if (controller.currentState().selectedNetwork?.id != persistedNetwork.id) {
+            handleHomeResult(controller.selectNetwork(persistedNetwork))
+        }
     }
 
     private fun showSideMenu() {

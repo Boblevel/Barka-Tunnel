@@ -80,6 +80,9 @@ class SshSocksProxy(
         executor.shutdownNow()
     }
 
+    fun isRunning(): Boolean =
+        running && session?.isConnected == true && serverSocket?.isClosed == false
+
     private fun handleClient(socket: Socket) {
         var channel: ChannelDirectTCPIP? = null
         try {

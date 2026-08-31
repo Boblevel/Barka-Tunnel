@@ -49,7 +49,7 @@ class XrayVlessEngine(
             "Diagnostic ORANGE • processus Xray lancé • SOCKS attendu 127.0.0.1:$socksPort."
         )
 
-        if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 25_000) {
+        if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, XRAY_READY_TIMEOUT_MS) {
                 !isCancelled() && ProcessCompat.isAlive(process)
             }) {
             if (isCancelled()) throw InterruptedException("Connexion annulée.")
@@ -91,6 +91,8 @@ class XrayVlessEngine(
         logFile?.delete()
         logFile = null
     }
+
+    override fun isRunning(): Boolean = ProcessCompat.isAlive(process)
 
     private fun xrayFailureDetail(): String {
         val output = logFile?.takeIf { it.isFile }?.readText().orEmpty()
@@ -156,5 +158,9 @@ class XrayVlessEngine(
             .put("log", JSONObject().put("loglevel", "warning"))
             .put("inbounds", JSONArray().put(inbound))
             .put("outbounds", JSONArray().put(outbound))
+    }
+
+    companion object {
+        private const val XRAY_READY_TIMEOUT_MS = 12_000L
     }
 }
