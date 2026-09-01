@@ -91,6 +91,38 @@ class BarkaVpnService : VpnService() {
                     }
                 }
             }
+            ACTION_RECONNECT -> {
+                val canReconnect =
+                    connected &&
+                    !stopping &&
+                    runtimeState == RuntimeConnectionState.CONNECTED &&
+                    activeSession != null &&
+                    connectFuture?.isDone != false
+                val notificationText = when (runtimeState) {
+                    RuntimeConnectionState.CONNECTING -> getString(R.string.notification_connecting)
+                    RuntimeConnectionState.DISCONNECTING -> getString(R.string.notification_disconnecting)
+                    RuntimeConnectionState.CONNECTED -> getString(R.string.notification_connected)
+                    RuntimeConnectionState.DISCONNECTED -> getString(R.string.notification_disconnecting)
+                }
+                // L'action vient d'un PendingIntent de service au premier plan :
+                // la notification doit être republiée immédiatement sur Android 8+.
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(this, notificationText)
+                )
+                if (!canReconnect) {
+                    if (runtimeState == RuntimeConnectionState.DISCONNECTED) {
+                        stopForegroundCompat()
+                        stopSelfResult(startId)
+                    }
+                    return START_NOT_STICKY
+                }
+                AppLogStore.add(this, "Reconnexion demandée.")
+                scheduleHealthRecovery(
+                    reason = "Reconnexion manuelle demandée.",
+                    resetConnectedTimer = true
+                )
+            }
             ACTION_DISCONNECT -> {
                 // Chaque démarrage via startForegroundService doit publier sa
                 // notification avant tout retour, même si une annulation de
@@ -614,13 +646,20 @@ class BarkaVpnService : VpnService() {
         )
     }
 
-    private fun scheduleHealthRecovery(reason: String) {
+    private fun scheduleHealthRecovery(
+        reason: String,
+        resetConnectedTimer: Boolean = false
+    ) {
         if (!connected || stopping) return
         val session = activeSession ?: return
         if (!healthRecoveryScheduled.compareAndSet(false, true)) return
 
         val recoveryGeneration = operationGeneration.incrementAndGet()
-        val connectedAtElapsedMs = runtimeConnectedAtElapsedMs
+        val connectedAtElapsedMs = if (resetConnectedTimer) {
+            0L
+        } else {
+            runtimeConnectedAtElapsedMs
+        }
         connected = false
         updateRuntimeState(
             RuntimeConnectionState.CONNECTING,
@@ -795,6 +834,7 @@ class BarkaVpnService : VpnService() {
         )
         const val ACTION_CONNECT = "com.barkatunnel.app.C6_CONNECT"
         const val ACTION_DISCONNECT = "com.barkatunnel.app.C6_DISCONNECT"
+        const val ACTION_RECONNECT = "com.barkatunnel.app.C6_RECONNECT"
         const val EXTRA_REQUEST_ID = "request_id"
         const val EXTRA_PROFILE_ID = "profile_id"
         const val EXTRA_PROFILE_NAME = "profile_name"
@@ -859,6 +899,11 @@ class BarkaVpnService : VpnService() {
                     context.getString(R.string.disconnect),
                     disconnectPendingIntent(context)
                 )
+                builder.addAction(
+                    R.drawable.ic_refresh_barka,
+                    context.getString(R.string.reconnect),
+                    reconnectPendingIntent(context)
+                )
             }
 
             val connectedAtElapsedMs = runtimeConnectedAtElapsedMs
@@ -892,6 +937,17 @@ class BarkaVpnService : VpnService() {
             }
         }
 
+        private fun reconnectPendingIntent(context: Context): PendingIntent {
+            val intent = Intent(context, BarkaVpnService::class.java)
+                .setAction(ACTION_RECONNECT)
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                PendingIntent.getForegroundService(context, RECONNECT_REQUEST_CODE, intent, flags)
+            } else {
+                PendingIntent.getService(context, RECONNECT_REQUEST_CODE, intent, flags)
+            }
+        }
+
         private fun createNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val manager = context.getSystemService(NotificationManager::class.java)
@@ -913,6 +969,7 @@ class BarkaVpnService : VpnService() {
         private const val CHANNEL_ID = "barka_vpn_status_v2"
         private const val NOTIFICATION_ID = 6001
         private const val DISCONNECT_REQUEST_CODE = 6002
+        private const val RECONNECT_REQUEST_CODE = 6003
         private const val VPN_MTU = 1500
         private const val VPN_INTERFACE_ADDRESS = "10.10.0.1"
         private const val TUN2SOCKS_ROUTER_ADDRESS = "10.10.0.2"

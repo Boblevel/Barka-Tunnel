@@ -48,7 +48,7 @@ def get_app_update_for_client(current_version_code: int) -> dict:
         "force_update": available and bool(item["mandatory"]),
         "latest_version_code": int(item["latest_version_code"]),
         "latest_version_name": item["latest_version_name"],
-        "apk_url": item["apk_url"] if available else "",
+        "apk_url": item["apk_url"] if item["enabled"] else "",
         "message": item["message"],
         "updated_at": item["updated_at"],
     }

@@ -206,9 +206,13 @@ def test_app_update_is_server_controlled(tmp_path):
     assert old_client["apk_url"].startswith("https://")
 
     current_client = app_updates.get_app_update_for_client(7)
+    assert current_client["enabled"] is True
     assert current_client["update_available"] is False
     assert current_client["force_update"] is False
-    assert current_client["apk_url"] == ""
+    assert current_client["updated_at"] == saved["updated_at"]
+    assert current_client["apk_url"].startswith(
+        "https://barkatunnel.vercel.app/downloads/BarkaTunnel.apk"
+    )
 
 
 def test_admin_code_listing_reconstructs_manual_code(tmp_path):

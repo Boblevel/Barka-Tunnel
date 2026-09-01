@@ -33,6 +33,7 @@
     <string name="add">ADD</string>
     <string name="connect">CONNECT</string>
     <string name="disconnect">DISCONNECT</string>
+    <string name="reconnect">RECONNECT</string>
     <string name="ip_unavailable_toast">IP address unavailable.</string>
     <string name="ip_clipboard_label">Network IP address</string>
     <string name="ip_copied_toast">IP address copied.</string>

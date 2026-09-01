@@ -39,6 +39,7 @@
     <string name="add">AJOUTER</string>
     <string name="connect">SE CONNECTER</string>
     <string name="disconnect">SE DÉCONNECTER</string>
+    <string name="reconnect">RECONNECTER</string>
     <string name="ip_unavailable_toast">Adresse IP indisponible.</string>
     <string name="ip_clipboard_label">Adresse IP du réseau</string>
     <string name="ip_copied_toast">Adresse IP copiée.</string>

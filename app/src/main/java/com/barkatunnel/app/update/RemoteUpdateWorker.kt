@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -39,6 +40,33 @@ class RemoteUpdateWorker(
         val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         return try {
+            val appUpdate = backend.checkAppUpdate(BuildConfig.VERSION_CODE.toLong())
+            val panelRevision = appUpdate.updatedAt.trim()
+            val lastNotifiedRevision = prefs.getString(
+                KEY_LAST_NOTIFIED_APK_REVISION,
+                ""
+            ).orEmpty()
+            if (
+                appUpdate.enabled &&
+                panelRevision.isNotBlank() &&
+                panelRevision != lastNotifiedRevision
+            ) {
+                val notificationShown = showNotification(
+                    NOTIFICATION_APK_ID,
+                    applicationContext.getString(R.string.remote_apk_update_title),
+                    appUpdate.message.ifBlank {
+                        applicationContext.getString(R.string.update_available)
+                    },
+                    appUpdate.apkUrl
+                )
+                if (notificationShown) {
+                    AppLogStore.add(applicationContext, "Mise à jour disponible.")
+                    prefs.edit()
+                        .putString(KEY_LAST_NOTIFIED_APK_REVISION, panelRevision)
+                        .apply()
+                }
+            }
+
             val catalog = backend.getVpnCatalog()
             val fingerprint = catalog
                 .sortedBy { it.networkId }
@@ -73,35 +101,18 @@ class RemoteUpdateWorker(
             }
             prefs.edit().putString(KEY_PROFILE_FINGERPRINT, fingerprint).apply()
 
-            val appUpdate = backend.checkAppUpdate(BuildConfig.VERSION_CODE.toLong())
-            val lastNotifiedVersion = prefs.getLong(
-                KEY_LAST_NOTIFIED_APK_VERSION,
-                BuildConfig.VERSION_CODE.toLong()
-            )
-            if (
-                appUpdate.updateAvailable &&
-                appUpdate.latestVersionCode > lastNotifiedVersion
-            ) {
-                AppLogStore.add(applicationContext, "Mise à jour disponible.")
-                showNotification(
-                    NOTIFICATION_APK_ID,
-                    applicationContext.getString(R.string.remote_apk_update_title),
-                    appUpdate.message.ifBlank {
-                        applicationContext.getString(R.string.update_available)
-                    }
-                )
-                prefs.edit()
-                    .putLong(KEY_LAST_NOTIFIED_APK_VERSION, appUpdate.latestVersionCode)
-                    .apply()
-            }
-
             Result.success()
         } catch (_: Exception) {
             Result.retry()
         }
     }
 
-    private fun showNotification(id: Int, title: String, message: String) {
+    private fun showNotification(
+        id: Int,
+        title: String,
+        message: String,
+        openUrl: String = ""
+    ): Boolean {
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
@@ -109,16 +120,26 @@ class RemoteUpdateWorker(
                 Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            return
+            return false
         }
 
+        val notificationManager = NotificationManagerCompat.from(applicationContext)
+        if (!notificationManager.areNotificationsEnabled()) return false
+
         createChannel()
-        val openApp = PendingIntent.getActivity(
-            applicationContext,
-            id,
+        val openIntent = if (openUrl.startsWith("https://")) {
+            Intent(Intent.ACTION_VIEW, Uri.parse(openUrl)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        } else {
             Intent(applicationContext, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
+            }
+        }
+        val openDestination = PendingIntent.getActivity(
+            applicationContext,
+            id,
+            openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
@@ -126,14 +147,15 @@ class RemoteUpdateWorker(
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setContentIntent(openApp)
+            .setContentIntent(openDestination)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setColor(ContextCompat.getColor(applicationContext, R.color.barka_blue))
             .build()
 
-        NotificationManagerCompat.from(applicationContext).notify(id, notification)
+        notificationManager.notify(id, notification)
+        return true
     }
 
     private fun createChannel() {
@@ -153,7 +175,7 @@ class RemoteUpdateWorker(
     companion object {
         private const val PREFS_NAME = "barka_remote_update_notifications"
         private const val KEY_PROFILE_FINGERPRINT = "profile_fingerprint"
-        private const val KEY_LAST_NOTIFIED_APK_VERSION = "last_notified_apk_version"
+        private const val KEY_LAST_NOTIFIED_APK_REVISION = "last_notified_apk_revision"
         private const val CHANNEL_ID = "barka_remote_updates"
         private const val NOTIFICATION_PROFILE_ID = 2201
         private const val NOTIFICATION_APK_ID = 2202
