@@ -853,6 +853,14 @@ class BarkaVpnService : VpnService() {
                 .setColor(ContextCompat.getColor(context, R.color.barka_blue))
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
 
+            if (runtimeState == RuntimeConnectionState.CONNECTED) {
+                builder.addAction(
+                    R.drawable.ic_power_barka,
+                    context.getString(R.string.disconnect),
+                    disconnectPendingIntent(context)
+                )
+            }
+
             val connectedAtElapsedMs = runtimeConnectedAtElapsedMs
             if (
                 runtimeState == RuntimeConnectionState.CONNECTED &&
@@ -871,6 +879,17 @@ class BarkaVpnService : VpnService() {
             }
 
             return builder.build()
+        }
+
+        private fun disconnectPendingIntent(context: Context): PendingIntent {
+            val intent = Intent(context, BarkaVpnService::class.java)
+                .setAction(ACTION_DISCONNECT)
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                PendingIntent.getForegroundService(context, DISCONNECT_REQUEST_CODE, intent, flags)
+            } else {
+                PendingIntent.getService(context, DISCONNECT_REQUEST_CODE, intent, flags)
+            }
         }
 
         private fun createNotificationChannel(context: Context) {
@@ -893,6 +912,7 @@ class BarkaVpnService : VpnService() {
         private const val TAG = "BarkaVpnService"
         private const val CHANNEL_ID = "barka_vpn_status_v2"
         private const val NOTIFICATION_ID = 6001
+        private const val DISCONNECT_REQUEST_CODE = 6002
         private const val VPN_MTU = 1500
         private const val VPN_INTERFACE_ADDRESS = "10.10.0.1"
         private const val TUN2SOCKS_ROUTER_ADDRESS = "10.10.0.2"

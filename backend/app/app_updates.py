@@ -9,6 +9,13 @@ from .db import connect, transaction
 from .services import iso, now_ts
 
 
+VERCEL_APK_BASE_URL = "https://barkatunnel.vercel.app/downloads/BarkaTunnel.apk"
+
+
+def _vercel_apk_url(version_code: int) -> str:
+    return f"{VERCEL_APK_BASE_URL}?v={version_code}"
+
+
 def _row_to_admin(row) -> dict:
     return {
         "enabled": bool(row["enabled"]),
@@ -57,6 +64,7 @@ def upsert_app_update(payload: dict) -> dict:
     if not version_name:
         raise ValueError("Le nom de version est obligatoire.")
     if enabled:
+        apk_url = _vercel_apk_url(version_code)
         parsed = urlparse(apk_url)
         if parsed.scheme != "https" or not parsed.netloc:
             raise ValueError("Une URL APK HTTPS valide est obligatoire quand la mise à jour est activée.")

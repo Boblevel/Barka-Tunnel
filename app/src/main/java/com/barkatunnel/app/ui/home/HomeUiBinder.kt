@@ -28,7 +28,7 @@ class HomeUiBinder(
 
     fun showAccess(state: HomeAccessState) {
         accessRemainingTime.text =
-            ConnectionTimeFormatter.format(state.remainingSeconds)
+            ConnectionTimeFormatter.formatRemaining(state.remainingSeconds)
 
         accessStatus.text = localizedAccessLabel(state.label)
     }

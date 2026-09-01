@@ -368,7 +368,7 @@
                         android:textSize="@dimen/home_remaining_time_text_size"
                         android:textStyle="bold"
                         app:autoSizeMaxTextSize="@dimen/home_remaining_time_text_size"
-                        app:autoSizeMinTextSize="18sp"
+                        app:autoSizeMinTextSize="12sp"
                         app:autoSizeStepGranularity="1sp"
                         app:autoSizeTextType="uniform" />
 
