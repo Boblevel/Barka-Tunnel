@@ -63,6 +63,7 @@ import com.barkatunnel.app.ui.home.HomeControllerResult
 import com.barkatunnel.app.ui.home.HomeRuntimeFactory
 import com.barkatunnel.app.ui.home.HomeTimerController
 import com.barkatunnel.app.ui.home.HomeUiBinder
+import com.barkatunnel.app.ui.home.ConnectionTimeFormatter
 import com.barkatunnel.app.ui.home.NetworkOption
 import com.barkatunnel.app.ui.pager.StaticPageAdapter
 import com.barkatunnel.app.backend.BarkaBackendClient
@@ -277,7 +278,7 @@ class MainActivity : AppCompatActivity() {
 
         timerController = HomeTimerController(
             onAccessTick = { seconds ->
-                accessRemainingTime.text = formatDuration(seconds)
+                accessRemainingTime.text = ConnectionTimeFormatter.formatRemaining(seconds)
 
                 if (seconds <= 0L) {
                     accessStatus.setText(R.string.no_active_time)
