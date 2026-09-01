@@ -69,7 +69,15 @@ chmod 0755 \
 # BadVPN tun2socks + UDPGW JNI. Le projet amont utilise un ancien couple
 # Gradle/AGP qui échoue à la configuration sur le runner GitHub actuel.
 # On compile donc uniquement le module JNI CMake, sans passer par son Gradle.
-git clone --depth 1 https://github.com/LondonX/tun2socks-android.git "$TMP/tun2socks"
+TUN2SOCKS_COMMIT="33b00ebac905ae3d79b237add9f590ae57c0c9c4"
+git init -q "$TMP/tun2socks"
+git -C "$TMP/tun2socks" remote add origin https://github.com/LondonX/tun2socks-android.git
+git -C "$TMP/tun2socks" fetch -q --depth 1 origin "$TUN2SOCKS_COMMIT"
+git -C "$TMP/tun2socks" checkout -q --detach FETCH_HEAD
+test "$(git -C "$TMP/tun2socks" rev-parse HEAD)" = "$TUN2SOCKS_COMMIT" || {
+  echo "Version tun2socks inattendue"
+  exit 1
+}
 
 TUN_CPP="$TMP/tun2socks/tun2socks/src/main/cpp"
 for abi in arm64-v8a armeabi-v7a; do

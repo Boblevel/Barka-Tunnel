@@ -40,9 +40,10 @@ class BarkaVpnService : VpnService() {
     private var keepAliveFuture: ScheduledFuture<*>? = null
     private val tunnelLock = Any()
     private val operationGeneration = AtomicLong(0L)
-    private val healthDisconnectScheduled = AtomicBoolean(false)
+    private val healthRecoveryScheduled = AtomicBoolean(false)
     @Volatile private var vpnDescriptor: ParcelFileDescriptor? = null
     @Volatile private var stopping = false
+    @Volatile private var activeSession: ActiveSession? = null
     @Volatile private var activeConnectRequestId: String? = null
     @Volatile private var connectFuture: Future<*>? = null
     @Volatile private var latestStartId = 0
@@ -70,7 +71,8 @@ class BarkaVpnService : VpnService() {
                 }
                 val connectGeneration = operationGeneration.incrementAndGet()
                 stopping = false
-                healthDisconnectScheduled.set(false)
+                activeSession = null
+                healthRecoveryScheduled.set(false)
                 activeConnectRequestId = requestId
                 updateRuntimeState(
                     RuntimeConnectionState.CONNECTING,
@@ -103,6 +105,8 @@ class BarkaVpnService : VpnService() {
                 }
                 val disconnectGeneration = operationGeneration.incrementAndGet()
                 stopping = true
+                activeSession = null
+                healthRecoveryScheduled.set(false)
                 AppLogStore.add(this, "Déconnexion en cours.")
                 updateRuntimeState(
                     RuntimeConnectionState.DISCONNECTING,
@@ -119,6 +123,8 @@ class BarkaVpnService : VpnService() {
     override fun onRevoke() {
         val disconnectGeneration = operationGeneration.incrementAndGet()
         stopping = true
+        activeSession = null
+        healthRecoveryScheduled.set(false)
         AppLogStore.add(this, "Déconnexion en cours.")
         updateRuntimeState(
             RuntimeConnectionState.DISCONNECTING,
@@ -133,6 +139,8 @@ class BarkaVpnService : VpnService() {
     override fun onDestroy() {
         operationGeneration.incrementAndGet()
         stopping = true
+        activeSession = null
+        healthRecoveryScheduled.set(false)
         connectFuture?.cancel(true)
         connectFuture = null
         mainHandler.removeCallbacksAndMessages(null)
@@ -204,6 +212,7 @@ class BarkaVpnService : VpnService() {
                     }
 
                     connected = true
+                    activeSession = ActiveSession(protocol, profileConfig, profileName)
                     updateRuntimeState(
                         RuntimeConnectionState.CONNECTED,
                         profileName,
@@ -258,6 +267,7 @@ class BarkaVpnService : VpnService() {
             )
             Log.w(TAG, "Connection failed after retries: $finalMessage")
             AppLogStore.add(this, "Connexion refusée.")
+            activeSession = null
             updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
             finishServiceIfIdle(connectGeneration)
             completeConnectRequest(
@@ -271,6 +281,7 @@ class BarkaVpnService : VpnService() {
             Log.e(TAG, "Connection failure: $technicalMessage", error)
             AppLogStore.add(this, "Connexion refusée.")
             stopTunnel()
+            activeSession = null
             updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
             finishServiceIfIdle(connectGeneration)
             completeConnectRequest(
@@ -427,6 +438,8 @@ class BarkaVpnService : VpnService() {
         }
         val pendingConnectRequestId = activeConnectRequestId
         activeConnectRequestId = null
+        activeSession = null
+        healthRecoveryScheduled.set(false)
         updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
         AppLogStore.add(this, "VPN déconnecté.")
         finishServiceIfIdle(disconnectGeneration)
@@ -559,13 +572,13 @@ class BarkaVpnService : VpnService() {
                             tun2SocksRunner?.isRunning() == true
                     }
                     if (!runnerHealthy) {
-                        scheduleHealthDisconnect("Le moteur du tunnel s’est arrêté.")
+                        scheduleHealthRecovery("Le moteur du tunnel s’est arrêté.")
                     } else {
                         val enabled = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
                             .getBoolean(KEY_AUTO_PING, false)
-                        // Le contrôle passe toujours par le proxy SOCKS actif. Il
-                        // garde SlowDNS/SSH/VLESS en activité et vérifie que le
-                        // tunnel transporte encore réellement les requêtes.
+                        // Ce contrôle valide le relais SOCKS. Le processus
+                        // tun2socks est contrôlé séparément ci-dessus, car
+                        // l'application est volontairement exclue du TUN.
                         val startNs = System.nanoTime()
                         val ok = SocksProbe.hasUsableInternet(
                             proxyHost = "127.0.0.1",
@@ -588,7 +601,7 @@ class BarkaVpnService : VpnService() {
                         }
 
                         if (!ok && consecutiveFailures >= HEALTH_FAILURE_LIMIT) {
-                            scheduleHealthDisconnect(
+                            scheduleHealthRecovery(
                                 "Le proxy VPN ne transmet plus les données."
                             )
                         }
@@ -601,34 +614,102 @@ class BarkaVpnService : VpnService() {
         )
     }
 
-    private fun scheduleHealthDisconnect(reason: String) {
+    private fun scheduleHealthRecovery(reason: String) {
         if (!connected || stopping) return
-        if (!healthDisconnectScheduled.compareAndSet(false, true)) return
+        val session = activeSession ?: return
+        if (!healthRecoveryScheduled.compareAndSet(false, true)) return
 
-        stopping = true
-        val disconnectGeneration = operationGeneration.incrementAndGet()
+        val recoveryGeneration = operationGeneration.incrementAndGet()
+        val connectedAtElapsedMs = runtimeConnectedAtElapsedMs
+        connected = false
         updateRuntimeState(
-            RuntimeConnectionState.DISCONNECTING,
-            runtimeProfileName,
-            runtimeConnectedAtElapsedMs
+            RuntimeConnectionState.CONNECTING,
+            session.profileName,
+            connectedAtElapsedMs
         )
-        AppLogStore.add(this, "Connexion VPN interrompue • $reason")
-        updateNotification(getString(R.string.notification_disconnecting))
+        AppLogStore.add(this, "Rétablissement automatique de la connexion VPN.")
+        updateNotification(getString(R.string.notification_connecting))
 
-        worker.execute {
-            if (operationGeneration.get() != disconnectGeneration) {
-                return@execute
+        connectFuture = worker.submit {
+            try {
+                recoverConnection(
+                    session = session,
+                    recoveryGeneration = recoveryGeneration,
+                    connectedAtElapsedMs = connectedAtElapsedMs,
+                    reason = reason
+                )
+            } finally {
+                if (!connected) {
+                    healthRecoveryScheduled.set(false)
+                }
+                connectFuture = null
             }
-            stopTunnel()
-            if (operationGeneration.get() != disconnectGeneration) {
-                return@execute
+        }
+    }
+
+    private fun recoverConnection(
+        session: ActiveSession,
+        recoveryGeneration: Long,
+        connectedAtElapsedMs: Long,
+        reason: String
+    ) {
+        var attempt = 0
+        while (
+            isConnectOperationActive(recoveryGeneration) &&
+            activeSession == session
+        ) {
+            attempt += 1
+            try {
+                stopTunnel()
+                if (!isConnectOperationActive(recoveryGeneration)) return
+
+                connectOnce(session.protocol, session.config, recoveryGeneration)
+                if (!isConnectOperationActive(recoveryGeneration)) {
+                    stopTunnel()
+                    return
+                }
+
+                connected = true
+                activeSession = session
+                healthRecoveryScheduled.set(false)
+                updateRuntimeState(
+                    RuntimeConnectionState.CONNECTED,
+                    session.profileName,
+                    connectedAtElapsedMs.takeIf { it > 0L }
+                        ?: SystemClock.elapsedRealtime()
+                )
+                startConnectionMonitor(session.protocol)
+                updateNotification(getString(R.string.notification_connected))
+                AppLogStore.add(this, "Connexion VPN rétablie.")
+                return
+            } catch (error: Throwable) {
+                if (error !is Exception && error !is LinkageError) throw error
+                stopTunnel()
+                if (
+                    !isConnectOperationActive(recoveryGeneration) ||
+                    error is InterruptedException ||
+                    Thread.currentThread().isInterrupted
+                ) {
+                    return
+                }
+                Log.w(
+                    TAG,
+                    "VPN recovery attempt $attempt failed after: $reason",
+                    error
+                )
+
+                val exponent = minOf((attempt - 1).coerceAtLeast(0), 3)
+                val retryDelayMs = minOf(
+                    RECOVERY_INITIAL_DELAY_MS * (1L shl exponent),
+                    RECOVERY_MAX_DELAY_MS
+                )
+                try {
+                    Thread.sleep(retryDelayMs)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return
+                }
             }
-            val pendingConnectRequestId = activeConnectRequestId
-            activeConnectRequestId = null
-            updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
-            AppLogStore.add(this, "VPN déconnecté • tunnel interrompu.")
-            finishServiceIfIdle(disconnectGeneration)
-            C6VpnRuntime.complete(pendingConnectRequestId, C6VpnResult.Disconnected)
         }
     }
 
@@ -694,6 +775,12 @@ class BarkaVpnService : VpnService() {
         val state: RuntimeConnectionState,
         val profileName: String?,
         val connectedAtElapsedMs: Long
+    )
+
+    private data class ActiveSession(
+        val protocol: VpnProfileProtocol,
+        val config: VpnProfileConfig,
+        val profileName: String
     )
 
     companion object {
@@ -825,5 +912,7 @@ class BarkaVpnService : VpnService() {
         private const val AUTO_PING_INITIAL_DELAY_SECONDS = 3L
         private const val AUTO_PING_INTERVAL_SECONDS = 12L
         private const val HEALTH_FAILURE_LIMIT = 3
+        private const val RECOVERY_INITIAL_DELAY_MS = 2_000L
+        private const val RECOVERY_MAX_DELAY_MS = 15_000L
     }
 }

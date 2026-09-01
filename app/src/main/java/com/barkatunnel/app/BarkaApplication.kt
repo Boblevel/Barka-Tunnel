@@ -1,6 +1,9 @@
 package com.barkatunnel.app
 
 import android.app.Application
+import android.app.ActivityManager
+import android.os.Build
+import android.os.Process
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.barkatunnel.app.core.AppContainer
@@ -14,10 +17,26 @@ class BarkaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Le processus privé du pont VPN ne doit initialiser ni l'interface,
+        // ni le planificateur de mises à jour de l'application principale.
+        if (currentProcessName()?.endsWith(":tun2socks") == true) return
+
         applySavedLanguage()
         applySavedTheme()
         container = AppContainer(this)
         RemoteUpdateScheduler.schedule(this)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun currentProcessName(): String? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return Application.getProcessName()
+        }
+        val pid = Process.myPid()
+        val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        return activityManager.runningAppProcesses
+            ?.firstOrNull { it.pid == pid }
+            ?.processName
     }
 
     private fun applySavedLanguage() {

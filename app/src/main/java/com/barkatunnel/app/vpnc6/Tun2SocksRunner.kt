@@ -5,7 +5,7 @@ import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import com.LondonX.tun2socks.Tun2Socks
 
-class Tun2SocksRunner(private val context: Context) {
+internal class NativeTun2SocksRunner(private val context: Context) {
     private var descriptor: ParcelFileDescriptor? = null
     @Volatile private var thread: Thread? = null
     @Volatile private var nativeSuccess: Boolean? = null
@@ -141,12 +141,10 @@ class Tun2SocksRunner(private val context: Context) {
             }
 
             if (!awaitExit(GRACEFUL_STOP_TIMEOUT_MS)) {
-                // Une annulation très rapide peut arriver pendant l'entrée dans
-                // le code natif. Répéter le signal garantit qu'il est reçu même
-                // si le premier appel a précédé l'initialisation de sa boucle.
-                runCatching { Tun2Socks.stopTun2Socks() }
                 // Fermer le TUN réveille le pont natif si sa boucle n’a pas
                 // répondu à la demande d’arrêt sur une ROM Android lente.
+                // Ne jamais répéter stopTun2Socks : BadVPN refuse une seconde
+                // terminaison pendant que son premier arrêt est encore actif.
                 closeDescriptor()
                 if (!awaitExit(DESCRIPTOR_CLOSE_TIMEOUT_MS)) {
                     throw IllegalStateException(

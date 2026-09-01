@@ -109,6 +109,11 @@
                 android:value="Barka Tunnel VPN connection" />
         </service>
 
+        <service
+            android:name=".vpnc6.Tun2SocksProcessService"
+            android:exported="false"
+            android:process=":tun2socks" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
