@@ -636,6 +636,80 @@ def test_reseller_can_delete_only_own_codes(tmp_path):
     )
 
 
+def test_reseller_dashboard_stats_are_isolated_and_expiration_aware(tmp_path):
+    db, services = load_modules(tmp_path)
+    import app.resellers as resellers
+    importlib.reload(resellers)
+
+    first_account = resellers.create_reseller(
+        "vendeur-stats-first",
+        datetime.now(timezone.utc) + timedelta(days=1),
+    )
+    second_account = resellers.create_reseller(
+        "vendeur-stats-second",
+        datetime.now(timezone.utc) + timedelta(days=1),
+    )
+
+    available_code = resellers.generate_reseller_subscription(
+        first_account["id"], "24h"
+    )
+    active_code = resellers.generate_reseller_test(first_account["id"])
+    expired_code = resellers.generate_reseller_subscription(
+        first_account["id"], "1w"
+    )
+    resellers.generate_reseller_test(second_account["id"])
+
+    active_ok, _, _ = services.redeem_activation_code(
+        "device-reseller-stats-active", active_code
+    )
+    expired_ok, _, _ = services.redeem_activation_code(
+        "device-reseller-stats-expired", expired_code
+    )
+    assert active_ok is True
+    assert expired_ok is True
+
+    with db.transaction() as cx:
+        cx.execute(
+            "UPDATE activation_codes SET applied_until=? WHERE code_hash=?",
+            (services.now_ts() - 1, services.code_hash(expired_code)),
+        )
+
+    assert resellers.reseller_dashboard_stats(first_account["id"]) == {
+        "total": 3,
+        "available": 1,
+        "active": 1,
+        "expired": 1,
+    }
+    assert resellers.reseller_dashboard_stats(second_account["id"]) == {
+        "total": 1,
+        "available": 1,
+        "active": 0,
+        "expired": 0,
+    }
+
+    deleted, _ = resellers.delete_reseller_code(
+        first_account["id"], available_code
+    )
+    assert deleted is True
+    assert resellers.reseller_dashboard_stats(first_account["id"])["total"] == 2
+
+
+def test_reseller_panel_has_dashboard_filters_and_admin_expired_style():
+    from app.reseller_panel import RESELLER_PANEL_HTML
+
+    for page in ("dashboard", "subscription", "test", "codes"):
+        assert f'data-page="{page}"' in RESELLER_PANEL_HTML
+    assert "/v1/reseller/stats" in RESELLER_PANEL_HTML
+    assert 'id="codeSearch"' in RESELLER_PANEL_HTML
+    assert 'id="codeStatus"' in RESELLER_PANEL_HTML
+    assert (
+        ".code-row.expired{background:#fff1f2;border:1px solid #fecdd3"
+        in RESELLER_PANEL_HTML
+    )
+    assert ".expired-label{color:#b91c1c;font-weight:900}" in RESELLER_PANEL_HTML
+    assert "/v1/admin/" not in RESELLER_PANEL_HTML
+
+
 def test_used_code_is_displayed_expired_at_zero_and_can_be_deleted(tmp_path):
     db, services = load_modules(tmp_path)
     import app.admin_ops as admin_ops

@@ -409,6 +409,44 @@ def list_reseller_codes(reseller_id: int, limit: int = 200) -> list[dict]:
     return list_activation_codes(limit=limit, reseller_id=reseller_id)
 
 
+def reseller_dashboard_stats(reseller_id: int) -> dict[str, int]:
+    now = now_ts()
+    cx = connect()
+    try:
+        row = cx.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status='issued' THEN 1 ELSE 0 END) AS available,
+                SUM(
+                    CASE
+                        WHEN status='redeemed' AND applied_until>? THEN 1
+                        ELSE 0
+                    END
+                ) AS active,
+                SUM(
+                    CASE
+                        WHEN status='redeemed'
+                         AND applied_until IS NOT NULL
+                         AND applied_until<=? THEN 1
+                        ELSE 0
+                    END
+                ) AS expired
+            FROM activation_codes
+            WHERE created_by_reseller_id=? AND deleted_at IS NULL
+            """,
+            (now, now, int(reseller_id)),
+        ).fetchone()
+    finally:
+        cx.close()
+    return {
+        "total": int(row["total"] or 0),
+        "available": int(row["available"] or 0),
+        "active": int(row["active"] or 0),
+        "expired": int(row["expired"] or 0),
+    }
+
+
 def delete_reseller_code(reseller_id: int, code: str) -> tuple[bool, str]:
     success, message = delete_activation_code(code, reseller_id=reseller_id)
     if not success:

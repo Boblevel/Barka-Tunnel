@@ -83,6 +83,7 @@ from .resellers import (
     logout_reseller,
     public_reseller_account,
     reactivate_reseller,
+    reseller_dashboard_stats,
     require_reseller,
     update_reseller_expiry,
 )
@@ -574,6 +575,11 @@ def reseller_logout(
 @app.get("/v1/reseller/account")
 def reseller_account(account: dict = Depends(require_reseller)):
     return public_reseller_account(account)
+
+
+@app.get("/v1/reseller/stats")
+def reseller_stats(account: dict = Depends(require_reseller)):
+    return reseller_dashboard_stats(int(account["id"]))
 
 
 @app.get(
