@@ -214,6 +214,17 @@ def test_app_update_is_server_controlled(tmp_path):
     assert current_client["updated_at"] == saved["updated_at"]
     assert current_client["apk_url"] == "https://apkpure.com/p/com.barkatunnel.app"
 
+    removed = app_updates.remove_app_update()
+    assert removed["enabled"] is False
+    assert removed["mandatory"] is False
+    assert removed["updated_at"] > saved["updated_at"]
+
+    after_removal = app_updates.get_app_update_for_client(6)
+    assert after_removal["enabled"] is False
+    assert after_removal["update_available"] is False
+    assert after_removal["force_update"] is False
+    assert after_removal["apk_url"] == ""
+
 
 def test_admin_code_listing_reconstructs_manual_code(tmp_path):
     load_modules(tmp_path)
@@ -394,6 +405,45 @@ def test_admin_redeem_disable_reactivate_and_usage_count(tmp_path):
     assert item["usage_count"] == 2
     assert item["max_users"] == 5
     assert item["duration_seconds"] == 3600
+
+
+def test_redeem_is_expired_only_when_all_used_access_has_ended(tmp_path):
+    db, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    code = services.issue_redeem_code("REDEEM:EXPIRED-DISPLAY", 3600, 5)
+    unused = next(x for x in admin_ops.list_redeem_codes(20) if x["code"] == code)
+    assert unused["status"] == "active"
+
+    first = "device-redeem-expired-one"
+    second = "device-redeem-expired-two"
+    assert services.redeem_activation_code(first, code)[0] is True
+    assert services.redeem_activation_code(second, code)[0] is True
+
+    with db.transaction() as cx:
+        cx.execute(
+            "UPDATE redeem_usages SET applied_until=? WHERE device_id=?",
+            (services.now_ts() - 1, first),
+        )
+    partly_active = next(
+        x for x in admin_ops.list_redeem_codes(20) if x["code"] == code
+    )
+    assert partly_active["status"] == "active"
+
+    with db.transaction() as cx:
+        cx.execute(
+            "UPDATE redeem_usages SET applied_until=? WHERE device_id=?",
+            (services.now_ts() - 1, second),
+        )
+    fully_expired = next(
+        x for x in admin_ops.list_redeem_codes(20) if x["code"] == code
+    )
+    assert fully_expired["status"] == "expired"
+
+    deleted, _ = admin_ops.delete_redeem_code(code)
+    assert deleted is True
+    assert all(x["code"] != code for x in admin_ops.list_redeem_codes(20))
 
 
 def test_delete_redeem_removes_remaining_time_from_all_users(tmp_path):

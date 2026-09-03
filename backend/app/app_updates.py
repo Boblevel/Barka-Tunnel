@@ -64,7 +64,8 @@ def upsert_app_update(payload: dict) -> dict:
         cx.execute(
             """UPDATE app_update
                SET enabled=?, latest_version_code=?, latest_version_name=?,
-                   apk_url=?, message=?, mandatory=?, updated_at=?
+                   apk_url=?, message=?, mandatory=?,
+                   updated_at=MAX(updated_at + 1, ?)
                WHERE id=1""",
             (
                 1 if enabled else 0,
@@ -75,6 +76,18 @@ def upsert_app_update(payload: dict) -> dict:
                 1 if mandatory else 0,
                 now_ts(),
             ),
+        )
+    return get_app_update_admin()
+
+
+def remove_app_update() -> dict:
+    with transaction() as cx:
+        cx.execute(
+            """UPDATE app_update
+               SET enabled=0, mandatory=0,
+                   updated_at=MAX(updated_at + 1, ?)
+               WHERE id=1""",
+            (now_ts(),),
         )
     return get_app_update_admin()
 

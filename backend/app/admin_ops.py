@@ -193,12 +193,14 @@ def delete_activation_code(code: str) -> tuple[bool, str]:
 
 def list_redeem_codes(limit: int = 100) -> list[dict]:
     safe_limit = max(1, min(int(limit), 200))
+    now = now_ts()
     cx = connect()
     try:
         rows = cx.execute(
             """
             SELECT r.id, r.source_ref, r.duration_seconds, r.max_users, r.status,
                    r.created_at, COUNT(u.id) AS usage_count,
+                   SUM(CASE WHEN u.applied_until>? THEN 1 ELSE 0 END) AS active_usage_count,
                    MAX(u.redeemed_at) AS last_redeemed_at,
                    MAX(u.applied_until) AS last_expires_at
             FROM redeem_codes r
@@ -208,24 +210,36 @@ def list_redeem_codes(limit: int = 100) -> list[dict]:
             ORDER BY r.id DESC
             LIMIT ?
             """,
-            (safe_limit,),
+            (now, safe_limit),
         ).fetchall()
     finally:
         cx.close()
 
-    return [
-        {
-            "code": activation_code_for_source(str(row["source_ref"])),
-            "status": row["status"],
-            "duration_seconds": int(row["duration_seconds"]),
-            "max_users": int(row["max_users"]),
-            "usage_count": int(row["usage_count"]),
-            "created_at": iso(int(row["created_at"])),
-            "last_redeemed_at": iso(row["last_redeemed_at"]),
-            "last_expires_at": iso(row["last_expires_at"]),
-        }
-        for row in rows
-    ]
+    result: list[dict] = []
+    for row in rows:
+        usage_count = int(row["usage_count"])
+        active_usage_count = int(row["active_usage_count"] or 0)
+        stored_status = str(row["status"])
+        display_status = (
+            "expired"
+            if stored_status == "active"
+            and usage_count > 0
+            and active_usage_count == 0
+            else stored_status
+        )
+        result.append(
+            {
+                "code": activation_code_for_source(str(row["source_ref"])),
+                "status": display_status,
+                "duration_seconds": int(row["duration_seconds"]),
+                "max_users": int(row["max_users"]),
+                "usage_count": usage_count,
+                "created_at": iso(int(row["created_at"])),
+                "last_redeemed_at": iso(row["last_redeemed_at"]),
+                "last_expires_at": iso(row["last_expires_at"]),
+            }
+        )
+    return result
 
 
 def revoke_redeem_code(code: str) -> tuple[bool, str]:

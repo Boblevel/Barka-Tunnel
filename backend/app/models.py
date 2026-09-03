@@ -90,7 +90,7 @@ class AdminRedeemCodeResponse(BaseModel):
 
 class AdminRedeemCodeListItem(BaseModel):
     code: str
-    status: Literal["active", "revoked"]
+    status: Literal["active", "revoked", "expired"]
     duration_seconds: int
     max_users: int
     usage_count: int

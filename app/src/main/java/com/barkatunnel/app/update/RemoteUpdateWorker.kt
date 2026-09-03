@@ -46,8 +46,9 @@ class RemoteUpdateWorker(
                 KEY_LAST_NOTIFIED_APK_REVISION,
                 ""
             ).orEmpty()
-            if (
-                appUpdate.enabled &&
+            if (!appUpdate.enabled) {
+                NotificationManagerCompat.from(applicationContext).cancel(NOTIFICATION_APK_ID)
+            } else if (
                 panelRevision.isNotBlank() &&
                 panelRevision != lastNotifiedRevision
             ) {

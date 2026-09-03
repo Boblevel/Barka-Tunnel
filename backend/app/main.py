@@ -26,6 +26,7 @@ from .reseller_panel import RESELLER_PANEL_HTML
 from .app_updates import (
     get_app_update_admin,
     get_app_update_for_client,
+    remove_app_update,
     release_apk_path,
     release_apk_url,
     upsert_app_update,
@@ -625,6 +626,15 @@ def admin_app_update_set(body: AppUpdateAdminUpsert):
         return upsert_app_update(body.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.delete(
+    "/v1/admin/app-update",
+    response_model=AppUpdateAdminResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_app_update_remove():
+    return remove_app_update()
 
 
 @app.put(
