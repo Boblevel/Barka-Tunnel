@@ -9,6 +9,8 @@
     <color name="barka_border">#334155</color>
     <color name="barka_green">#22C55E</color>
     <color name="barka_red">#F87171</color>
+    <color name="barka_network_valid_bg">#123524</color>
+    <color name="barka_network_invalid_bg">#3F1D24</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 </resources>

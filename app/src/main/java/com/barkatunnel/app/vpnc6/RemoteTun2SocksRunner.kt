@@ -12,7 +12,6 @@ import android.os.Message
 import android.os.Messenger
 import android.os.ParcelFileDescriptor
 import android.os.RemoteException
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -26,7 +25,7 @@ class Tun2SocksRunner(context: Context) {
     @Volatile private var remoteReady = false
     @Volatile private var remoteMessenger: Messenger? = null
     @Volatile private var remoteBinder: IBinder? = null
-    @Volatile private var pendingResponse: CompletableFuture<Response>? = null
+    @Volatile private var pendingResponse: SettableFutureCompat<Response>? = null
     @Volatile private var connectionLatch: CountDownLatch? = null
     private var serviceConnection: ServiceConnection? = null
     private var bound = false
@@ -182,7 +181,7 @@ class Tun2SocksRunner(context: Context) {
     ): Response = synchronized(commandLock) {
         val messenger = remoteMessenger
             ?: throw IllegalStateException("Le processus tun2socks n'est pas lié.")
-        val responseFuture = CompletableFuture<Response>()
+        val responseFuture = SettableFutureCompat<Response>()
         synchronized(stateLock) {
             if (pendingResponse != null) {
                 throw IllegalStateException("Une commande tun2socks est déjà en cours.")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -146,12 +147,43 @@ class AdminVpnProfileResponse(VpnProfileResponse):
 class AdminCodeListItem(BaseModel):
     code: str
     plan_id: str
-    status: Literal["issued", "redeemed", "revoked"]
+    status: Literal["issued", "redeemed", "revoked", "expired"]
     created_at: str
     redeemed_at: str | None = None
     expires_at: str | None = None
     redeemed_device_id: str | None = None
     source_type: str
+    reseller_username: str | None = None
+    code_type: Literal["subscription", "test"] = "subscription"
+    remaining_seconds: int = 0
+
+
+class AdminResellerCreateRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9._-]+$")
+    expires_at: datetime
+
+    @field_validator("username")
+    @classmethod
+    def clean_reseller_username(cls, value: str) -> str:
+        return value.strip().lower()
+
+
+class AdminResellerExpiryRequest(BaseModel):
+    expires_at: datetime
+
+
+class ResellerLoginRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=40)
+    password: str = Field(min_length=12, max_length=200)
+
+    @field_validator("username")
+    @classmethod
+    def clean_login_username(cls, value: str) -> str:
+        return value.strip().lower()
+
+
+class ResellerGenerateSubscriptionRequest(BaseModel):
+    plan_id: Literal["24h", "1w", "2w", "1m"]
 
 
 class AdminCodeRevokeRequest(BaseModel):

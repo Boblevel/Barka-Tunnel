@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from urllib.parse import urlparse
 from pathlib import Path
 
 from .config import settings
@@ -9,11 +8,7 @@ from .db import connect, transaction
 from .services import iso, now_ts
 
 
-VERCEL_APK_BASE_URL = "https://barkatunnel.vercel.app/downloads/BarkaTunnel.apk"
-
-
-def _vercel_apk_url(version_code: int) -> str:
-    return f"{VERCEL_APK_BASE_URL}?v={version_code}"
+APKPURE_UPDATE_URL = "https://apkpure.com/p/com.barkatunnel.app"
 
 
 def _row_to_admin(row) -> dict:
@@ -21,7 +16,7 @@ def _row_to_admin(row) -> dict:
         "enabled": bool(row["enabled"]),
         "latest_version_code": int(row["latest_version_code"]),
         "latest_version_name": str(row["latest_version_name"]),
-        "apk_url": str(row["apk_url"] or ""),
+        "apk_url": APKPURE_UPDATE_URL,
         "message": str(row["message"] or ""),
         "mandatory": bool(row["mandatory"]),
         "updated_at": iso(int(row["updated_at"])),
@@ -59,15 +54,10 @@ def upsert_app_update(payload: dict) -> dict:
     mandatory = bool(payload.get("mandatory"))
     version_code = int(payload.get("latest_version_code", 1))
     version_name = str(payload.get("latest_version_name", "")).strip()
-    apk_url = str(payload.get("apk_url", "")).strip()
     message = str(payload.get("message", "")).strip()
     if not version_name:
         raise ValueError("Le nom de version est obligatoire.")
-    if enabled:
-        apk_url = _vercel_apk_url(version_code)
-        parsed = urlparse(apk_url)
-        if parsed.scheme != "https" or not parsed.netloc:
-            raise ValueError("Une URL APK HTTPS valide est obligatoire quand la mise à jour est activée.")
+    apk_url = APKPURE_UPDATE_URL
     if mandatory and not enabled:
         raise ValueError("Une mise à jour obligatoire doit être activée.")
     with transaction() as cx:
@@ -94,4 +84,4 @@ def release_apk_path() -> Path:
 
 
 def release_apk_url() -> str:
-    return f"{settings.public_base_url}/downloads/BarkaTunnel.apk"
+    return APKPURE_UPDATE_URL

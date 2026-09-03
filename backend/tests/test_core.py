@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib
 import os
+import sqlite3
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -210,9 +212,7 @@ def test_app_update_is_server_controlled(tmp_path):
     assert current_client["update_available"] is False
     assert current_client["force_update"] is False
     assert current_client["updated_at"] == saved["updated_at"]
-    assert current_client["apk_url"].startswith(
-        "https://barkatunnel.vercel.app/downloads/BarkaTunnel.apk"
-    )
+    assert current_client["apk_url"] == "https://apkpure.com/p/com.barkatunnel.app"
 
 
 def test_admin_code_listing_reconstructs_manual_code(tmp_path):
@@ -462,3 +462,165 @@ def test_admin_stats_reset_preserves_access_and_known_devices(tmp_path):
 
     services.access_state("device-new-after-reset-abcdef")
     assert admin_ops.admin_stats_extended()["devices"] == 1
+
+
+def test_reseller_credentials_sessions_origin_and_freeze_preserve_code(tmp_path):
+    db, services = load_modules(tmp_path)
+    import app.resellers as resellers
+    importlib.reload(resellers)
+
+    account = resellers.create_reseller(
+        "Vendeur.01",
+        datetime.now(timezone.utc) + timedelta(days=2),
+    )
+    assert account["username"] == "vendeur.01"
+    assert len(account["password"]) == 18
+    assert account["panel_url"] == "https://api.test.local/reseller"
+
+    cx = db.connect()
+    try:
+        stored = cx.execute(
+            "SELECT password_hash, password_salt FROM reseller_accounts WHERE id=?",
+            (account["id"],),
+        ).fetchone()
+    finally:
+        cx.close()
+    assert stored["password_hash"] != account["password"]
+    assert stored["password_salt"] != account["password"]
+
+    login = resellers.login_reseller(account["username"], account["password"])
+    session_account = resellers.require_reseller(f"Bearer {login['token']}")
+    assert int(session_account["id"]) == account["id"]
+
+    code = resellers.generate_reseller_subscription(account["id"], "24h")
+    item = resellers.list_reseller_codes(account["id"])[0]
+    assert item["code"] == code
+    assert item["source_type"] == "REVENDEUR"
+    assert item["reseller_username"] == "vendeur.01"
+    assert item["code_type"] == "subscription"
+
+    frozen = resellers.freeze_reseller(account["id"])
+    assert frozen["status"] == "frozen"
+    try:
+        resellers.require_reseller(f"Bearer {login['token']}")
+        assert False, "Le gel doit révoquer immédiatement les sessions revendeur"
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 401
+
+    redeemed, _, access = services.redeem_activation_code(
+        "device-reseller-frozen-abcdef", code
+    )
+    assert redeemed is True
+    assert access["allowed"] is True
+
+
+def test_deleting_reseller_preserves_previously_generated_test_code(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.resellers as resellers
+    importlib.reload(resellers)
+
+    account = resellers.create_reseller(
+        "vendeur-delete",
+        datetime.now(timezone.utc) + timedelta(days=1),
+    )
+    code = resellers.generate_reseller_test(account["id"])
+    listed = resellers.list_reseller_codes(account["id"])[0]
+    assert listed["code_type"] == "test"
+    assert listed["plan_id"] == "test_2h"
+
+    resellers.delete_reseller(account["id"])
+    assert all(item["id"] != account["id"] for item in resellers.list_resellers())
+    redeemed, _, access = services.redeem_activation_code(
+        "device-reseller-deleted-abcdef", code
+    )
+    assert redeemed is True
+    assert 7190 <= access["remaining_seconds"] <= 7200
+
+
+def test_used_code_is_displayed_expired_at_zero_and_can_be_deleted(tmp_path):
+    db, services = load_modules(tmp_path)
+    import app.admin_ops as admin_ops
+    importlib.reload(admin_ops)
+
+    code = services.issue_activation_code("MANUAL:EXPIRED-DISPLAY", "24h")
+    redeemed, _, _ = services.redeem_activation_code(
+        "device-expired-display-abcdef", code
+    )
+    assert redeemed is True
+
+    with db.transaction() as cx:
+        cx.execute(
+            "UPDATE activation_codes SET applied_until=? WHERE code_hash=?",
+            (services.now_ts() - 1, services.code_hash(code)),
+        )
+
+    item = next(x for x in admin_ops.list_activation_codes(20) if x["code"] == code)
+    assert item["status"] == "expired"
+    assert item["remaining_seconds"] == 0
+    deleted, _ = admin_ops.delete_activation_code(code)
+    assert deleted is True
+    assert all(x["code"] != code for x in admin_ops.list_activation_codes(20))
+
+
+def test_legacy_database_migration_adds_reseller_schema_without_data_loss(tmp_path):
+    db_path = tmp_path / "legacy.db"
+    cx = sqlite3.connect(db_path)
+    try:
+        cx.execute(
+            """
+            CREATE TABLE activation_codes(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code_hash TEXT NOT NULL UNIQUE,
+                source_ref TEXT NOT NULL UNIQUE,
+                plan_id TEXT NOT NULL,
+                duration_seconds INTEGER NOT NULL,
+                payment_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'issued',
+                created_at INTEGER NOT NULL,
+                redeemed_at INTEGER,
+                redeemed_device_id TEXT
+            )
+            """
+        )
+        cx.execute(
+            """
+            INSERT INTO activation_codes(
+                code_hash, source_ref, plan_id, duration_seconds, status, created_at
+            ) VALUES('legacy-hash','MANUAL:LEGACY','24h',86400,'issued',1)
+            """
+        )
+        cx.commit()
+    finally:
+        cx.close()
+
+    os.environ["DATABASE_PATH"] = str(db_path)
+    os.environ["CODE_SECRET"] = "test-secret-that-is-long-enough"
+    os.environ["ADMIN_TOKEN"] = "test-admin-token"
+    os.environ["PUBLIC_BASE_URL"] = "https://api.test.local"
+    import app.config as config
+    import app.db as db
+    importlib.reload(config)
+    importlib.reload(db)
+    db.init_db()
+
+    migrated = db.connect()
+    try:
+        columns = {
+            row["name"]
+            for row in migrated.execute("PRAGMA table_info(activation_codes)").fetchall()
+        }
+        tables = {
+            row["name"]
+            for row in migrated.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        legacy = migrated.execute(
+            "SELECT source_ref FROM activation_codes WHERE code_hash='legacy-hash'"
+        ).fetchone()
+    finally:
+        migrated.close()
+
+    assert {"applied_from", "applied_until", "deleted_at", "created_by_reseller_id"} <= columns
+    assert {"reseller_accounts", "reseller_sessions"} <= tables
+    assert legacy["source_ref"] == "MANUAL:LEGACY"

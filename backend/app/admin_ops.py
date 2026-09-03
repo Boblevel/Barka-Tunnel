@@ -5,37 +5,71 @@ from .security import activation_code_for_source, code_hash
 from .services import iso, now_ts
 
 
-def list_activation_codes(limit: int = 100) -> list[dict]:
+def list_activation_codes(limit: int = 100, reseller_id: int | None = None) -> list[dict]:
     safe_limit = max(1, min(int(limit), 200))
     cx = connect()
     try:
+        where = "a.deleted_at IS NULL"
+        params: list[int] = []
+        if reseller_id is not None:
+            where += " AND a.created_by_reseller_id=?"
+            params.append(int(reseller_id))
+        params.append(safe_limit)
         rows = cx.execute(
-            """
-            SELECT source_ref, plan_id, status, created_at, redeemed_at,
-                   redeemed_device_id, applied_until
-            FROM activation_codes
-            WHERE deleted_at IS NULL
-            ORDER BY id DESC
+            f"""
+            SELECT a.source_ref, a.plan_id, a.duration_seconds, a.status,
+                   a.created_at, a.redeemed_at, a.redeemed_device_id,
+                   a.applied_until, a.created_by_reseller_id,
+                   r.username AS reseller_username
+            FROM activation_codes a
+            LEFT JOIN reseller_accounts r ON r.id=a.created_by_reseller_id
+            WHERE {where}
+            ORDER BY a.id DESC
             LIMIT ?
             """,
-            (safe_limit,),
+            tuple(params),
         ).fetchall()
     finally:
         cx.close()
 
+    now = now_ts()
     result: list[dict] = []
     for row in rows:
         source_ref = str(row["source_ref"])
+        applied_until = row["applied_until"]
+        stored_status = str(row["status"])
+        display_status = (
+            "expired"
+            if stored_status == "redeemed"
+            and applied_until is not None
+            and int(applied_until) <= now
+            else stored_status
+        )
+        reseller_username = row["reseller_username"]
+        source_type = (
+            "PAIEMENT"
+            if source_ref.startswith("PAYMENT:")
+            else "REVENDEUR"
+            if row["created_by_reseller_id"] is not None
+            else "ABONNEMENT"
+        )
         result.append(
             {
                 "code": activation_code_for_source(source_ref),
                 "plan_id": row["plan_id"],
-                "status": row["status"],
+                "status": display_status,
                 "created_at": iso(int(row["created_at"])),
                 "redeemed_at": iso(row["redeemed_at"]),
-                "expires_at": iso(row["applied_until"]),
+                "expires_at": iso(applied_until),
                 "redeemed_device_id": row["redeemed_device_id"],
-                "source_type": "PAIEMENT" if source_ref.startswith("PAYMENT:") else "ABONNEMENT",
+                "source_type": source_type,
+                "reseller_username": reseller_username,
+                "code_type": "test" if str(row["plan_id"]) == "test_2h" else "subscription",
+                "remaining_seconds": (
+                    max(0, int(applied_until) - now)
+                    if applied_until is not None
+                    else int(row["duration_seconds"])
+                ),
             }
         )
     return result

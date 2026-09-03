@@ -16,6 +16,7 @@ import com.barkatunnel.app.BuildConfig
 import com.barkatunnel.app.R
 import com.barkatunnel.app.ui.SystemBars
 import com.barkatunnel.app.update.AppUpdateCoordinator
+import com.barkatunnel.app.update.AppUpdateDestination
 import com.google.android.material.button.MaterialButton
 
 class SettingsActivity : AppCompatActivity() {
@@ -123,7 +124,7 @@ class SettingsActivity : AppCompatActivity() {
         refreshDynamicLabels()
 
         findViewById<MaterialButton>(R.id.vpnSettingsButton).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
+            openVpnSettings()
         }
 
         findViewById<MaterialButton>(R.id.checkUpdateButton).setOnClickListener {
@@ -140,13 +141,26 @@ class SettingsActivity : AppCompatActivity() {
 
     }
 
+    private fun openVpnSettings() {
+        val destinations = listOf(
+            Intent(Settings.ACTION_VPN_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS)
+        )
+        destinations.firstOrNull { intent ->
+            runCatching {
+                startActivity(intent)
+                true
+            }.getOrDefault(false)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         applySystemBars()
     }
 
     private fun shareApplication() {
-        val apkUrl = "https://barkatunnel.vercel.app/download"
+        val apkUrl = AppUpdateDestination.APKPURE_URL
         val text = getString(R.string.share_download_format, apkUrl)
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

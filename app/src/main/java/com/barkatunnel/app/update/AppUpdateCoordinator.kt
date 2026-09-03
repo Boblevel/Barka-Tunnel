@@ -91,7 +91,7 @@ class AppUpdateCoordinator(
                 forceUpdate = true,
                 latestVersionCode = 0L,
                 latestVersionName = "",
-                apkUrl = AppUpdateGate.requiredUrl(),
+                apkUrl = AppUpdateDestination.APKPURE_URL,
                 message = AppUpdateGate.requiredMessage()
             )
         )
@@ -112,7 +112,7 @@ class AppUpdateCoordinator(
         }
 
         if (update.forceUpdate) {
-            AppUpdateGate.setRequired(update.apkUrl, update.message)
+            AppUpdateGate.setRequired(AppUpdateDestination.APKPURE_URL, update.message)
         } else {
             AppUpdateGate.clear()
         }
@@ -141,7 +141,7 @@ class AppUpdateCoordinator(
             .setTitle(title)
             .setMessage(update.message + versionSuffix)
             .setPositiveButton(R.string.update_now) { _, _ ->
-                openApk(update.apkUrl)
+                openApk(AppUpdateDestination.APKPURE_URL)
             }
 
         if (!update.forceUpdate) {

@@ -74,6 +74,12 @@ import com.google.android.material.button.MaterialButton
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
+private enum class NetworkIpVisualState {
+    NEUTRAL,
+    VALID,
+    INVALID
+}
+
 class MainActivity : AppCompatActivity() {
 
     private var selectedNetwork: NetworkOption? = null
@@ -84,6 +90,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var networkIpValue: TextView
     private lateinit var networkIpStatus: TextView
+    private lateinit var networkIpCard: View
     private lateinit var networkLogo: ImageView
     private lateinit var networkTransportIcon: ImageView
     private lateinit var networkName: TextView
@@ -124,6 +131,7 @@ class MainActivity : AppCompatActivity() {
     private var lastRenderedConnectionState: HomeConnectionState? = null
     private var vpnStateReconciliationActive = false
     private var orangeIpWarningToast: Toast? = null
+    private var lastOrangeInvalidIp: String? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -252,12 +260,12 @@ class MainActivity : AppCompatActivity() {
 
         networkIpValue = homePage.findViewById(R.id.networkIpValue)
         networkIpStatus = homePage.findViewById(R.id.networkIpStatus)
+        networkIpCard = homePage.findViewById(R.id.networkIpCard)
         networkTransportIcon = homePage.findViewById(R.id.networkTransportIcon)
 
         networkIpValue.setOnClickListener { copyNetworkIp() }
         networkIpStatus.setOnClickListener { copyNetworkIp() }
-        homePage.findViewById<android.view.View>(R.id.networkIpCard)
-            .setOnClickListener { copyNetworkIp() }
+        networkIpCard.setOnClickListener { copyNetworkIp() }
 
         accessRemainingTime = homePage.findViewById(R.id.accessRemainingTime)
         accessStatus = homePage.findViewById(R.id.accessStatus)
@@ -344,8 +352,6 @@ class MainActivity : AppCompatActivity() {
 
         connectAction = connectAction@{
             val now = SystemClock.elapsedRealtime()
-            orangeIpWarningToast?.cancel()
-            orangeIpWarningToast = null
 
             val controller = requireController() ?: return@connectAction
 
@@ -534,16 +540,12 @@ class MainActivity : AppCompatActivity() {
         }
         if (!networkCallbackRegistered) {
             runCatching {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    connectivityManager.registerDefaultNetworkCallback(networkCallback)
-                } else {
-                    connectivityManager.registerNetworkCallback(
-                        NetworkRequest.Builder()
-                            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                            .build(),
-                        networkCallback
-                    )
-                }
+                connectivityManager.registerNetworkCallback(
+                    NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build(),
+                    networkCallback
+                )
             }.onSuccess {
                 networkCallbackRegistered = true
             }.onFailure {
@@ -772,9 +774,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             refreshNetworkIp()
-            if (network.id == "orange_bf") {
-                showOrangeIpWarningIfNeeded()
-            }
             dialog.dismiss()
         }
 
@@ -801,24 +800,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showOrangeIpWarningIfNeeded() {
+    private fun showOrangeIpWarningIfNeeded(currentCellularIp: String?) {
+        val shouldWarn = selectedNetwork?.id == "orange_bf" &&
+            !currentCellularIp.isNullOrBlank() &&
+            !IpFinderActivity.isIpCompatible(this, currentCellularIp)
+
+        if (!shouldWarn) {
+            orangeIpWarningToast?.cancel()
+            orangeIpWarningToast = null
+            lastOrangeInvalidIp = null
+            return
+        }
+        if (lastOrangeInvalidIp == currentCellularIp) return
+
         orangeIpWarningToast?.cancel()
-        orangeIpWarningToast = null
-
-        if (NetworkIpProvider.getCurrent(this).transportType != NetworkTransport.CELLULAR) {
-            return
-        }
-
-        val currentCellularIp = NetworkIpProvider.getCellularIpv4(this)
-        if (IpFinderActivity.isIpCompatible(this, currentCellularIp)) {
-            return
-        }
-
         orangeIpWarningToast = Toast.makeText(
             this,
             R.string.orange_ipfinder_required,
             Toast.LENGTH_SHORT
         ).also { it.show() }
+        lastOrangeInvalidIp = currentCellularIp
     }
 
     private fun beginVpnConnection(controller: HomeController) {
@@ -1599,6 +1600,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshNetworkIp() {
         val info = NetworkIpProvider.getCurrent(this)
+        val cellularIp = info.ip.takeIf {
+            info.transportType == NetworkTransport.CELLULAR &&
+                it.isNotBlank() &&
+                it != getString(R.string.unavailable)
+        }
 
         networkIpValue.text = if (info.transportType == NetworkTransport.OTHER) {
             getString(R.string.network_ip_offline)
@@ -1609,6 +1615,27 @@ class MainActivity : AppCompatActivity() {
             R.string.current_ip_status_format,
             info.transport
         )
+
+        val visualState = when {
+            cellularIp == null -> NetworkIpVisualState.NEUTRAL
+            selectedNetwork?.id == "orange_bf" -> {
+                if (IpFinderActivity.isIpCompatible(this, cellularIp)) {
+                    NetworkIpVisualState.VALID
+                } else {
+                    NetworkIpVisualState.INVALID
+                }
+            }
+            selectedNetwork?.id == "moov_bf" || selectedNetwork?.id == "telecel_bf" -> {
+                if (NetworkIpProvider.isTenNetworkAtLeast100(cellularIp)) {
+                    NetworkIpVisualState.VALID
+                } else {
+                    NetworkIpVisualState.INVALID
+                }
+            }
+            else -> NetworkIpVisualState.NEUTRAL
+        }
+        applyNetworkIpVisualState(visualState)
+        showOrangeIpWarningIfNeeded(cellularIp)
 
         if (::networkTransportIcon.isInitialized) {
             when (info.transportType) {
@@ -1625,6 +1652,27 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun applyNetworkIpVisualState(state: NetworkIpVisualState) {
+        val background = when (state) {
+            NetworkIpVisualState.NEUTRAL -> R.drawable.bg_card_final
+            NetworkIpVisualState.VALID -> R.drawable.bg_network_ip_valid
+            NetworkIpVisualState.INVALID -> R.drawable.bg_network_ip_invalid
+        }
+        val valueColor = when (state) {
+            NetworkIpVisualState.NEUTRAL -> R.color.barka_text
+            NetworkIpVisualState.VALID -> R.color.barka_green
+            NetworkIpVisualState.INVALID -> R.color.barka_red
+        }
+        val statusColor = when (state) {
+            NetworkIpVisualState.NEUTRAL -> R.color.barka_text_secondary
+            NetworkIpVisualState.VALID -> R.color.barka_green
+            NetworkIpVisualState.INVALID -> R.color.barka_red
+        }
+        networkIpCard.setBackgroundResource(background)
+        networkIpValue.setTextColor(ContextCompat.getColor(this, valueColor))
+        networkIpStatus.setTextColor(ContextCompat.getColor(this, statusColor))
     }
 
     private fun refreshNetworkIpAsync() {

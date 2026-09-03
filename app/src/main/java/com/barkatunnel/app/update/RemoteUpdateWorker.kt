@@ -57,7 +57,7 @@ class RemoteUpdateWorker(
                     appUpdate.message.ifBlank {
                         applicationContext.getString(R.string.update_available)
                     },
-                    appUpdate.apkUrl
+                    AppUpdateDestination.APKPURE_URL
                 )
                 if (notificationShown) {
                     AppLogStore.add(applicationContext, "Mise à jour disponible.")

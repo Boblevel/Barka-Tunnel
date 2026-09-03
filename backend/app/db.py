@@ -143,6 +143,35 @@ def init_db() -> None:
                     mandatory INTEGER NOT NULL DEFAULT 0,
                     updated_at INTEGER NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS reseller_accounts(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL COLLATE NOCASE,
+                    password_hash TEXT NOT NULL,
+                    password_salt TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    expires_at INTEGER NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    deleted_at INTEGER
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_reseller_username_active
+                ON reseller_accounts(lower(username))
+                WHERE deleted_at IS NULL;
+
+                CREATE TABLE IF NOT EXISTS reseller_sessions(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reseller_id INTEGER NOT NULL,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    created_at INTEGER NOT NULL,
+                    expires_at INTEGER NOT NULL,
+                    revoked_at INTEGER,
+                    FOREIGN KEY(reseller_id) REFERENCES reseller_accounts(id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_reseller_sessions_lookup
+                ON reseller_sessions(token_hash, expires_at);
                 """
             )
 
@@ -163,6 +192,21 @@ def init_db() -> None:
                 cx.execute("ALTER TABLE activation_codes ADD COLUMN applied_until INTEGER")
             if "deleted_at" not in code_columns:
                 cx.execute("ALTER TABLE activation_codes ADD COLUMN deleted_at INTEGER")
+            if "created_by_reseller_id" not in code_columns:
+                cx.execute(
+                    """
+                    ALTER TABLE activation_codes
+                    ADD COLUMN created_by_reseller_id INTEGER
+                    REFERENCES reseller_accounts(id)
+                    """
+                )
+
+            cx.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_activation_codes_reseller
+                ON activation_codes(created_by_reseller_id, id DESC)
+                """
+            )
 
             cx.execute(
                 """

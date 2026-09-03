@@ -542,6 +542,7 @@ class IpFinderActivity : AppCompatActivity() {
         private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.46;10.75;10.102;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
         private const val LEGACY_IP_SEQUENCE = "10.208;10.210"
         private const val UPDATED_IP_SEQUENCE = "10.208;10.209;10.210"
+        private const val RETIRED_IP_PREFIX = "10.148"
         private const val IP_FINDER_VIBRATION_MS = 70L
         private const val MAX_NETWORK_POLLS = 15
         private const val MAX_SERVICE_READY_RETRIES = 20
@@ -558,12 +559,20 @@ class IpFinderActivity : AppCompatActivity() {
             val savedPattern = preferences.getString(KEY_SEARCH_PATTERN, "")
                 .orEmpty()
             val resolvedPattern = savedPattern.ifBlank { DEFAULT_SEARCH_PATTERN }
-            val migratedPattern = resolvedPattern.replace(
-                LEGACY_IP_SEQUENCE,
-                UPDATED_IP_SEQUENCE
-            )
+            val migratedPattern = resolvedPattern
+                .replace(LEGACY_IP_SEQUENCE, UPDATED_IP_SEQUENCE)
+                .split(Regex("[;,\\n]+"))
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .filterNot { pattern ->
+                    pattern.removePrefix("=")
+                        .removePrefix("^")
+                        .removeSuffix("$")
+                        .trim() == RETIRED_IP_PREFIX
+                }
+                .joinToString(";")
 
-            if (savedPattern.isNotBlank() && migratedPattern != savedPattern) {
+            if (migratedPattern != savedPattern) {
                 preferences.edit()
                     .putString(KEY_SEARCH_PATTERN, migratedPattern)
                     .apply()

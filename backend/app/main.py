@@ -22,6 +22,7 @@ from .admin_ops import (
     revoke_redeem_code,
 )
 from .admin_panel import ADMIN_PANEL_HTML
+from .reseller_panel import RESELLER_PANEL_HTML
 from .app_updates import (
     get_app_update_admin,
     get_app_update_for_client,
@@ -52,10 +53,14 @@ from .models import (
     AdminCodeListItem,
     AdminCodeRevokeRequest,
     AdminCodeRevokeResponse,
+    AdminResellerCreateRequest,
+    AdminResellerExpiryRequest,
     AdminStatsResetRequest,
     AppUpdateAdminResponse,
     AppUpdateAdminUpsert,
     AppUpdateResponse,
+    ResellerGenerateSubscriptionRequest,
+    ResellerLoginRequest,
     AdminVpnProfileResponse,
     AdminVpnProfileUpsert,
     VpnProfileCatalogItem,
@@ -64,6 +69,21 @@ from .models import (
 )
 from .plans import PLANS, get_plan
 from .security import require_admin, verify_lomopay_signature
+from .resellers import (
+    create_reseller,
+    delete_reseller,
+    freeze_reseller,
+    generate_reseller_subscription,
+    generate_reseller_test,
+    list_reseller_codes,
+    list_resellers,
+    login_reseller,
+    logout_reseller,
+    public_reseller_account,
+    reactivate_reseller,
+    require_reseller,
+    update_reseller_expiry,
+)
 from .services import (
     access_state,
     activation_code_for_payment,
@@ -469,6 +489,124 @@ def admin_code_delete(body: AdminCodeRevokeRequest):
 
 
 @app.get(
+    "/v1/admin/resellers",
+    dependencies=[Depends(require_admin)],
+)
+def admin_resellers_list():
+    return list_resellers()
+
+
+@app.post(
+    "/v1/admin/resellers",
+    dependencies=[Depends(require_admin)],
+)
+def admin_reseller_create(body: AdminResellerCreateRequest):
+    try:
+        return create_reseller(body.username, body.expires_at)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post(
+    "/v1/admin/resellers/{reseller_id}/freeze",
+    dependencies=[Depends(require_admin)],
+)
+def admin_reseller_freeze(reseller_id: int):
+    try:
+        return freeze_reseller(reseller_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post(
+    "/v1/admin/resellers/{reseller_id}/reactivate",
+    dependencies=[Depends(require_admin)],
+)
+def admin_reseller_reactivate(reseller_id: int):
+    try:
+        return reactivate_reseller(reseller_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post(
+    "/v1/admin/resellers/{reseller_id}/expiry",
+    dependencies=[Depends(require_admin)],
+)
+def admin_reseller_expiry(reseller_id: int, body: AdminResellerExpiryRequest):
+    try:
+        return update_reseller_expiry(reseller_id, body.expires_at)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.delete(
+    "/v1/admin/resellers/{reseller_id}",
+    dependencies=[Depends(require_admin)],
+)
+def admin_reseller_delete(reseller_id: int):
+    try:
+        delete_reseller(reseller_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"success": True, "message": "Sous-panel supprimé."}
+
+
+@app.post("/v1/reseller/login")
+def reseller_login(body: ResellerLoginRequest):
+    try:
+        return login_reseller(body.username, body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+@app.post("/v1/reseller/logout")
+def reseller_logout(
+    authorization: str | None = Header(default=None),
+    _: dict = Depends(require_reseller),
+):
+    logout_reseller(authorization)
+    return {"success": True}
+
+
+@app.get("/v1/reseller/account")
+def reseller_account(account: dict = Depends(require_reseller)):
+    return public_reseller_account(account)
+
+
+@app.get(
+    "/v1/reseller/codes",
+    response_model=list[AdminCodeListItem],
+)
+def reseller_codes_list(
+    limit: int = 200,
+    account: dict = Depends(require_reseller),
+):
+    return list_reseller_codes(int(account["id"]), limit)
+
+
+@app.post("/v1/reseller/codes/subscription")
+def reseller_subscription_code(
+    body: ResellerGenerateSubscriptionRequest,
+    account: dict = Depends(require_reseller),
+):
+    try:
+        code = generate_reseller_subscription(int(account["id"]), body.plan_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return {"plan_id": body.plan_id, "code": code}
+
+
+@app.post("/v1/reseller/codes/test")
+def reseller_test_code(account: dict = Depends(require_reseller)):
+    try:
+        code = generate_reseller_test(int(account["id"]))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return {"plan_id": "test_2h", "duration_seconds": 7200, "code": code}
+
+
+@app.get(
     "/v1/admin/app-update",
     response_model=AppUpdateAdminResponse,
     dependencies=[Depends(require_admin)],
@@ -548,6 +686,27 @@ def download_barka_apk():
 def admin_panel():
     return HTMLResponse(
         ADMIN_PANEL_HTML,
+        headers={
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer",
+            "Content-Security-Policy": (
+                "default-src 'self'; "
+                "style-src 'unsafe-inline'; "
+                "script-src 'unsafe-inline'; "
+                "img-src 'self' data:; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none'"
+            ),
+        },
+    )
+
+
+@app.get("/reseller", response_class=HTMLResponse, include_in_schema=False)
+def reseller_panel():
+    return HTMLResponse(
+        RESELLER_PANEL_HTML,
         headers={
             "Cache-Control": "no-store, max-age=0",
             "Pragma": "no-cache",
