@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from fastapi import Header, HTTPException, status
 
-from .admin_ops import list_activation_codes
+from .admin_ops import delete_activation_code, list_activation_codes
 from .config import settings
 from .db import connect, transaction
 from .plans import get_plan
@@ -407,3 +407,10 @@ def generate_reseller_test(reseller_id: int) -> str:
 
 def list_reseller_codes(reseller_id: int, limit: int = 200) -> list[dict]:
     return list_activation_codes(limit=limit, reseller_id=reseller_id)
+
+
+def delete_reseller_code(reseller_id: int, code: str) -> tuple[bool, str]:
+    success, message = delete_activation_code(code, reseller_id=reseller_id)
+    if not success:
+        return False, "Code introuvable ou non autorisé."
+    return True, message

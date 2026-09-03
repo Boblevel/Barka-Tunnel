@@ -73,6 +73,7 @@ from .security import require_admin, verify_lomopay_signature
 from .resellers import (
     create_reseller,
     delete_reseller,
+    delete_reseller_code,
     freeze_reseller,
     generate_reseller_subscription,
     generate_reseller_test,
@@ -605,6 +606,18 @@ def reseller_test_code(account: dict = Depends(require_reseller)):
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     return {"plan_id": "test_2h", "duration_seconds": 7200, "code": code}
+
+
+@app.post(
+    "/v1/reseller/codes/delete",
+    response_model=AdminCodeRevokeResponse,
+)
+def reseller_code_delete(
+    body: AdminCodeRevokeRequest,
+    account: dict = Depends(require_reseller),
+):
+    success, message = delete_reseller_code(int(account["id"]), body.code)
+    return AdminCodeRevokeResponse(success=success, message=message)
 
 
 @app.get(

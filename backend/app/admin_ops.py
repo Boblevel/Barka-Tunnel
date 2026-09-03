@@ -131,7 +131,10 @@ def reactivate_activation_code(code: str) -> tuple[bool, str]:
     return True, "Accès réactivé."
 
 
-def delete_activation_code(code: str) -> tuple[bool, str]:
+def delete_activation_code(
+    code: str,
+    reseller_id: int | None = None,
+) -> tuple[bool, str]:
     hashed = code_hash(code)
     now = now_ts()
     with transaction() as cx:
@@ -141,8 +144,9 @@ def delete_activation_code(code: str) -> tuple[bool, str]:
                    applied_from, applied_until
             FROM activation_codes
             WHERE code_hash=? AND deleted_at IS NULL
+              AND (? IS NULL OR created_by_reseller_id=?)
             """,
-            (hashed,),
+            (hashed, reseller_id, reseller_id),
         ).fetchone()
         if not row:
             return False, "Code introuvable."

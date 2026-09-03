@@ -587,6 +587,55 @@ def test_deleting_reseller_preserves_previously_generated_test_code(tmp_path):
     assert 7190 <= access["remaining_seconds"] <= 7200
 
 
+def test_reseller_can_delete_only_own_codes(tmp_path):
+    _, services = load_modules(tmp_path)
+    import app.resellers as resellers
+    importlib.reload(resellers)
+
+    first_account = resellers.create_reseller(
+        "vendeur-first",
+        datetime.now(timezone.utc) + timedelta(days=1),
+    )
+    second_account = resellers.create_reseller(
+        "vendeur-second",
+        datetime.now(timezone.utc) + timedelta(days=1),
+    )
+    first_code = resellers.generate_reseller_subscription(first_account["id"], "24h")
+    second_code = resellers.generate_reseller_test(second_account["id"])
+
+    denied, denied_message = resellers.delete_reseller_code(
+        first_account["id"], second_code
+    )
+    assert denied is False
+    assert "non autorisé" in denied_message
+    assert any(
+        item["code"] == second_code
+        for item in resellers.list_reseller_codes(second_account["id"])
+    )
+
+    device = "device-reseller-delete-own"
+    redeemed, _, access = services.redeem_activation_code(device, first_code)
+    assert redeemed is True
+    assert access["remaining_seconds"] > 0
+
+    deleted, _ = resellers.delete_reseller_code(first_account["id"], first_code)
+    assert deleted is True
+    assert services.access_state(device)["remaining_seconds"] == 0
+    assert all(
+        item["code"] != first_code
+        for item in resellers.list_reseller_codes(first_account["id"])
+    )
+
+    unused_deleted, _ = resellers.delete_reseller_code(
+        second_account["id"], second_code
+    )
+    assert unused_deleted is True
+    assert all(
+        item["code"] != second_code
+        for item in resellers.list_reseller_codes(second_account["id"])
+    )
+
+
 def test_used_code_is_displayed_expired_at_zero_and_can_be_deleted(tmp_path):
     db, services = load_modules(tmp_path)
     import app.admin_ops as admin_ops
