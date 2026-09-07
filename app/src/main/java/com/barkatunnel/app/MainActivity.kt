@@ -1616,8 +1616,9 @@ class MainActivity : AppCompatActivity() {
             info.transport
         )
 
+        val isVpnInterfaceIp = cellularIp == "10.10.0.1"
         val visualState = when {
-            cellularIp == null -> NetworkIpVisualState.NEUTRAL
+            cellularIp == null || isVpnInterfaceIp -> NetworkIpVisualState.NEUTRAL
             selectedNetwork?.id == "orange_bf" -> {
                 if (IpFinderActivity.isIpCompatible(this, cellularIp)) {
                     NetworkIpVisualState.VALID
@@ -1635,7 +1636,7 @@ class MainActivity : AppCompatActivity() {
             else -> NetworkIpVisualState.NEUTRAL
         }
         applyNetworkIpVisualState(visualState)
-        showOrangeIpWarningIfNeeded(cellularIp)
+        showOrangeIpWarningIfNeeded(cellularIp.takeUnless { isVpnInterfaceIp })
 
         if (::networkTransportIcon.isInitialized) {
             when (info.transportType) {
