@@ -57,6 +57,7 @@ def access_state(device_id: str) -> dict:
 
     if bool(row["access_disabled"]):
         return {
+            "trial_used": row["trial_started_at"] is not None,
             "allowed": False,
             "access_type": "NONE",
             "server_time": iso(now),
@@ -69,6 +70,7 @@ def access_state(device_id: str) -> dict:
     if sub_exp is not None and int(sub_exp) > now:
         start = row["subscription_started_at"]
         return {
+            "trial_used": row["trial_started_at"] is not None,
             "allowed": True,
             "access_type": "SUBSCRIPTION",
             "server_time": iso(now),
@@ -81,6 +83,7 @@ def access_state(device_id: str) -> dict:
     if trial_exp is not None and int(trial_exp) > now:
         start = row["trial_started_at"]
         return {
+            "trial_used": row["trial_started_at"] is not None,
             "allowed": True,
             "access_type": "TRIAL",
             "server_time": iso(now),
@@ -91,6 +94,7 @@ def access_state(device_id: str) -> dict:
 
     return {
         "allowed": False,
+        "trial_used": row["trial_started_at"] is not None,
         "access_type": "NONE",
         "server_time": iso(now),
         "started_at": None,

@@ -17,6 +17,7 @@ class DeviceRequest(BaseModel):
 
 class AccessResponse(BaseModel):
     allowed: bool
+    trial_used: bool = False
     access_type: Literal["NONE", "TRIAL", "SUBSCRIPTION"]
     server_time: str
     started_at: str | None = None

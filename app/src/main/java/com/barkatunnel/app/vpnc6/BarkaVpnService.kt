@@ -176,11 +176,12 @@ class BarkaVpnService : VpnService() {
         connectFuture?.cancel(true)
         connectFuture = null
         mainHandler.removeCallbacksAndMessages(null)
-        stopTunnel()
         keepAliveFuture?.cancel(true)
         keepAliveFuture = null
         keepAliveExecutor.shutdownNow()
-        worker.shutdownNow()
+        // La fermeture native attend une réponse Binder : ne pas bloquer Android.
+        worker.execute { stopTunnel() }
+        worker.shutdown()
         C6VpnRuntime.complete(activeConnectRequestId, C6VpnResult.Disconnected)
         activeConnectRequestId = null
         updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
@@ -375,7 +376,11 @@ class BarkaVpnService : VpnService() {
         val probeOk = SocksProbe.hasUsableInternet(
             proxyHost = "127.0.0.1",
             proxyPort = localSocksPort,
-            timeoutMs = DIAGNOSTIC_SOCKS_TIMEOUT_MS
+            timeoutMs = if (protocol == VpnProfileProtocol.SLOWDNS) {
+                SLOWDNS_SOCKS_TIMEOUT_MS
+            } else {
+                DIAGNOSTIC_SOCKS_TIMEOUT_MS
+            }
         )
         val diagnosticNetwork = when (protocol) {
             VpnProfileProtocol.VLESS -> "ORANGE"
@@ -428,31 +433,32 @@ class BarkaVpnService : VpnService() {
             this,
             "Diagnostic VPN • démarrage tun2socks • UDP=${if (protocol == VpnProfileProtocol.VLESS) "SOCKS5" else if (udpgw != null) "UDPGW" else "OFF"}."
         )
+        val runner = Tun2SocksRunner(this)
         synchronized(tunnelLock) {
             if (!isConnectOperationActive(connectGeneration)) {
                 runCatching { descriptor.close() }
                 vpnDescriptor = null
+                runner.stop()
                 throw InterruptedException("Connexion annulée.")
             }
 
-            val runner = Tun2SocksRunner(this)
             tun2SocksRunner = runner
-            runner.start(
-                vpnDescriptor = descriptor,
-                mtu = VPN_MTU,
-                vpnAddress = TUN2SOCKS_ROUTER_ADDRESS,
-                netmask = VPN_NETMASK,
-                socksAddress = protocolEngine.socksAddress,
-                udpgwAddress = udpgw,
-                forwardUdpThroughSocks = protocol == VpnProfileProtocol.VLESS
-            )
+        }
+        runner.start(
+            vpnDescriptor = descriptor,
+            mtu = VPN_MTU,
+            vpnAddress = TUN2SOCKS_ROUTER_ADDRESS,
+            netmask = VPN_NETMASK,
+            socksAddress = protocolEngine.socksAddress,
+            udpgwAddress = udpgw,
+            forwardUdpThroughSocks = protocol == VpnProfileProtocol.VLESS
+        )
 
-            if (!isConnectOperationActive(connectGeneration)) {
-                throw InterruptedException("Connexion annulée.")
-            }
-            if (!runner.isRunning()) {
-                throw IllegalStateException("tun2socks ne transporte pas le trafic VPN.")
-            }
+        if (!isConnectOperationActive(connectGeneration)) {
+            throw InterruptedException("Connexion annulée.")
+        }
+        if (!runner.isRunning()) {
+            throw IllegalStateException("tun2socks ne transporte pas le trafic VPN.")
         }
         AppLogStore.add(this, "Diagnostic VPN • tun2socks actif.")
     }
@@ -594,14 +600,15 @@ class BarkaVpnService : VpnService() {
     private fun startConnectionMonitor(protocol: VpnProfileProtocol) {
         keepAliveFuture?.cancel(true)
         val port = socksPort(protocol)
-        var consecutiveFailures = 0
+        val monitorGeneration = operationGeneration.get()
         keepAliveFuture = keepAliveExecutor.scheduleWithFixedDelay(
             {
                 if (connected && !stopping) {
-                    val runnerHealthy = synchronized(tunnelLock) {
-                        vpnDescriptor != null &&
-                            engine?.isRunning() == true &&
-                            tun2SocksRunner?.isRunning() == true
+                    val runner = synchronized(tunnelLock) { tun2SocksRunner }
+                    val runnerHealthy = vpnDescriptor != null &&
+                        engine?.isRunning() == true && runner?.isRunning() == true
+                    if (!connected || stopping || operationGeneration.get() != monitorGeneration) {
+                        return@scheduleWithFixedDelay
                     }
                     if (!runnerHealthy) {
                         scheduleHealthRecovery("Le moteur du tunnel s’est arrêté.")
@@ -619,12 +626,6 @@ class BarkaVpnService : VpnService() {
                         )
                         val latencyMs = (System.nanoTime() - startNs) / 1_000_000L
 
-                        if (ok) {
-                            consecutiveFailures = 0
-                        } else {
-                            consecutiveFailures += 1
-                        }
-
                         if (enabled) {
                             AppLogStore.add(
                                 this,
@@ -632,11 +633,8 @@ class BarkaVpnService : VpnService() {
                             )
                         }
 
-                        if (!ok && consecutiveFailures >= HEALTH_FAILURE_LIMIT) {
-                            scheduleHealthRecovery(
-                                "Le proxy VPN ne transmet plus les données."
-                            )
-                        }
+                        // Une cible de diagnostic lente ne prouve pas un arrêt du VPN.
+                        // La reprise dépend des moteurs et de leur contrôle de vie.
                     }
                 }
             },
@@ -650,6 +648,15 @@ class BarkaVpnService : VpnService() {
         reason: String,
         resetConnectedTimer: Boolean = false
     ) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            val expectedGeneration = operationGeneration.get()
+            mainHandler.post {
+                if (operationGeneration.get() == expectedGeneration) {
+                    scheduleHealthRecovery(reason, resetConnectedTimer)
+                }
+            }
+            return
+        }
         if (!connected || stopping) return
         val session = activeSession ?: return
         if (!healthRecoveryScheduled.compareAndSet(false, true)) return
@@ -982,13 +989,13 @@ class BarkaVpnService : VpnService() {
         private const val LOCAL_PROXY_RELEASE_TIMEOUT_MS = 4_000L
         private const val MAX_CONNECTION_ATTEMPTS = 1
         private const val CONNECTION_RETRY_DELAY_MS = 1_500L
-        private const val DIAGNOSTIC_SOCKS_TIMEOUT_MS = 2_000
+        private const val DIAGNOSTIC_SOCKS_TIMEOUT_MS = 5_000
+        private const val SLOWDNS_SOCKS_TIMEOUT_MS = 8_000
         private const val SETTINGS_PREFS = "barka_settings"
         private const val KEY_AUTO_PING = "auto_ping"
         private const val AUTO_PING_TIMEOUT_MS = 2_000
         private const val AUTO_PING_INITIAL_DELAY_SECONDS = 3L
         private const val AUTO_PING_INTERVAL_SECONDS = 12L
-        private const val HEALTH_FAILURE_LIMIT = 3
         private const val RECOVERY_INITIAL_DELAY_MS = 2_000L
         private const val RECOVERY_MAX_DELAY_MS = 15_000L
     }

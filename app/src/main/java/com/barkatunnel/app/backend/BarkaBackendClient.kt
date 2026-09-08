@@ -2,6 +2,7 @@ package com.barkatunnel.app.backend
 
 import android.content.Context
 import com.barkatunnel.app.device.DeviceIdentity
+import com.barkatunnel.app.trial.TrialUsageStore
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -174,6 +175,12 @@ class BarkaBackendClient(context: Context) {
     }
 
     private fun parseAccess(body: JSONObject): BackendAccessState {
+        val trialUsed = when {
+            body.optString("access_type") == "TRIAL" -> true
+            body.opt("trial_used") is Boolean -> body.getBoolean("trial_used")
+            else -> null
+        }
+        trialUsed?.let { TrialUsageStore.record(appContext, it) }
         return BackendAccessState(
             allowed = body.optBoolean("allowed", false),
             accessType = body.optString("access_type", "NONE"),

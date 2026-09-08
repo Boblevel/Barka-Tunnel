@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.barkatunnel.app.core.AppContainer
 import com.barkatunnel.app.update.RemoteUpdateScheduler
+import com.barkatunnel.app.ui.common.PressFeedback
 
 class BarkaApplication : Application() {
 
@@ -21,6 +22,7 @@ class BarkaApplication : Application() {
         // ni le planificateur de mises à jour de l'application principale.
         if (currentProcessName()?.endsWith(":tun2socks") == true) return
 
+        registerActivityLifecycleCallbacks(PressFeedback)
         applySavedLanguage()
         applySavedTheme()
         container = AppContainer(this)

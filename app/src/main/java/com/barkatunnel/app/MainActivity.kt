@@ -3,6 +3,11 @@ package com.barkatunnel.app
 // BARKA_HOME_RUNTIME_V5_FINAL_NAV_NO_LOGIN
 
 import android.Manifest
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.app.ActivityManager
 import android.app.Dialog
 import android.content.ClipData
@@ -67,6 +72,8 @@ import com.barkatunnel.app.ui.home.ConnectionTimeFormatter
 import com.barkatunnel.app.ui.home.NetworkOption
 import com.barkatunnel.app.ui.pager.StaticPageAdapter
 import com.barkatunnel.app.backend.BarkaBackendClient
+import com.barkatunnel.app.trial.TrialUsageStore
+import com.barkatunnel.app.ui.common.PressFeedback
 import com.barkatunnel.app.update.AppUpdateCoordinator
 import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.barkatunnel.app.vpnprofile.VpnProfileRepository
@@ -103,6 +110,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var vpnStatus: TextView
     private lateinit var connectButton: MaterialButton
     private lateinit var powerButton: TextView
+    private lateinit var buttonFreeTrial: View
+    private var trialActivationInProgress = false
 
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
@@ -252,7 +261,17 @@ class MainActivity : AppCompatActivity() {
         networkFlagNiger = homePage.findViewById(R.id.networkFlagNiger)
         networkFlagTogo = homePage.findViewById(R.id.networkFlagTogo)
 
-        val buttonFreeTrial = homePage.findViewById<android.view.View>(R.id.buttonFreeTrial)
+        buttonFreeTrial = homePage.findViewById(R.id.buttonFreeTrial)
+        updateGiftVisibility()
+        val brandBarka = getString(R.string.main_brand_barka)
+        val brandTunnel = getString(R.string.main_brand_tunnel)
+        homePage.findViewById<TextView>(R.id.homeBrandName).text =
+            SpannableString("$brandBarka $brandTunnel").apply {
+                setSpan(
+                    ForegroundColorSpan(ContextCompat.getColor(this@MainActivity, R.color.barka_blue)),
+                    brandBarka.length + 1, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
         val buttonRefresh = homePage.findViewById<android.view.View>(R.id.buttonRefresh)
         val addAccessButton = homePage.findViewById<android.view.View>(R.id.addAccessButton)
         connectButton = homePage.findViewById(R.id.connectButton)
@@ -312,15 +331,37 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonFreeTrial.setOnClickListener {
+            if (trialActivationInProgress || TrialUsageStore.wasUsed(this) != false) {
+                return@setOnClickListener
+            }
             val controller = requireController() ?: return@setOnClickListener
+            trialActivationInProgress = true
+            buttonFreeTrial.isEnabled = false
+            AnimatorSet().apply {
+                playTogether(
+                    ObjectAnimator.ofFloat(buttonFreeTrial, View.ROTATION, 0f, -14f, 14f, -8f, 0f),
+                    ObjectAnimator.ofFloat(buttonFreeTrial, View.SCALE_X, 1f, 1.14f, 1f),
+                    ObjectAnimator.ofFloat(buttonFreeTrial, View.SCALE_Y, 1f, 1.14f, 1f)
+                )
+                duration = 420L
+                start()
+            }
 
             runHomeAction {
-                val result = controller.startFreeTrial()
-                timerController.syncAccessRemaining(
-                    controller.currentState().access.remainingSeconds
-                )
-
-                result
+                try {
+                    val result = controller.startFreeTrial()
+                    timerController.syncAccessRemaining(
+                        controller.currentState().access.remainingSeconds
+                    )
+                    result
+                } catch (error: Exception) {
+                    HomeControllerResult.Message(error.message ?: getString(R.string.trial_not_available_device))
+                } finally {
+                    runOnUiThread {
+                        trialActivationInProgress = false
+                        updateGiftVisibility()
+                    }
+                }
             }
         }
 
@@ -790,6 +831,7 @@ class MainActivity : AppCompatActivity() {
             .setOnClickListener { select("telecel_bf") }
 
         dialog.show()
+        dialog.window?.decorView?.let(PressFeedback::applyToTree)
 
         dialog.window?.apply {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -1021,6 +1063,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleHomeResult(
         result: HomeControllerResult
     ) {
+        updateGiftVisibility()
         when (result) {
             is HomeControllerResult.State -> {
                 val latestState = homeController?.currentState() ?: result.value
@@ -1082,6 +1125,12 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             }
         }
+    }
+
+    private fun updateGiftVisibility() {
+        if (!::buttonFreeTrial.isInitialized || isDestroyed) return
+        buttonFreeTrial.visibility = if (TrialUsageStore.wasUsed(this) == false) View.VISIBLE else View.GONE
+        buttonFreeTrial.isEnabled = !trialActivationInProgress
     }
 
     private fun updatePowerButtonState(state: HomeConnectionState) {
@@ -1307,6 +1356,7 @@ class MainActivity : AppCompatActivity() {
             }
 
         dialog.show()
+        dialog.window?.decorView?.let(PressFeedback::applyToTree)
 
         dialog.window?.apply {
             navigationBarColor = ContextCompat.getColor(this@MainActivity, R.color.barka_card)
@@ -1362,6 +1412,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.show()
+        dialog.window?.decorView?.let(PressFeedback::applyToTree)
         dialog.window?.apply {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
@@ -1402,7 +1453,7 @@ class MainActivity : AppCompatActivity() {
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-            view.setPadding(0, bars.top, 0, bars.bottom)
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }
         ViewCompat.requestApplyInsets(root)

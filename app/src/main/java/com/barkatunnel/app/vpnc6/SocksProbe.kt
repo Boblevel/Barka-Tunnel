@@ -10,19 +10,19 @@ object SocksProbe {
         proxyHost: String,
         proxyPort: Int,
         timeoutMs: Int
-    ): Boolean = connectThrough(
+    ): Boolean = !Thread.currentThread().isInterrupted && (connectThrough(
         proxyHost = proxyHost,
         proxyPort = proxyPort,
         destinationHost = "1.1.1.1",
         destinationPort = 443,
         timeoutMs = timeoutMs
-    ) || connectThrough(
+    ) || (!Thread.currentThread().isInterrupted && connectThrough(
         proxyHost = proxyHost,
         proxyPort = proxyPort,
         destinationHost = "8.8.8.8",
         destinationPort = 443,
         timeoutMs = timeoutMs
-    )
+    )))
 
     fun connectThrough(
         proxyHost: String,
@@ -58,14 +58,14 @@ object SocksProbe {
             output.flush()
 
             if (input.readUnsignedByte() != 0x05 || input.readUnsignedByte() != 0x00) return false
-            input.readUnsignedByte()
+            if (input.readUnsignedByte() != 0x00) return false
             when (input.readUnsignedByte()) {
-                0x01 -> input.skipBytes(4)
-                0x03 -> input.skipBytes(input.readUnsignedByte())
-                0x04 -> input.skipBytes(16)
+                0x01 -> input.readFully(ByteArray(4))
+                0x03 -> input.readFully(ByteArray(input.readUnsignedByte()))
+                0x04 -> input.readFully(ByteArray(16))
                 else -> return false
             }
-            input.skipBytes(2)
+            input.readUnsignedShort()
             true
         }
     } catch (_: Exception) {

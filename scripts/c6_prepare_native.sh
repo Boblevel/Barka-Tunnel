@@ -82,12 +82,17 @@ test "$(git -C "$TMP/tun2socks" rev-parse HEAD)" = "$TUN2SOCKS_COMMIT" || {
 TUN_CPP="$TMP/tun2socks/tun2socks/src/main/cpp"
 for abi in arm64-v8a armeabi-v7a; do
   build_dir="$TMP/tun2socks-cmake-$abi"
+  barka_link_options=()
+  if [ "$abi" = "arm64-v8a" ]; then
+    barka_link_options+=("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384")
+  fi
   "$CMAKE" -S "$TUN_CPP" -B "$build_dir" \
     -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI="$abi" \
     -DANDROID_PLATFORM=android-23 \
     -DANDROID_STL=c++_static \
-    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_BUILD_TYPE=Release \
+    "${barka_link_options[@]}"
   "$CMAKE" --build "$build_dir" --config Release --parallel
   so="$(find "$build_dir" -type f -name libtun2socks.so | head -1)"
   test -n "$so" || { echo "libtun2socks.so absent pour $abi"; exit 1; }
@@ -124,6 +129,18 @@ readelf -h "$JNI/arm64-v8a/libbarka_dnstt.so" | grep -q 'AArch64' || { echo "DNS
 readelf -h "$JNI/armeabi-v7a/libbarka_dnstt.so" | grep -q 'ARM' || { echo "DNSTT ARMv7 invalide"; exit 1; }
 readelf -h "$JNI/arm64-v8a/libtun2socks.so" | grep -q 'AArch64' || { echo "tun2socks ARM64 invalide"; exit 1; }
 readelf -h "$JNI/armeabi-v7a/libtun2socks.so" | grep -q 'ARM' || { echo "tun2socks ARMv7 invalide"; exit 1; }
+
+# Empêcher la livraison d'un pont ARM64 incompatible avec les pages de 16 Ko.
+python3 - "$JNI/arm64-v8a/libtun2socks.so" <<'PY'
+import subprocess
+import sys
+
+headers = subprocess.check_output(["readelf", "-lW", sys.argv[1]], text=True)
+alignments = [int(line.split()[-1], 16) for line in headers.splitlines()
+              if line.lstrip().startswith("LOAD ")]
+if not alignments or any(value < 16384 for value in alignments):
+    raise SystemExit("tun2socks ARM64 : alignement 16 Ko absent")
+PY
 
 echo "===== C6 native cores ====="
 find "$JNI" -maxdepth 2 -type f -print -exec file {} \;

@@ -28,41 +28,26 @@
                 android:contentDescription="@string/barka_logo_description"
                 android:src="@drawable/ic_barka_logo" />
 
-            <LinearLayout
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/homeBrandName"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/home_brand_margin_start"
                 android:layout_weight="1"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/main_brand_barka"
-                    android:maxLines="1"
-                    android:textColor="@color/barka_text"
-                    android:textSize="@dimen/home_brand_text_size"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:layout_weight="1"
-                    android:maxLines="1"
-                    android:text="@string/main_brand_tunnel"
-                    android:textColor="@color/barka_blue"
-                    android:textSize="@dimen/home_brand_text_size"
-                    android:textStyle="bold"
-                    app:autoSizeMaxTextSize="@dimen/home_brand_text_size"
-                    app:autoSizeMinTextSize="11sp"
-                    app:autoSizeStepGranularity="1sp"
-                    app:autoSizeTextType="uniform" />
-            </LinearLayout>
+                android:maxLines="1"
+                android:text="@string/app_name"
+                android:textColor="@color/barka_text"
+                android:textSize="@dimen/home_brand_text_size"
+                android:textStyle="bold"
+                app:autoSizeMaxTextSize="@dimen/home_brand_text_size"
+                app:autoSizeMinTextSize="8sp"
+                app:autoSizeStepGranularity="1sp"
+                app:autoSizeTextType="uniform" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/buttonFreeTrial"
+            android:visibility="gone"
             android:layout_width="@dimen/home_header_action_width"
             android:layout_height="@dimen/home_header_action_height"
             android:clickable="true"

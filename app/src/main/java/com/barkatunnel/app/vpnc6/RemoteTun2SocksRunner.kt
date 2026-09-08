@@ -14,13 +14,16 @@ import android.os.ParcelFileDescriptor
 import android.os.RemoteException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
 
 class Tun2SocksRunner(context: Context) {
     private val appContext = context.applicationContext
     private val stateLock = Any()
     private val commandLock = Any()
     private val replyThread = HandlerThread("BarkaTun2SocksReplies").apply { start() }
-    private val replyMessenger = Messenger(ReplyHandler(replyThread.looper))
+    private val stopped = AtomicBoolean(false)
+    @Volatile private var lastConfirmedRunningAt = 0L
 
     @Volatile private var remoteReady = false
     @Volatile private var remoteMessenger: Messenger? = null
@@ -40,13 +43,13 @@ class Tun2SocksRunner(context: Context) {
         forwardUdpThroughSocks: Boolean = false
     ) {
         synchronized(stateLock) {
-            if (bound || remoteReady) {
+            if (stopped.get() || bound || remoteReady) {
                 throw IllegalStateException("Un pont tun2socks est déjà actif.")
             }
         }
 
-        bindRemoteService()
         try {
+            bindRemoteService()
             val extras = Bundle().apply {
                 putParcelable(Tun2SocksProcessService.KEY_TUN_DESCRIPTOR, vpnDescriptor)
                 putInt(Tun2SocksProcessService.KEY_MTU, mtu)
@@ -69,7 +72,11 @@ class Tun2SocksRunner(context: Context) {
                     response.error ?: "Le pont tun2socks distant n'a pas démarré."
                 )
             }
-            remoteReady = true
+            synchronized(stateLock) {
+                if (stopped.get()) throw InterruptedException("Connexion annulée.")
+                lastConfirmedRunningAt = android.os.SystemClock.elapsedRealtime()
+                remoteReady = true
+            }
         } catch (error: Throwable) {
             stop()
             throw error
@@ -77,7 +84,7 @@ class Tun2SocksRunner(context: Context) {
     }
 
     fun isRunning(): Boolean {
-        if (!remoteReady || remoteBinder?.isBinderAlive != true) return false
+        if (stopped.get() || !remoteReady || remoteBinder?.isBinderAlive != true) return false
         return try {
             val response = sendAndAwait(
                 command = Tun2SocksProcessService.COMMAND_STATUS,
@@ -85,15 +92,27 @@ class Tun2SocksRunner(context: Context) {
             )
             val running = response.what == Tun2SocksProcessService.RESPONSE_STATUS &&
                 response.running
+            if (running) lastConfirmedRunningAt = android.os.SystemClock.elapsedRealtime()
             remoteReady = running
             running
-        } catch (_: Throwable) {
+        } catch (_: TimeoutException) {
+            !stopped.get() && remoteReady && remoteBinder?.isBinderAlive == true &&
+                android.os.SystemClock.elapsedRealtime() - lastConfirmedRunningAt < STATUS_GRACE_MS
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            !stopped.get() && remoteReady && remoteBinder?.isBinderAlive == true
+        } catch (_: Exception) {
             remoteReady = false
             false
         }
     }
 
     fun stop() {
+        if (!stopped.compareAndSet(false, true)) return
+        connectionLatch?.countDown()
+        pendingResponse?.complete(
+            Response(Tun2SocksProcessService.RESPONSE_ERROR, "Connexion annulée.", false)
+        )
         val binder = remoteBinder
         val messenger = remoteMessenger
         if (messenger != null && remoteBinder?.isBinderAlive == true) {
@@ -115,8 +134,10 @@ class Tun2SocksRunner(context: Context) {
         val connection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 synchronized(stateLock) {
-                    remoteBinder = binder
-                    remoteMessenger = binder?.let(::Messenger)
+                    if (!stopped.get() && serviceConnection === this) {
+                        remoteBinder = binder
+                        remoteMessenger = binder?.let(::Messenger)
+                    }
                 }
                 latch.countDown()
             }
@@ -145,6 +166,7 @@ class Tun2SocksRunner(context: Context) {
         }
 
         synchronized(stateLock) {
+            if (stopped.get()) throw InterruptedException("Connexion annulée.")
             serviceConnection = connection
             connectionLatch = latch
             bound = appContext.bindService(
@@ -191,7 +213,7 @@ class Tun2SocksRunner(context: Context) {
         try {
             messenger.send(Message.obtain(null, command).apply {
                 data = extras
-                replyTo = replyMessenger
+                replyTo = Messenger(ReplyHandler(replyThread.looper, responseFuture))
             })
             responseFuture.get(timeoutMs, TimeUnit.MILLISECONDS)
         } catch (error: RemoteException) {
@@ -234,7 +256,10 @@ class Tun2SocksRunner(context: Context) {
         }
     }
 
-    private inner class ReplyHandler(looper: android.os.Looper) : Handler(looper) {
+    private class ReplyHandler(
+        looper: android.os.Looper,
+        private val responseFuture: SettableFutureCompat<Response>
+    ) : Handler(looper) {
         override fun handleMessage(message: Message) {
             val response = Response(
                 what = message.what,
@@ -244,7 +269,7 @@ class Tun2SocksRunner(context: Context) {
                     false
                 ) ?: false
             )
-            pendingResponse?.complete(response)
+            responseFuture.complete(response)
         }
     }
 
@@ -255,9 +280,10 @@ class Tun2SocksRunner(context: Context) {
     )
 
     companion object {
-        private const val BIND_TIMEOUT_MS = 5_000L
-        private const val START_TIMEOUT_MS = 8_000L
-        private const val STATUS_TIMEOUT_MS = 1_500L
+        private const val BIND_TIMEOUT_MS = 12_000L
+        private const val START_TIMEOUT_MS = 12_000L
+        private const val STATUS_TIMEOUT_MS = 3_000L
+        private const val STATUS_GRACE_MS = 60_000L
         private const val STOP_TIMEOUT_MS = 7_000L
         private const val PROCESS_EXIT_TIMEOUT_MS = 2_000L
     }

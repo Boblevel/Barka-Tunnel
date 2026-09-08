@@ -108,8 +108,11 @@ class SlowDnsEngine(
             sshPort = dnsttPort,
             username = config.username,
             password = config.password,
-            localPort = socksPort
-        ).also { it.start() }
+            localPort = socksPort,
+            connectTimeoutMs = 30_000,
+            isCancelled = isCancelled
+        )
+        sshProxy?.start()
 
         if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000) { !isCancelled() }) {
             if (isCancelled()) throw InterruptedException("Connexion annulée.")
@@ -131,8 +134,10 @@ class SlowDnsEngine(
                 sshPort = config.sshPort,
                 username = config.username,
                 password = config.password,
-                localPort = socksPort
+                localPort = socksPort,
+                isCancelled = isCancelled
             )
+            sshProxy = candidate
             try {
                 candidate.start()
                 if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, 8_000) { !isCancelled() }) {

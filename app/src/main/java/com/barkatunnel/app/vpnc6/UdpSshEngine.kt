@@ -34,8 +34,10 @@ class UdpSshEngine(
                 sshPort = config.port,
                 username = config.username,
                 password = config.password,
-                localPort = socksPort
+                localPort = socksPort,
+                isCancelled = isCancelled
             )
+            sshProxy = candidate
             try {
                 candidate.start()
                 AppLogStore.add(
