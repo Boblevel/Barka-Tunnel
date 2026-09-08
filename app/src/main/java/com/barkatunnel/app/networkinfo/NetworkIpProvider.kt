@@ -15,9 +15,9 @@ object NetworkIpProvider {
         val transportType: NetworkTransport
     )
 
-    fun getCurrent(context: Context): NetworkIpInfo {
+    fun getCurrent(context: Context, includeVpn: Boolean = true): NetworkIpInfo {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val cellularIp = getCellularIpv4(context)
+        val cellularIp = getCellularIpv4(context, includeVpn)
         if (!cellularIp.isNullOrBlank()) {
             return NetworkIpInfo(
                 ip = cellularIp,
@@ -26,7 +26,18 @@ object NetworkIpProvider {
             )
         }
 
-        val active = runCatching { cm.activeNetwork }.getOrNull()
+        val active = runCatching {
+            val current = cm.activeNetwork
+            if (includeVpn) current else {
+                fun isPhysical(network: android.net.Network): Boolean {
+                    val capabilities = cm.getNetworkCapabilities(network) ?: return false
+                    return !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                }
+                current?.takeIf { isPhysical(it) }
+                    ?: cm.allNetworks.firstOrNull { isPhysical(it) }
+            }
+        }.getOrNull()
         val caps = active?.let { network ->
             runCatching { cm.getNetworkCapabilities(network) }.getOrNull()
         }
@@ -56,7 +67,8 @@ object NetworkIpProvider {
             ?.firstOrNull { !it.isLoopbackAddress && !it.isLinkLocalAddress }
             ?.hostAddress
 
-        val ip = activeIp ?: findIpv4() ?: context.getString(R.string.unavailable)
+        val ip = activeIp ?: (if (includeVpn) findIpv4() else null)
+            ?: context.getString(R.string.unavailable)
         return NetworkIpInfo(
             ip = ip,
             transport = transport,
@@ -64,13 +76,14 @@ object NetworkIpProvider {
         )
     }
 
-    fun getCellularIpv4(context: Context): String? {
+    fun getCellularIpv4(context: Context, includeVpn: Boolean = true): String? {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         return runCatching {
             cm.allNetworks.asSequence()
                 .mapNotNull { network ->
                     val caps = cm.getNetworkCapabilities(network) ?: return@mapNotNull null
-                    if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                    if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                        (!includeVpn && caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))) {
                         return@mapNotNull null
                     }
                     val ip = cm.getLinkProperties(network)

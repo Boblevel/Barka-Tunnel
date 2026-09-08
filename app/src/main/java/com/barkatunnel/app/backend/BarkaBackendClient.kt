@@ -175,12 +175,12 @@ class BarkaBackendClient(context: Context) {
     }
 
     private fun parseAccess(body: JSONObject): BackendAccessState {
-        val trialUsed = when {
-            body.optString("access_type") == "TRIAL" -> true
-            body.opt("trial_used") is Boolean -> body.getBoolean("trial_used")
-            else -> null
+        val week = body.optLong("trial_week_start", -1L)
+        val serverTime = body.optLong("server_timestamp", -1L)
+        if (body.opt("trial_week_used") is Boolean && week >= 0L && serverTime >= week &&
+            serverTime - week < 604_800L) {
+            TrialUsageStore.record(appContext, body.getBoolean("trial_week_used"), week, serverTime)
         }
-        trialUsed?.let { TrialUsageStore.record(appContext, it) }
         return BackendAccessState(
             allowed = body.optBoolean("allowed", false),
             accessType = body.optString("access_type", "NONE"),

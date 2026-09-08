@@ -38,6 +38,16 @@ def init_db() -> None:
                     last_connect_attempt_at INTEGER
                 );
 
+                -- Historique indépendant des droits : une suppression d'accès
+                -- ne doit pas rendre le cadeau réutilisable la même semaine.
+                CREATE TABLE IF NOT EXISTS weekly_trial_claims(
+                    device_id TEXT NOT NULL,
+                    week_start INTEGER NOT NULL,
+                    claimed_at INTEGER NOT NULL,
+                    applied_until INTEGER NOT NULL,
+                    PRIMARY KEY(device_id, week_start)
+                );
+
                 CREATE TABLE IF NOT EXISTS payments(
                     reference TEXT PRIMARY KEY,
                     provider_payment_id TEXT UNIQUE,

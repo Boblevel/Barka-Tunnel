@@ -20,6 +20,11 @@ def iso(ts: int | None) -> str | None:
     return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def trial_week_start(timestamp: int) -> int:
+    # Burkina Faso : UTC, lundi 00:00 (1970-01-05 = 345600).
+    return ((timestamp - 345600) // 604800) * 604800 + 345600
+
+
 def ensure_device(device_id: str) -> None:
     now = now_ts()
     with transaction() as cx:
@@ -52,11 +57,22 @@ def access_state(device_id: str) -> dict:
             "SELECT * FROM devices WHERE device_id=?",
             (device_id,),
         ).fetchone()
+        week = trial_week_start(now)
+        claimed = cx.execute(
+            "SELECT 1 FROM weekly_trial_claims WHERE device_id=? AND week_start>=? LIMIT 1",
+            (device_id, week),
+        ).fetchone() is not None
     finally:
         cx.close()
 
+    weekly = {
+        "trial_week_start": week,
+        "trial_week_used": claimed,
+        "server_timestamp": now,
+    }
     if bool(row["access_disabled"]):
         return {
+            **weekly,
             "trial_used": row["trial_started_at"] is not None,
             "allowed": False,
             "access_type": "NONE",
@@ -70,6 +86,7 @@ def access_state(device_id: str) -> dict:
     if sub_exp is not None and int(sub_exp) > now:
         start = row["subscription_started_at"]
         return {
+            **weekly,
             "trial_used": row["trial_started_at"] is not None,
             "allowed": True,
             "access_type": "SUBSCRIPTION",
@@ -83,6 +100,7 @@ def access_state(device_id: str) -> dict:
     if trial_exp is not None and int(trial_exp) > now:
         start = row["trial_started_at"]
         return {
+            **weekly,
             "trial_used": row["trial_started_at"] is not None,
             "allowed": True,
             "access_type": "TRIAL",
@@ -94,6 +112,7 @@ def access_state(device_id: str) -> dict:
 
     return {
         "allowed": False,
+        **weekly,
         "trial_used": row["trial_started_at"] is not None,
         "access_type": "NONE",
         "server_time": iso(now),
@@ -105,42 +124,52 @@ def access_state(device_id: str) -> dict:
 
 def start_trial(device_id: str) -> tuple[dict, bool, str]:
     ensure_device(device_id)
-    current = access_state(device_id)
-    cx = connect()
-    try:
-        suspended = cx.execute(
-            "SELECT access_disabled FROM devices WHERE device_id=?",
-            (device_id,),
-        ).fetchone()
-    finally:
-        cx.close()
-    if suspended and bool(suspended["access_disabled"]):
-        return current, False, "Accès désactivé par l’administration."
-    if current["access_type"] == "SUBSCRIPTION":
-        return current, False, "Un abonnement est déjà actif."
-
-    now = now_ts()
+    # Vérification, crédit et historique dans la même transaction SQLite.
+    # BEGIN IMMEDIATE sérialise aussi les processus serveur concurrents.
+    started_now = False
     with transaction() as cx:
+        now = now_ts()
+        week = trial_week_start(now)
         row = cx.execute(
-            "SELECT trial_started_at, trial_expires_at FROM devices WHERE device_id=?",
-            (device_id,),
+            "SELECT * FROM devices WHERE device_id=?", (device_id,)
         ).fetchone()
-
-        if row["trial_started_at"] is None:
-            expires = now + 2 * 60 * 60
+        claimed = cx.execute(
+            "SELECT 1 FROM weekly_trial_claims WHERE device_id=? AND week_start>=? LIMIT 1",
+            (device_id, week),
+        ).fetchone()
+        if bool(row["access_disabled"]):
+            message = "Accès désactivé par l’administration."
+        elif claimed:
+            message = "Cadeau déjà utilisé cette semaine. Disponible lundi à 00 h (Burkina Faso)."
+        else:
+            subscription_expiry = int(row["subscription_expires_at"] or 0)
+            trial_expiry = int(row["trial_expires_at"] or 0)
+            expires = max(now, subscription_expiry, trial_expiry) + 7200
+            if subscription_expiry > now:
+                cx.execute(
+                    """
+                    UPDATE devices SET subscription_expires_at=?, last_seen_at=?
+                    WHERE device_id=?
+                    """,
+                    (expires, now, device_id),
+                )
+            else:
+                cx.execute(
+                    """
+                    UPDATE devices SET trial_started_at=?, trial_expires_at=?, last_seen_at=?
+                    WHERE device_id=?
+                    """,
+                    (now, expires, now, device_id),
+                )
             cx.execute(
                 """
-                UPDATE devices
-                SET trial_started_at=?, trial_expires_at=?, last_seen_at=?
-                WHERE device_id=?
+                INSERT INTO weekly_trial_claims(device_id, week_start, claimed_at, applied_until)
+                VALUES(?,?,?,?)
                 """,
-                (now, expires, now, device_id),
+                (device_id, week, now, expires),
             )
             started_now = True
-            message = "Essai gratuit de 2 heures démarré."
-        else:
-            started_now = False
-            message = "L'essai gratuit de cet appareil a déjà été utilisé."
+            message = "Cadeau de la semaine activé : 2 heures ajoutées."
 
     return access_state(device_id), started_now, message
 

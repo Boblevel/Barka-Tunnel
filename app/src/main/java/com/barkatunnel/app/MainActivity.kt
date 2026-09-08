@@ -124,6 +124,28 @@ class MainActivity : AppCompatActivity() {
     private val connectionOperationGeneration = AtomicLong(0L)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val initialSyncRetryRunnable = Runnable { ensureInitialRemoteSync() }
+    private val networkIpRefreshRunnable = object : Runnable {
+        override fun run() {
+            if (!vpnStateReconciliationActive) return
+            refreshNetworkIp()
+            mainHandler.postDelayed(this, 1_000L)
+        }
+    }
+    private val weeklyGiftRefreshRunnable = Runnable {
+        if (vpnStateReconciliationActive) {
+            refreshHomeState()
+            mainHandler.postDelayed(weeklyGiftRefreshRunnableRetry, 60_000L)
+        }
+    }
+    private val weeklyGiftRefreshRunnableRetry = Runnable { scheduleWeeklyGiftRefresh() }
+
+    private fun scheduleWeeklyGiftRefresh() {
+        mainHandler.removeCallbacks(weeklyGiftRefreshRunnable)
+        mainHandler.removeCallbacks(weeklyGiftRefreshRunnableRetry)
+        if (vpnStateReconciliationActive) {
+            mainHandler.postDelayed(weeklyGiftRefreshRunnable, TrialUsageStore.refreshDelayMillis())
+        }
+    }
     private val vpnStateReconcileRunnable = object : Runnable {
         override fun run() {
             if (!vpnStateReconciliationActive) return
@@ -565,6 +587,9 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         vpnStateReconciliationActive = true
+        mainHandler.removeCallbacks(networkIpRefreshRunnable)
+        mainHandler.post(networkIpRefreshRunnable)
+        scheduleWeeklyGiftRefresh()
         mainHandler.removeCallbacks(vpnStateReconcileRunnable)
         mainHandler.post(vpnStateReconcileRunnable)
         if (journalLogListener == null) {
@@ -599,6 +624,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         vpnStateReconciliationActive = false
+        mainHandler.removeCallbacks(networkIpRefreshRunnable)
+        mainHandler.removeCallbacks(weeklyGiftRefreshRunnable)
+        mainHandler.removeCallbacks(weeklyGiftRefreshRunnableRetry)
         mainHandler.removeCallbacks(vpnStateReconcileRunnable)
         journalLogListener?.let {
             AppLogStore.unregisterChangeListener(this, it)
@@ -646,6 +674,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         vpnStateReconciliationActive = false
+        mainHandler.removeCallbacks(networkIpRefreshRunnable)
+        mainHandler.removeCallbacks(weeklyGiftRefreshRunnable)
+        mainHandler.removeCallbacks(weeklyGiftRefreshRunnableRetry)
         mainHandler.removeCallbacks(vpnStateReconcileRunnable)
         mainHandler.removeCallbacks(initialSyncRetryRunnable)
         if (::timerController.isInitialized) {
@@ -713,6 +744,7 @@ class MainActivity : AppCompatActivity() {
         val syncedState = controller.syncConnection(connection)
         if (lastRenderedConnectionState != connection) {
             handleHomeResult(syncedState)
+            refreshNetworkIp()
         }
 
         if (connection is HomeConnectionState.Connected) {
@@ -1131,6 +1163,7 @@ class MainActivity : AppCompatActivity() {
         if (!::buttonFreeTrial.isInitialized || isDestroyed) return
         buttonFreeTrial.visibility = if (TrialUsageStore.wasUsed(this) == false) View.VISIBLE else View.GONE
         buttonFreeTrial.isEnabled = !trialActivationInProgress
+        scheduleWeeklyGiftRefresh()
     }
 
     private fun updatePowerButtonState(state: HomeConnectionState) {
@@ -1650,7 +1683,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshNetworkIp() {
-        val info = NetworkIpProvider.getCurrent(this)
+        val info = NetworkIpProvider.getCurrent(
+            this,
+            includeVpn = BarkaVpnService.connectionSnapshot().state !=
+                BarkaVpnService.RuntimeConnectionState.DISCONNECTED
+        )
         val cellularIp = info.ip.takeIf {
             info.transportType == NetworkTransport.CELLULAR &&
                 it.isNotBlank() &&
@@ -1667,9 +1704,11 @@ class MainActivity : AppCompatActivity() {
             info.transport
         )
 
-        val isVpnInterfaceIp = cellularIp == "10.10.0.1"
+        val isVpnInterfaceIp = info.ip == "10.10.0.1" &&
+            (info.transportType == NetworkTransport.CELLULAR || info.transportType == NetworkTransport.VPN)
         val visualState = when {
-            cellularIp == null || isVpnInterfaceIp -> NetworkIpVisualState.NEUTRAL
+            isVpnInterfaceIp -> NetworkIpVisualState.VALID
+            cellularIp == null -> NetworkIpVisualState.NEUTRAL
             selectedNetwork?.id == "orange_bf" -> {
                 if (IpFinderActivity.isIpCompatible(this, cellularIp)) {
                     NetworkIpVisualState.VALID
