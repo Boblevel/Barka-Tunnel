@@ -15,7 +15,8 @@ from .config import settings
 from .db import connect, transaction
 from .plans import get_plan
 from .security import activation_code_for_source, code_hash
-from .services import now_ts
+from .services import now_ts, iso
+from .reseller_audit import record_event
 
 
 PASSWORD_ITERATIONS = 600_000
@@ -251,7 +252,7 @@ def _verify_password(password: str, row) -> bool:
         return False
 
 
-def login_reseller(username: str, password: str) -> dict:
+def login_reseller(username: str, password: str, client_ip: str | None = None) -> dict:
     normalized_username = username.strip().lower()
     cx = connect()
     try:
@@ -278,12 +279,20 @@ def login_reseller(username: str, password: str) -> dict:
         or str(row["status"]) != "active"
         or int(row["expires_at"]) <= now
     ):
+        if row:
+            with transaction() as tx:
+                record_event(tx, int(row["id"]), "login_failed", client_ip)
         raise ValueError("Identifiants invalides ou sous-panel indisponible.")
 
     token = secrets.token_urlsafe(32)
     token_digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
     session_expiry = min(int(row["expires_at"]), now + SESSION_LIFETIME_SECONDS)
     with transaction() as tx:
+        current = tx.execute("SELECT * FROM reseller_accounts WHERE id=?", (row["id"],)).fetchone()
+        if current["deleted_at"] is not None or current["status"] != "active" or current["expires_at"] <= now_ts():
+            raise ValueError("Identifiants invalides ou sous-panel indisponible.")
+        session_expiry = min(session_expiry, int(current["expires_at"]))
+        record_event(tx, int(row["id"]), "login_success", client_ip)
         tx.execute(
             "DELETE FROM reseller_sessions WHERE expires_at<=? OR revoked_at IS NOT NULL",
             (now,),
@@ -387,6 +396,7 @@ def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int) 
                 reseller_id,
             ),
         )
+        record_event(cx, reseller_id, "code_created", detail=plan_id)
     return code
 
 
@@ -405,8 +415,8 @@ def generate_reseller_test(reseller_id: int) -> str:
     return _issue_reseller_code(reseller_id, "test_2h", 2 * 60 * 60)
 
 
-def list_reseller_codes(reseller_id: int, limit: int = 200) -> list[dict]:
-    return list_activation_codes(limit=limit, reseller_id=reseller_id)
+def list_reseller_codes(reseller_id: int, limit: int = 200, offset: int = 0) -> list[dict]:
+    return list_activation_codes(limit=limit, reseller_id=reseller_id, offset=offset)
 
 
 def reseller_dashboard_stats(reseller_id: int) -> dict[str, int]:

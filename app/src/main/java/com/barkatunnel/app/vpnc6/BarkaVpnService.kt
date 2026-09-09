@@ -614,7 +614,8 @@ class BarkaVpnService : VpnService() {
                         scheduleHealthRecovery("Le moteur du tunnel s’est arrêté.")
                     } else {
                         val enabled = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
-                            .getBoolean(KEY_AUTO_PING, false)
+                            .getBoolean(KEY_AUTO_PING, true)
+                        if (!enabled) return@scheduleWithFixedDelay
                         // Ce contrôle valide le relais SOCKS. Le processus
                         // tun2socks est contrôlé séparément ci-dessus, car
                         // l'application est volontairement exclue du TUN.

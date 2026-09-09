@@ -170,6 +170,18 @@ def init_db() -> None:
                 ON reseller_accounts(lower(username))
                 WHERE deleted_at IS NULL;
 
+                CREATE TABLE IF NOT EXISTS reseller_events(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reseller_id INTEGER NOT NULL,
+                    event TEXT NOT NULL,
+                    occurred_at INTEGER NOT NULL,
+                    client_ip TEXT,
+                    detail TEXT NOT NULL DEFAULT '',
+                    FOREIGN KEY(reseller_id) REFERENCES reseller_accounts(id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_reseller_events_recent
+                ON reseller_events(reseller_id, occurred_at DESC, id DESC);
+
                 CREATE TABLE IF NOT EXISTS reseller_sessions(
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     reseller_id INTEGER NOT NULL,

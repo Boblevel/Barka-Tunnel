@@ -3,8 +3,7 @@ package com.barkatunnel.app
 // BARKA_HOME_RUNTIME_V5_FINAL_NAV_NO_LOGIN
 
 import android.Manifest
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -73,6 +72,7 @@ import com.barkatunnel.app.ui.home.NetworkOption
 import com.barkatunnel.app.ui.pager.StaticPageAdapter
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.trial.TrialUsageStore
+import com.barkatunnel.app.ui.common.GiftFireworks
 import com.barkatunnel.app.ui.common.PressFeedback
 import com.barkatunnel.app.update.AppUpdateCoordinator
 import com.barkatunnel.app.vpnc6.BarkaVpnService
@@ -112,6 +112,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var powerButton: TextView
     private lateinit var buttonFreeTrial: View
     private var trialActivationInProgress = false
+    private var giftFireworks: ValueAnimator? = null
 
     private lateinit var uiBinder: HomeUiBinder
     private lateinit var timerController: HomeTimerController
@@ -359,15 +360,8 @@ class MainActivity : AppCompatActivity() {
             val controller = requireController() ?: return@setOnClickListener
             trialActivationInProgress = true
             buttonFreeTrial.isEnabled = false
-            AnimatorSet().apply {
-                playTogether(
-                    ObjectAnimator.ofFloat(buttonFreeTrial, View.ROTATION, 0f, -14f, 14f, -8f, 0f),
-                    ObjectAnimator.ofFloat(buttonFreeTrial, View.SCALE_X, 1f, 1.14f, 1f),
-                    ObjectAnimator.ofFloat(buttonFreeTrial, View.SCALE_Y, 1f, 1.14f, 1f)
-                )
-                duration = 420L
-                start()
-            }
+            giftFireworks?.cancel()
+            giftFireworks = GiftFireworks.show(buttonFreeTrial)
 
             runHomeAction {
                 try {
@@ -623,6 +617,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        giftFireworks?.cancel()
+        giftFireworks = null
         vpnStateReconciliationActive = false
         mainHandler.removeCallbacks(networkIpRefreshRunnable)
         mainHandler.removeCallbacks(weeklyGiftRefreshRunnable)

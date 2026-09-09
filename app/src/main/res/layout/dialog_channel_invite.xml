@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="18dp"
-    app:cardBackgroundColor="@color/barka_green"
+    app:cardBackgroundColor="#15803D"
     app:cardCornerRadius="26dp"
     app:cardElevation="10dp"
     app:strokeWidth="0dp">
@@ -76,13 +76,13 @@
             android:layout_height="54dp"
             android:layout_marginTop="20dp"
             android:text="@string/channel_invite_join"
-            android:textColor="@color/barka_green"
+            android:textColor="#15803D"
             android:textSize="14sp"
             android:textStyle="bold"
             app:backgroundTint="@android:color/white"
             app:cornerRadius="16dp"
             app:icon="@drawable/ic_telegram_barka"
             app:iconGravity="textStart"
-            app:iconTint="@color/barka_green" />
+            app:iconTint="#15803D" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

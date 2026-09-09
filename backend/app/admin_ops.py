@@ -1,20 +1,23 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
+
 from .db import connect, transaction
 from .security import activation_code_for_source, code_hash
 from .services import iso, now_ts
+from .reseller_audit import record_event
 
 
-def list_activation_codes(limit: int = 100, reseller_id: int | None = None) -> list[dict]:
-    safe_limit = max(1, min(int(limit), 200))
-    cx = connect()
+def list_activation_codes(limit: int | None = 100, reseller_id: int | None = None, *, connection=None, offset: int = 0) -> list[dict]:
+    safe_limit = -1 if limit is None else max(1, min(int(limit), 200))
+    cx = connection if connection is not None else connect()
     try:
         where = "a.deleted_at IS NULL"
         params: list[int] = []
         if reseller_id is not None:
             where += " AND a.created_by_reseller_id=?"
             params.append(int(reseller_id))
-        params.append(safe_limit)
+        params.extend((safe_limit, max(0, offset)))
         rows = cx.execute(
             f"""
             SELECT a.source_ref, a.plan_id, a.duration_seconds, a.status,
@@ -25,12 +28,13 @@ def list_activation_codes(limit: int = 100, reseller_id: int | None = None) -> l
             LEFT JOIN reseller_accounts r ON r.id=a.created_by_reseller_id
             WHERE {where}
             ORDER BY a.id DESC
-            LIMIT ?
+            LIMIT ? OFFSET ?
             """,
             tuple(params),
         ).fetchall()
     finally:
-        cx.close()
+        if connection is None:
+            cx.close()
 
     now = now_ts()
     result: list[dict] = []
@@ -134,14 +138,15 @@ def reactivate_activation_code(code: str) -> tuple[bool, str]:
 def delete_activation_code(
     code: str,
     reseller_id: int | None = None,
+    *, connection=None,
 ) -> tuple[bool, str]:
     hashed = code_hash(code)
     now = now_ts()
-    with transaction() as cx:
+    with (nullcontext(connection) if connection is not None else transaction()) as cx:
         row = cx.execute(
             """
             SELECT id, status, redeemed_device_id, duration_seconds,
-                   applied_from, applied_until
+                   applied_from, applied_until, created_by_reseller_id
             FROM activation_codes
             WHERE code_hash=? AND deleted_at IS NULL
               AND (? IS NULL OR created_by_reseller_id=?)
@@ -151,6 +156,9 @@ def delete_activation_code(
         if not row:
             return False, "Code introuvable."
 
+        if row["created_by_reseller_id"] is not None:
+            record_event(cx, int(row["created_by_reseller_id"]), "code_deleted",
+                         detail="revendeur" if reseller_id is not None else "administrateur")
         device_id = row["redeemed_device_id"]
         if device_id:
             device = cx.execute(
@@ -195,10 +203,10 @@ def delete_activation_code(
     return True, "Code supprimé et temps restant associé retiré."
 
 
-def list_redeem_codes(limit: int = 100) -> list[dict]:
-    safe_limit = max(1, min(int(limit), 200))
+def list_redeem_codes(limit: int | None = 100, *, connection=None, offset: int = 0) -> list[dict]:
+    safe_limit = -1 if limit is None else max(1, min(int(limit), 200))
     now = now_ts()
-    cx = connect()
+    cx = connection if connection is not None else connect()
     try:
         rows = cx.execute(
             """
@@ -212,12 +220,13 @@ def list_redeem_codes(limit: int = 100) -> list[dict]:
             WHERE r.deleted_at IS NULL
             GROUP BY r.id
             ORDER BY r.id DESC
-            LIMIT ?
+            LIMIT ? OFFSET ?
             """,
-            (now, safe_limit),
+            (now, safe_limit, max(0, offset)),
         ).fetchall()
     finally:
-        cx.close()
+        if connection is None:
+            cx.close()
 
     result: list[dict] = []
     for row in rows:
@@ -282,10 +291,10 @@ def reactivate_redeem_code(code: str) -> tuple[bool, str]:
     return True, "Code Redeem réactivé."
 
 
-def delete_redeem_code(code: str) -> tuple[bool, str]:
+def delete_redeem_code(code: str, *, connection=None) -> tuple[bool, str]:
     hashed = code_hash(code)
     now = now_ts()
-    with transaction() as cx:
+    with (nullcontext(connection) if connection is not None else transaction()) as cx:
         row = cx.execute(
             "SELECT id FROM redeem_codes WHERE code_hash=? AND deleted_at IS NULL",
             (hashed,),

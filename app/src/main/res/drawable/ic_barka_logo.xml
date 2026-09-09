@@ -5,11 +5,13 @@
     android:viewportWidth="72"
     android:viewportHeight="72">
 
+    <path android:fillColor="#FFFFFF" android:pathData="M0,0 H72 V72 H0 Z" />
+
     <!-- Arc extérieur volontairement agrandi pour mieux remplir l'icône launcher. -->
     <path
         android:fillColor="@android:color/transparent"
         android:pathData="M62,9 C47,0 24,2 11,16 C-1,29 1,50 15,62 C29,74 51,70 63,56"
-        android:strokeColor="@color/barka_blue"
+        android:strokeColor="#0D63E7"
         android:strokeLineCap="round"
         android:strokeWidth="5" />
 
@@ -17,7 +19,7 @@
     <path
         android:fillColor="@android:color/transparent"
         android:pathData="M22,16 L22,58 M22,16 L40,16 C51,16 57,22 57,30 C57,36 52,40 47,41 C54,42 59,47 59,54 C59,63 51,67 40,67 L22,67"
-        android:strokeColor="@color/barka_text"
+        android:strokeColor="#101828"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:strokeWidth="6" />

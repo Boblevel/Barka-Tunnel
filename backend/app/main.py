@@ -21,6 +21,7 @@ from .admin_ops import (
     revoke_activation_code,
     revoke_redeem_code,
 )
+from .panel_management import FilterRequest, filtered_codes, reseller_details
 from .admin_panel import ADMIN_PANEL_HTML
 from .reseller_panel import RESELLER_PANEL_HTML
 from .app_updates import (
@@ -402,8 +403,8 @@ def admin_redeem_codes(body: AdminRedeemCodeRequest):
     response_model=list[AdminRedeemCodeListItem],
     dependencies=[Depends(require_admin)],
 )
-def admin_redeem_codes_list(limit: int = 100):
-    return list_redeem_codes(limit)
+def admin_redeem_codes_list(limit: int = 100, offset: int = 0):
+    return list_redeem_codes(limit, offset=offset)
 
 
 @app.post(
@@ -457,8 +458,8 @@ def admin_stats_reset(body: AdminStatsResetRequest):
     response_model=list[AdminCodeListItem],
     dependencies=[Depends(require_admin)],
 )
-def admin_codes_list(limit: int = 100):
-    return list_activation_codes(limit)
+def admin_codes_list(limit: int = 100, offset: int = 0):
+    return list_activation_codes(limit, offset=offset)
 
 
 @app.post(
@@ -556,9 +557,9 @@ def admin_reseller_delete(reseller_id: int):
 
 
 @app.post("/v1/reseller/login")
-def reseller_login(body: ResellerLoginRequest):
+def reseller_login(body: ResellerLoginRequest, request: Request):
     try:
-        return login_reseller(body.username, body.password)
+        return login_reseller(body.username, body.password, request.client.host if request.client else None)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
@@ -588,9 +589,10 @@ def reseller_stats(account: dict = Depends(require_reseller)):
 )
 def reseller_codes_list(
     limit: int = 200,
+    offset: int = 0,
     account: dict = Depends(require_reseller),
 ):
-    return list_reseller_codes(int(account["id"]), limit)
+    return list_reseller_codes(int(account["id"]), limit, offset)
 
 
 @app.post("/v1/reseller/codes/subscription")
@@ -624,6 +626,31 @@ def reseller_code_delete(
 ):
     success, message = delete_reseller_code(int(account["id"]), body.code)
     return AdminCodeRevokeResponse(success=success, message=message)
+
+
+@app.post("/v1/admin/codes/filter-preview", dependencies=[Depends(require_admin)])
+def admin_filter_preview(body: FilterRequest):
+    return filtered_codes(body)
+
+
+@app.post("/v1/admin/codes/delete-filtered", dependencies=[Depends(require_admin)])
+def admin_filter_delete(body: FilterRequest):
+    return filtered_codes(body, delete=True)
+
+
+@app.post("/v1/reseller/codes/filter-preview")
+def reseller_filter_preview(body: FilterRequest, account: dict = Depends(require_reseller)):
+    return filtered_codes(body, int(account["id"]))
+
+
+@app.post("/v1/reseller/codes/delete-filtered")
+def reseller_filter_delete(body: FilterRequest, account: dict = Depends(require_reseller)):
+    return filtered_codes(body, int(account["id"]), delete=True)
+
+
+@app.get("/v1/admin/resellers/{reseller_id}/details", dependencies=[Depends(require_admin)])
+def admin_reseller_details(reseller_id: int):
+    return reseller_details(reseller_id)
 
 
 @app.get(

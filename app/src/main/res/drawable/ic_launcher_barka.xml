@@ -3,12 +3,12 @@
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="18dp" />
-            <solid android:color="@color/barka_blue" />
+            <solid android:color="@color/white" />
         </shape>
     </item>
     <item
         android:width="72dp"
         android:height="72dp"
         android:gravity="center"
-        android:drawable="@drawable/ic_barka_logo_white" />
+        android:drawable="@drawable/ic_barka_logo" />
 </layer-list>

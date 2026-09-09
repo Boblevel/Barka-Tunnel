@@ -22,6 +22,12 @@ class BarkaApplication : Application() {
         // ni le planificateur de mises à jour de l'application principale.
         if (currentProcessName()?.endsWith(":tun2socks") == true) return
 
+        // One migration for this release; later user choices remain untouched.
+        val settings = getSharedPreferences("barka_settings", MODE_PRIVATE)
+        if (!settings.getBoolean("auto_ping_default_105", false)) {
+            settings.edit().putBoolean("auto_ping", true)
+                .putBoolean("auto_ping_default_105", true).commit()
+        }
         registerActivityLifecycleCallbacks(PressFeedback)
         applySavedLanguage()
         applySavedTheme()
