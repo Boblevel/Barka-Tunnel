@@ -59,9 +59,7 @@
             <ImageView
                 android:layout_width="62dp"
                 android:layout_height="62dp"
-                android:background="@drawable/bg_logo_white_circle"
                 android:contentDescription="@string/barka_logo_description"
-                android:padding="6dp"
                 android:src="@drawable/ic_barka_logo" />
 
             <LinearLayout

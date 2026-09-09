@@ -236,7 +236,7 @@ def list_redeem_codes(limit: int | None = 100, *, connection=None, offset: int =
         display_status = (
             "expired"
             if stored_status == "active"
-            and usage_count > 0
+            and usage_count >= int(row["max_users"])
             and active_usage_count == 0
             else stored_status
         )

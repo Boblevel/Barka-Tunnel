@@ -5,9 +5,12 @@
     android:viewportWidth="72"
     android:viewportHeight="72">
 
-    <path android:fillColor="#FFFFFF" android:pathData="M0,0 H72 V72 H0 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M36,0 A36,36 0,1 1,36,72 A36,36 0,1 1,36,0 Z" />
 
-    <!-- Arc extérieur volontairement agrandi pour mieux remplir l'icône launcher. -->
+    <!-- Same centered artwork and circular white background in every theme. -->
+    <group android:pivotX="36" android:pivotY="36"
+        android:scaleX="0.84" android:scaleY="0.84">
+    <!-- Arc extérieur. -->
     <path
         android:fillColor="@android:color/transparent"
         android:pathData="M62,9 C47,0 24,2 11,16 C-1,29 1,50 15,62 C29,74 51,70 63,56"
@@ -23,4 +26,5 @@
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:strokeWidth="6" />
+    </group>
 </vector>

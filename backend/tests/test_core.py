@@ -407,7 +407,7 @@ def test_admin_redeem_disable_reactivate_and_usage_count(tmp_path):
     assert item["duration_seconds"] == 3600
 
 
-def test_redeem_is_expired_only_when_all_used_access_has_ended(tmp_path):
+def test_redeem_is_expired_only_when_capacity_and_all_access_have_ended(tmp_path):
     db, services = load_modules(tmp_path)
     import app.admin_ops as admin_ops
     importlib.reload(admin_ops)
@@ -436,6 +436,14 @@ def test_redeem_is_expired_only_when_all_used_access_has_ended(tmp_path):
             "UPDATE redeem_usages SET applied_until=? WHERE device_id=?",
             (services.now_ts() - 1, second),
         )
+    # Two finished users do not exhaust the five available places.
+    assert next(x for x in admin_ops.list_redeem_codes(20) if x["code"] == code)["status"] == "active"
+    for i in range(3):
+        assert services.redeem_activation_code(f"device-redeem-later-{i}", code)[0] is True
+    assert services.redeem_activation_code("device-redeem-over-capacity", code)[0] is False
+    assert next(x for x in admin_ops.list_redeem_codes(20) if x["code"] == code)["status"] == "active"
+    with db.transaction() as cx:
+        cx.execute("UPDATE redeem_usages SET applied_until=?", (services.now_ts() - 1,))
     fully_expired = next(
         x for x in admin_ops.list_redeem_codes(20) if x["code"] == code
     )

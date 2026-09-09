@@ -269,6 +269,8 @@ class MainActivity : AppCompatActivity() {
         journalPage.findViewById<android.view.View>(R.id.pageBottomNavigation).visibility =
             android.view.View.GONE
         homeJournalPager = findViewById(R.id.homeJournalPager)
+        // Disable edge stretching only; the pager keeps handling horizontal swipes.
+        homeJournalPager.getChildAt(0).overScrollMode = View.OVER_SCROLL_NEVER
         homeJournalPager.adapter = StaticPageAdapter(listOf(homePage, journalPage))
         homeJournalPager.offscreenPageLimit = 1
         homeJournalPager.setCurrentItem(PAGE_HOME, false)
@@ -1458,12 +1460,17 @@ class MainActivity : AppCompatActivity() {
 
     @Suppress("DEPRECATION")
     private fun applyRecentsTaskIcon() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            setTaskDescription(ActivityManager.TaskDescription(
+                getString(R.string.app_name), R.mipmap.ic_launcher, Color.WHITE
+            ))
+            return
+        }
         val drawable = ContextCompat.getDrawable(this, R.drawable.ic_barka_logo) ?: return
         val size = (72f * resources.displayMetrics.density).toInt().coerceAtLeast(72)
         val inset = (4f * resources.displayMetrics.density).toInt()
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.WHITE)
         drawable.setBounds(inset, inset, size - inset, size - inset)
         drawable.draw(canvas)
         setTaskDescription(

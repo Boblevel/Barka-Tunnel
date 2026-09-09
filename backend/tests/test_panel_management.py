@@ -144,3 +144,38 @@ def test_http_routes_enforce_admin_and_reseller_auth(env):
     assert client.post('/v1/reseller/codes/filter-preview',json=body,headers=auth).status_code==200
     assert client.post('/v1/reseller/codes/filter-preview',json={**body,'kind':'redeem','status':'active'},headers=auth).status_code==403
     assert client.post('/v1/reseller/login',json={'username':a['username'],'password':a['password']}).status_code==200
+
+
+def test_redeem_filter_preserves_unfilled_places_and_last_active_user(env, monkeypatch):
+    db, services, ops, rs, pm, a, b = env
+    now = services.now_ts()
+    monkeypatch.setattr(ops, "now_ts", lambda: now)
+    codes = {name: services.issue_redeem_code("CAPACITY:" + name, 7200, 5)
+             for name in ("empty", "partial", "last_active", "expired", "disabled")}
+    for name, count in (("partial", 2), ("last_active", 5), ("expired", 5), ("disabled", 2)):
+        for i in range(count):
+            assert services.redeem_activation_code(f"capacity-{name}-device-{i}", codes[name])[0]
+    with db.transaction() as cx:
+        cx.execute("UPDATE redeem_usages SET applied_until=?", (now,))
+        cx.execute("UPDATE redeem_usages SET applied_until=? WHERE device_id=?",
+                   (now + 1, "capacity-last_active-device-4"))
+    ops.revoke_redeem_code(codes["disabled"])
+    rows = {r["code"]: r for r in ops.list_redeem_codes()}
+    assert rows[codes["partial"]]["status"] == "active"
+    assert rows[codes["last_active"]]["status"] == "active"
+    assert rows[codes["expired"]]["status"] == "expired"
+    assert rows[codes["disabled"]]["status"] == "revoked"
+    before = services.access_state("capacity-last_active-device-4")["expires_at"]
+    body = filtered(pm, "redeem", "expired")
+    preview = pm.filtered_codes(body)
+    assert preview["count"] == 1
+    result = pm.filtered_codes(body.model_copy(update={"fingerprint": preview["fingerprint"]}), delete=True)
+    assert result["deleted"] == 1
+    assert {r["code"] for r in ops.list_redeem_codes()} == set(codes.values()) - {codes["expired"]}
+    assert services.access_state("capacity-last_active-device-4")["expires_at"] == before
+    # Once the last user's time reaches zero, the full code expires as well.
+    monkeypatch.setattr(ops, "now_ts", lambda: now + 1)
+    assert next(r for r in ops.list_redeem_codes() if r["code"] == codes["last_active"])["status"] == "expired"
+    # Available places remain usable after the earlier users finished.
+    assert services.redeem_activation_code("capacity-new-device-123", codes["partial"])[0]
+    assert not services.redeem_activation_code("capacity-blocked-device", codes["disabled"])[0]
