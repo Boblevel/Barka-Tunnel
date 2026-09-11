@@ -12,6 +12,7 @@ import android.os.Messenger
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.os.RemoteException
+import com.LondonX.tun2socks.Tun2Socks
 import java.util.concurrent.Executors
 
 /**
@@ -137,7 +138,7 @@ class Tun2SocksProcessService : Service() {
     ) {
         if (messenger == null) return
         if (what == RESPONSE_STATUS || what == RESPONSE_STOPPED) {
-            runCatching { com.LondonX.tun2socks.Tun2Socks.consumptionBytes() }.getOrNull()?.let {
+            runCatching { Tun2Socks.consumptionBytes() }.getOrNull()?.let {
                 extras.putLongArray(KEY_CONSUMPTION, it)
             }
         }
