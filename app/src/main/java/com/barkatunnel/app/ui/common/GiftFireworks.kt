@@ -19,6 +19,7 @@ import kotlin.math.sin
 object GiftFireworks {
     fun show(anchor: View): ValueAnimator? {
         if (!anchor.isAttachedToWindow) return null
+        val sound = GiftSound.play(anchor.context)
         val scale = runCatching {
             Settings.Global.getFloat(anchor.context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
         }.getOrDefault(1f)
@@ -49,6 +50,7 @@ object GiftFireworks {
         }
         animator.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: Animator) {
+                sound?.release()
                 host.overlay.remove(burst)
                 host.removeOnAttachStateChangeListener(detachListener)
             }

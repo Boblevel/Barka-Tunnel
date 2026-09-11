@@ -4,7 +4,6 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -122,9 +121,10 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         refreshDynamicLabels()
+        findViewById<MaterialButton>(R.id.rateAppButton).setOnClickListener { rateApplication() }
 
         findViewById<MaterialButton>(R.id.vpnSettingsButton).setOnClickListener {
-            openVpnSettings()
+            startActivity(Intent(this, com.barkatunnel.app.consumption.ConsumptionActivity::class.java))
         }
 
         findViewById<MaterialButton>(R.id.checkUpdateButton).setOnClickListener {
@@ -141,16 +141,14 @@ class SettingsActivity : AppCompatActivity() {
 
     }
 
-    private fun openVpnSettings() {
-        val destinations = listOf(
-            Intent(Settings.ACTION_VPN_SETTINGS),
-            Intent(Settings.ACTION_SETTINGS)
-        )
-        destinations.firstOrNull { intent ->
-            runCatching {
-                startActivity(intent)
-                true
-            }.getOrDefault(false)
+    private fun rateApplication() {
+        val uri = Uri.parse("https://apkpure.com/reviews/com.barkatunnel.app")
+        try { startActivity(Intent(Intent.ACTION_VIEW, uri).setPackage("com.android.chrome")) }
+        catch (_: android.content.ActivityNotFoundException) {
+            try { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+            catch (_: android.content.ActivityNotFoundException) {
+                android.widget.Toast.makeText(this, R.string.browser_unavailable, android.widget.Toast.LENGTH_LONG).show()
+            }
         }
     }
 

@@ -80,6 +80,14 @@ test "$(git -C "$TMP/tun2socks" rev-parse HEAD)" = "$TUN2SOCKS_COMMIT" || {
 }
 
 TUN_CPP="$TMP/tun2socks/tun2socks/src/main/cpp"
+cp "$ROOT/scripts/barka_consumption.cpp" "$TUN_CPP/barka_consumption.cpp"
+cat >> "$TUN_CPP/CMakeLists.txt" <<'CMAKE'
+
+target_sources(tun2socks PRIVATE barka_consumption.cpp)
+target_compile_features(tun2socks PRIVATE cxx_std_11)
+target_link_libraries(tun2socks atomic)
+set_property(TARGET tun2socks APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=read -Wl,--wrap=write")
+CMAKE
 for abi in arm64-v8a armeabi-v7a; do
   build_dir="$TMP/tun2socks-cmake-$abi"
   barka_link_options=()

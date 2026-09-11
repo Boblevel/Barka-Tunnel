@@ -112,6 +112,9 @@ jobs:
       - name: Compiler Barka Tunnel sans cache
         run: gradle clean assembleRelease --no-daemon --no-build-cache --rerun-tasks --stacktrace
 
+      - name: Verifier sauvegarde et restauration de la consommation
+        run: gradle testReleaseUnitTest --no-daemon --no-build-cache --stacktrace
+
       - name: Verifier les moteurs ARM64 et ARMv7 dans APK
         shell: bash
         run: |

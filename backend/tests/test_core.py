@@ -572,7 +572,7 @@ def test_reseller_credentials_sessions_origin_and_freeze_preserve_code(tmp_path)
     assert access["allowed"] is True
 
 
-def test_deleting_reseller_preserves_previously_generated_test_code(tmp_path):
+def test_deleting_reseller_revokes_previously_generated_test_code(tmp_path):
     _, services = load_modules(tmp_path)
     import app.resellers as resellers
     importlib.reload(resellers)
@@ -591,8 +591,8 @@ def test_deleting_reseller_preserves_previously_generated_test_code(tmp_path):
     redeemed, _, access = services.redeem_activation_code(
         "device-reseller-deleted-abcdef", code
     )
-    assert redeemed is True
-    assert 7190 <= access["remaining_seconds"] <= 7200
+    assert redeemed is False
+    assert access["remaining_seconds"] == 0
 
 
 def test_reseller_can_delete_only_own_codes(tmp_path):
@@ -683,12 +683,14 @@ def test_reseller_dashboard_stats_are_isolated_and_expiration_aware(tmp_path):
         )
 
     assert resellers.reseller_dashboard_stats(first_account["id"]) == {
+        "stats_reset_at": None,
         "total": 3,
         "available": 1,
         "active": 1,
         "expired": 1,
     }
     assert resellers.reseller_dashboard_stats(second_account["id"]) == {
+        "stats_reset_at": None,
         "total": 1,
         "available": 1,
         "active": 0,

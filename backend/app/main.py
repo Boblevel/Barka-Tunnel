@@ -85,6 +85,7 @@ from .resellers import (
     public_reseller_account,
     reactivate_reseller,
     reseller_dashboard_stats,
+    reset_reseller_stats,
     require_reseller,
     update_reseller_expiry,
 )
@@ -548,12 +549,12 @@ def admin_reseller_expiry(reseller_id: int, body: AdminResellerExpiryRequest):
     "/v1/admin/resellers/{reseller_id}",
     dependencies=[Depends(require_admin)],
 )
-def admin_reseller_delete(reseller_id: int):
+def admin_reseller_delete(reseller_id: int, body: AdminStatsResetRequest):
     try:
         delete_reseller(reseller_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return {"success": True, "message": "Sous-panel supprimé."}
+    return {"success": True, "message": "Sous-panel et codes supprimés. Les accès associés sont révoqués."}
 
 
 @app.post("/v1/reseller/login")
@@ -581,6 +582,12 @@ def reseller_account(account: dict = Depends(require_reseller)):
 @app.get("/v1/reseller/stats")
 def reseller_stats(account: dict = Depends(require_reseller)):
     return reseller_dashboard_stats(int(account["id"]))
+
+
+@app.post("/v1/reseller/stats/reset")
+def reseller_stats_reset(body: AdminStatsResetRequest, account: dict = Depends(require_reseller)):
+    reset_at = reset_reseller_stats(int(account["id"]))
+    return {"success": True, "reset_at": reset_at, "message": "Vos compteurs ont été réinitialisés. Vos codes et leur historique sont conservés."}
 
 
 @app.get(

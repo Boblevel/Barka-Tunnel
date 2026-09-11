@@ -183,6 +183,7 @@ class BarkaBackendClient(context: Context) {
         }
         return BackendAccessState(
             allowed = body.optBoolean("allowed", false),
+            accessRevision = body.optLong("access_revision", 0L),
             accessType = body.optString("access_type", "NONE"),
             remainingSeconds = body.optLong("remaining_seconds", 0L).coerceAtLeast(0L)
         )
@@ -330,7 +331,8 @@ data class BackendAppUpdate(
 data class BackendAccessState(
     val allowed: Boolean,
     val accessType: String,
-    val remainingSeconds: Long
+    val remainingSeconds: Long,
+    val accessRevision: Long = 0L
 )
 
 data class BackendTrialState(

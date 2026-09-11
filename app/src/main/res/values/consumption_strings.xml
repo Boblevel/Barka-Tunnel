@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="consumption_title">Ma consommation</string>
+    <string name="settings_rate_app">Noter l’application</string>
+    <string name="browser_unavailable">Aucun navigateur disponible sur ce téléphone.</string>
+    <string name="payment_moov_notice">Paiement Orange momentanément indisponible. Merci de payer avec Moov Africa.</string>
+    <string name="consumption_today">Aujourd’hui</string>
+    <string name="consumption_yesterday">Hier</string>
+    <string name="consumption_total">TOTAL BARKA TUNNEL</string>
+    <string name="consumption_summary">Données IP passées par Barka Tunnel, envoi et réception. Le volume facturé par votre opérateur peut différer.</string>
+    <string name="consumption_days">Comparaison quotidienne • heure du Burkina Faso</string>
+    <string name="consumption_directions">Reçues : %1$s  •  Envoyées : %2$s</string>
+    <string name="consumption_save">Sauvegarder mon historique</string>
+    <string name="consumption_restore">Restaurer mon historique</string>
+    <string name="consumption_backup_help">Avant de désinstaller, sauvegardez votre historique dans Documents ou Téléchargements. Après réinstallation, choisissez ce fichier avec « Restaurer ». Le comptage commence avec cette mise à jour.</string>
+    <string name="consumption_saved">Historique sauvegardé. Conservez ce fichier pour une réinstallation.</string>
+    <string name="consumption_restored">Historique restauré. Vos nouvelles consommations sont conservées.</string>
+    <string name="consumption_file_error">Fichier inaccessible ou sauvegarde de consommation invalide.</string>
+    <string name="consumption_zero">0,00 Mo</string>
+    <string name="consumption_initial_directions">Reçues : 0,00 Mo  •  Envoyées : 0,00 Mo</string>
+    <string name="consumption_unit_mb">Mo</string>
+    <string name="consumption_unit_gb">Go</string>
+</resources>

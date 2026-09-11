@@ -136,6 +136,11 @@ class Tun2SocksProcessService : Service() {
         extras: Bundle = Bundle()
     ) {
         if (messenger == null) return
+        if (what == RESPONSE_STATUS || what == RESPONSE_STOPPED) {
+            runCatching { com.LondonX.tun2socks.Tun2Socks.consumptionBytes() }.getOrNull()?.let {
+                extras.putLongArray(KEY_CONSUMPTION, it)
+            }
+        }
         error?.takeIf { it.isNotBlank() }?.let { extras.putString(KEY_ERROR, it.take(220)) }
         try {
             messenger.send(Message.obtain(null, what).apply { data = extras })
@@ -192,6 +197,7 @@ class Tun2SocksProcessService : Service() {
         const val KEY_FORWARD_UDP = "forward_udp"
         const val KEY_RUNNING = "running"
         const val KEY_ERROR = "error"
+        const val KEY_CONSUMPTION = "consumption"
 
         private const val PROCESS_TERMINATION_DELAY_MS = 250L
     }

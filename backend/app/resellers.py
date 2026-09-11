@@ -17,6 +17,7 @@ from .plans import get_plan
 from .security import activation_code_for_source, code_hash
 from .services import now_ts, iso
 from .reseller_audit import record_event
+from .reseller_deletion import remove_reseller_access
 
 
 PASSWORD_ITERATIONS = 600_000
@@ -241,6 +242,7 @@ def delete_reseller(reseller_id: int) -> None:
             (now, now, reseller_id),
         )
         _revoke_sessions(cx, reseller_id, now)
+        remove_reseller_access(cx, reseller_id, now)
 
 
 def _verify_password(password: str, row) -> bool:
@@ -419,10 +421,25 @@ def list_reseller_codes(reseller_id: int, limit: int = 200, offset: int = 0) -> 
     return list_activation_codes(limit=limit, reseller_id=reseller_id, offset=offset)
 
 
-def reseller_dashboard_stats(reseller_id: int) -> dict[str, int]:
+def reset_reseller_stats(reseller_id: int) -> str:
+    now = now_ts()
+    with transaction() as cx:
+        account = cx.execute("SELECT id FROM reseller_accounts WHERE id=? AND deleted_at IS NULL AND status='active' AND expires_at>?", (reseller_id, now)).fetchone()
+        if not account:
+            raise HTTPException(403, "Sous-panel indisponible.")
+        last_id = cx.execute("SELECT COALESCE(MAX(id),0) FROM activation_codes WHERE created_by_reseller_id=?", (reseller_id,)).fetchone()[0]
+        for suffix, value in (("id", last_id), ("at", now)):
+            cx.execute("INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", (f"reseller_stats_{reseller_id}_{suffix}", str(value), now))
+        record_event(cx, reseller_id, "stats_reset")
+    return iso(now)
+
+
+def reseller_dashboard_stats(reseller_id: int) -> dict:
     now = now_ts()
     cx = connect()
     try:
+        baseline = cx.execute("SELECT value FROM admin_state WHERE key=?", (f"reseller_stats_{reseller_id}_id",)).fetchone()
+        since = cx.execute("SELECT value FROM admin_state WHERE key=?", (f"reseller_stats_{reseller_id}_at",)).fetchone()
         row = cx.execute(
             """
             SELECT
@@ -443,13 +460,14 @@ def reseller_dashboard_stats(reseller_id: int) -> dict[str, int]:
                     END
                 ) AS expired
             FROM activation_codes
-            WHERE created_by_reseller_id=? AND deleted_at IS NULL
+            WHERE created_by_reseller_id=? AND deleted_at IS NULL AND id>?
             """,
-            (now, now, int(reseller_id)),
+            (now, now, int(reseller_id), int(baseline[0]) if baseline else 0),
         ).fetchone()
     finally:
         cx.close()
     return {
+        "stats_reset_at": iso(int(since[0])) if since else None,
         "total": int(row["total"] or 0),
         "available": int(row["available"] or 0),
         "active": int(row["active"] or 0),

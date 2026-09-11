@@ -32,6 +32,9 @@ import java.util.concurrent.atomic.AtomicLong
 
 class BarkaVpnService : VpnService() {
     private val worker = Executors.newSingleThreadExecutor()
+    private val accessExecutor = Executors.newSingleThreadScheduledExecutor()
+    private var accessFuture: ScheduledFuture<*>? = null
+    @Volatile private var sessionAccessRevision = 0L
     private val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var engine: C6ProtocolEngine? = null
@@ -178,6 +181,8 @@ class BarkaVpnService : VpnService() {
         mainHandler.removeCallbacksAndMessages(null)
         keepAliveFuture?.cancel(true)
         keepAliveFuture = null
+        accessFuture?.cancel(true)
+        accessExecutor.shutdownNow()
         keepAliveExecutor.shutdownNow()
         // La fermeture native attend une réponse Binder : ne pas bloquer Android.
         worker.execute { stopTunnel() }
@@ -214,6 +219,10 @@ class BarkaVpnService : VpnService() {
                 completeConnectRequest(requestId, C6VpnResult.Disconnected)
                 return
             }
+
+            val access = com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess()
+            if (!access.allowed) throw IllegalStateException("Accès retiré ou expiré.")
+            sessionAccessRevision = access.accessRevision
 
             var lastFailure: Throwable? = null
             for (attempt in 1..MAX_CONNECTION_ATTEMPTS) {
@@ -486,6 +495,8 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun stopTunnel() {
+        accessFuture?.cancel(true)
+        accessFuture = null
         keepAliveFuture?.cancel(true)
         keepAliveFuture = null
 
@@ -598,6 +609,22 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun startConnectionMonitor(protocol: VpnProfileProtocol) {
+        accessFuture?.cancel(true)
+        val accessGeneration = operationGeneration.get()
+        val revision = sessionAccessRevision
+        accessFuture = accessExecutor.scheduleWithFixedDelay({
+            if (connected && !stopping && operationGeneration.get() == accessGeneration) {
+                val access = runCatching { com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess() }.getOrNull()
+                if (access != null && (!access.allowed || access.accessRevision != revision)) {
+                    mainHandler.post {
+                        if (connected && !stopping && operationGeneration.get() == accessGeneration) {
+                            AppLogStore.add(this, "Accès modifié par le serveur. Déconnexion.")
+                            onStartCommand(Intent(this, BarkaVpnService::class.java).setAction(ACTION_DISCONNECT), 0, latestStartId)
+                        }
+                    }
+                }
+            }
+        }, 0L, 15L, TimeUnit.SECONDS)
         keepAliveFuture?.cancel(true)
         val port = socksPort(protocol)
         val monitorGeneration = operationGeneration.get()

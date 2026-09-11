@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class Tun2SocksRunner(context: Context) {
     private val appContext = context.applicationContext
+    private val consumptionSession = java.util.UUID.randomUUID().toString()
     private val stateLock = Any()
     private val commandLock = Any()
     private val replyThread = HandlerThread("BarkaTun2SocksReplies").apply { start() }
@@ -215,7 +216,13 @@ class Tun2SocksRunner(context: Context) {
                 data = extras
                 replyTo = Messenger(ReplyHandler(replyThread.looper, responseFuture))
             })
-            responseFuture.get(timeoutMs, TimeUnit.MILLISECONDS)
+            responseFuture.get(timeoutMs, TimeUnit.MILLISECONDS).also { response ->
+                response.consumption?.let { bytes ->
+                    if (bytes.size == 2) runCatching {
+                        com.barkatunnel.app.consumption.ConsumptionStore.recordAsync(appContext, consumptionSession, bytes[0], bytes[1])
+                    }
+                }
+            }
         } catch (error: RemoteException) {
             throw IllegalStateException("Le processus tun2socks s'est arrêté.", error)
         } finally {
@@ -263,6 +270,7 @@ class Tun2SocksRunner(context: Context) {
         override fun handleMessage(message: Message) {
             val response = Response(
                 what = message.what,
+                consumption = message.data?.getLongArray(Tun2SocksProcessService.KEY_CONSUMPTION),
                 error = message.data?.getString(Tun2SocksProcessService.KEY_ERROR),
                 running = message.data?.getBoolean(
                     Tun2SocksProcessService.KEY_RUNNING,
@@ -276,7 +284,8 @@ class Tun2SocksRunner(context: Context) {
     private data class Response(
         val what: Int,
         val error: String?,
-        val running: Boolean
+        val running: Boolean,
+        val consumption: LongArray? = null
     )
 
     companion object {

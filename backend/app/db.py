@@ -202,6 +202,8 @@ def init_db() -> None:
                 cx.execute("ALTER TABLE vpn_profiles ADD COLUMN maintenance INTEGER NOT NULL DEFAULT 0")
 
             device_columns = {row["name"] for row in cx.execute("PRAGMA table_info(devices)").fetchall()}
+            if "access_revision" not in device_columns:
+                cx.execute("ALTER TABLE devices ADD COLUMN access_revision INTEGER NOT NULL DEFAULT 0")
             if "access_disabled" not in device_columns:
                 cx.execute("ALTER TABLE devices ADD COLUMN access_disabled INTEGER NOT NULL DEFAULT 0")
             if "last_connect_attempt_at" not in device_columns:

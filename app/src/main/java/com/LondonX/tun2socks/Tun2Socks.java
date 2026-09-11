@@ -14,6 +14,8 @@ public final class Tun2Socks {
     private static boolean loaded;
 
     public static native void stopTun2Socks();
+    public static native void setConsumptionFd(int fd);
+    public static native long[] consumptionBytes();
 
     public static synchronized void initialize(Context context) {
         if (loaded) return;

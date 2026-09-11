@@ -66,6 +66,7 @@ def access_state(device_id: str) -> dict:
         cx.close()
 
     weekly = {
+        "access_revision": int(row["access_revision"]),
         "trial_week_start": week,
         "trial_week_used": claimed,
         "server_timestamp": now,

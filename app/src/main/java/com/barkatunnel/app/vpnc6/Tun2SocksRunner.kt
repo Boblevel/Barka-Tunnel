@@ -34,6 +34,7 @@ internal class NativeTun2SocksRunner(private val context: Context) {
             // compatible avec les builds Android BadVPN utilisés par C6.
             listOf("--udpgw-remote-server-addr", udpgwAddress)
         }
+        Tun2Socks.setConsumptionFd(vpnDescriptor.fd)
         nativeSuccess = null
         nativeFailure = null
         nativeReady = false

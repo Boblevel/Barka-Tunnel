@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="consumption_title">My data usage</string>
+    <string name="settings_rate_app">Rate the app</string>
+    <string name="browser_unavailable">No browser is available on this phone.</string>
+    <string name="payment_moov_notice">Orange payments are temporarily unavailable. Please pay with Moov Africa.</string>
+    <string name="consumption_today">Today</string>
+    <string name="consumption_yesterday">Yesterday</string>
+    <string name="consumption_total">BARKA TUNNEL TOTAL</string>
+    <string name="consumption_summary">IP data sent and received through Barka Tunnel. Your operator may measure a different volume.</string>
+    <string name="consumption_days">Daily comparison • Burkina Faso time</string>
+    <string name="consumption_directions">Received: %1$s  •  Sent: %2$s</string>
+    <string name="consumption_save">Back up my history</string>
+    <string name="consumption_restore">Restore my history</string>
+    <string name="consumption_backup_help">Before uninstalling, save your history in Documents or Downloads. After reinstalling, select this file with Restore. Counting starts with this update.</string>
+    <string name="consumption_saved">History saved. Keep this file for a reinstall.</string>
+    <string name="consumption_restored">History restored. Your new data usage has been preserved.</string>
+    <string name="consumption_file_error">The file is inaccessible or the data usage backup is invalid.</string>
+    <string name="consumption_zero">0.00 MB</string>
+    <string name="consumption_initial_directions">Received: 0.00 MB  •  Sent: 0.00 MB</string>
+    <string name="consumption_unit_mb">MB</string>
+    <string name="consumption_unit_gb">GB</string>
+</resources>

@@ -17,6 +17,7 @@ class DeviceRequest(BaseModel):
 
 class AccessResponse(BaseModel):
     allowed: bool
+    access_revision: int = 0
     trial_used: bool = False
     trial_week_start: int | None = None
     trial_week_used: bool | None = None
@@ -200,7 +201,7 @@ class AdminCodeRevokeResponse(BaseModel):
 
 
 class AdminStatsResetRequest(BaseModel):
-    confirmation: Literal["REINITIALISER"]
+    confirmation: Literal["oui"]
 
 
 class AppUpdateAdminUpsert(BaseModel):
