@@ -26,9 +26,35 @@ class NonScrollingScrollView @JvmOverloads constructor(
         super.scrollTo(0, 0)
     }
 
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        val child = getChildAt(0) ?: return
+        val availableWidth = measuredWidth - paddingLeft - paddingRight
+        val availableHeight = measuredHeight - paddingTop - paddingBottom
+        if (availableWidth <= 0 || availableHeight <= 0) return
+
+        // Reflow at the logical width that will fill the viewport after fitting
+        // the height. Scaling a narrow child alone creates large side gutters.
+        var logicalWidth = availableWidth
+        repeat(4) {
+            child.measure(
+                MeasureSpec.makeMeasureSpec(logicalWidth, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+            )
+            val scale = minOf(1f, availableHeight.toFloat() / child.measuredHeight.coerceAtLeast(1))
+            val fittedWidth = kotlin.math.ceil(availableWidth / scale.toDouble()).toInt()
+            if (fittedWidth == logicalWidth) return
+            logicalWidth = fittedWidth
+        }
+        child.measure(
+            MeasureSpec.makeMeasureSpec(logicalWidth, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        )
+    }
+
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
-        post { fitContentToViewport() }
+        fitContentToViewport()
     }
 
     private fun fitContentToViewport() {
@@ -48,7 +74,7 @@ class NonScrollingScrollView @JvmOverloads constructor(
             availableHeight / child.height.toFloat()
         )
 
-        child.pivotX = child.width / 2f
+        child.pivotX = 0f
         child.pivotY = 0f
         child.scaleX = scale
         child.scaleY = scale

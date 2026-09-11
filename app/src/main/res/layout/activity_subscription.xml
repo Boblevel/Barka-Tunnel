@@ -156,7 +156,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:text="@string/payment_moov_notice"
-                android:textColor="@color/barka_text"
+                android:textColor="@color/barka_red"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 

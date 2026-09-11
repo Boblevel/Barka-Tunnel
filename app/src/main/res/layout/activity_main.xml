@@ -340,7 +340,12 @@
                         android:text="@string/remaining_time"
                         android:textColor="@color/barka_blue"
                         android:textSize="@dimen/home_remaining_label_text_size"
-                        android:textStyle="bold" />
+                        android:maxLines="1"
+                        android:textStyle="bold"
+                        app:autoSizeMaxTextSize="@dimen/home_remaining_label_text_size"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeStepGranularity="1sp"
+                        app:autoSizeTextType="uniform" />
 
                     <TextView
                         android:id="@+id/accessRemainingTime"

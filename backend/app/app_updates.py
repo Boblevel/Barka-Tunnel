@@ -38,7 +38,8 @@ def get_app_update_for_client(current_version_code: int) -> dict:
     item = get_app_update_admin()
     available = bool(item["enabled"]) and int(item["latest_version_code"]) > int(current_version_code)
     return {
-        "enabled": bool(item["enabled"]),
+        # Older installed clients also use enabled to decide notifications.
+        "enabled": available,
         "update_available": available,
         "force_update": available and bool(item["mandatory"]),
         "latest_version_code": int(item["latest_version_code"]),

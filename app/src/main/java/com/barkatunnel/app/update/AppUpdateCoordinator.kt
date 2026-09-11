@@ -22,6 +22,8 @@ class AppUpdateCoordinator(
     @Volatile
     private var lastCheckAt = 0L
 
+    private var updateDialog: AlertDialog? = null
+
     private val callbackLock = Any()
     private val waitingCallbacks = mutableListOf<(BackendAppUpdate?) -> Unit>()
 
@@ -99,8 +101,11 @@ class AppUpdateCoordinator(
     }
 
     private fun applyResult(update: BackendAppUpdate, showNoUpdate: Boolean) {
-        if (!update.updateAvailable) {
+        if (!update.enabled || !update.updateAvailable || update.latestVersionCode <= currentVersionCode()) {
             AppUpdateGate.clear()
+            updateDialog?.dismiss()
+            updateDialog = null
+            RemoteUpdateWorker.clearApkNotification(activity)
             if (showNoUpdate) {
                 Toast.makeText(
                     activity,
@@ -148,7 +153,9 @@ class AppUpdateCoordinator(
             builder.setNegativeButton(R.string.update_later, null)
         }
 
+        updateDialog?.dismiss()
         val dialog = builder.create()
+        updateDialog = dialog
         dialog.setCancelable(!update.forceUpdate)
         dialog.setCanceledOnTouchOutside(!update.forceUpdate)
         dialog.show()

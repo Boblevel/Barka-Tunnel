@@ -142,10 +142,13 @@ class BarkaBackendClient(context: Context) {
         val body = getObject(
             path = "/v1/app/update?version_code=${currentVersionCode.coerceAtLeast(1L)}"
         )
+        val available = body.optBoolean("enabled", false) &&
+            body.optLong("latest_version_code", 1L) > currentVersionCode &&
+            body.optBoolean("update_available", false)
         return BackendAppUpdate(
             enabled = body.optBoolean("enabled", false),
-            updateAvailable = body.optBoolean("update_available", false),
-            forceUpdate = body.optBoolean("force_update", false),
+            updateAvailable = available,
+            forceUpdate = available && body.optBoolean("force_update", false),
             latestVersionCode = body.optLong("latest_version_code", 1L),
             latestVersionName = body.optString("latest_version_name", "").trim(),
             apkUrl = body.optString("apk_url", "").trim(),

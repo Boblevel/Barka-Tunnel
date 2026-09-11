@@ -46,8 +46,10 @@ class RemoteUpdateWorker(
                 KEY_LAST_NOTIFIED_APK_REVISION,
                 ""
             ).orEmpty()
-            if (!appUpdate.enabled) {
-                NotificationManagerCompat.from(applicationContext).cancel(NOTIFICATION_APK_ID)
+            if (!appUpdate.enabled || !appUpdate.updateAvailable ||
+                appUpdate.latestVersionCode <= BuildConfig.VERSION_CODE.toLong()) {
+                clearApkNotification(applicationContext)
+                AppUpdateGate.clear()
             } else if (
                 panelRevision.isNotBlank() &&
                 panelRevision != lastNotifiedRevision
@@ -180,6 +182,23 @@ class RemoteUpdateWorker(
         private const val CHANNEL_ID = "barka_remote_updates"
         private const val NOTIFICATION_PROFILE_ID = 2201
         private const val NOTIFICATION_APK_ID = 2202
+        private const val KEY_INSTALLED_VERSION = "installed_version_code"
+
+        fun clearApkNotification(context: Context) {
+            NotificationManagerCompat.from(context).cancel(NOTIFICATION_APK_ID)
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                .remove(KEY_LAST_NOTIFIED_APK_REVISION).apply()
+        }
+
+        fun onInstalledVersion(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val version = BuildConfig.VERSION_CODE.toLong()
+            if (prefs.getLong(KEY_INSTALLED_VERSION, -1L) != version) {
+                clearApkNotification(context)
+                AppUpdateGate.clear()
+                prefs.edit().putLong(KEY_INSTALLED_VERSION, version).apply()
+            }
+        }
     }
 }
 
@@ -188,6 +207,7 @@ object RemoteUpdateScheduler {
     private const val IMMEDIATE_WORK_NAME = "barka_remote_update_watch_now"
 
     fun schedule(context: Context) {
+        RemoteUpdateWorker.onInstalledVersion(context)
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()

@@ -208,7 +208,7 @@ def test_app_update_is_server_controlled(tmp_path):
     assert old_client["apk_url"].startswith("https://")
 
     current_client = app_updates.get_app_update_for_client(7)
-    assert current_client["enabled"] is True
+    assert current_client["enabled"] is False
     assert current_client["update_available"] is False
     assert current_client["force_update"] is False
     assert current_client["updated_at"] == saved["updated_at"]
@@ -807,3 +807,24 @@ def test_legacy_database_migration_adds_reseller_schema_without_data_loss(tmp_pa
     assert {"applied_from", "applied_until", "deleted_at", "created_by_reseller_id"} <= columns
     assert {"reseller_accounts", "reseller_sessions"} <= tables
     assert legacy["source_ref"] == "MANUAL:LEGACY"
+
+
+def test_update_notifications_only_target_older_installed_versions(tmp_path):
+    load_modules(tmp_path)
+    import app.app_updates as updates
+    importlib.reload(updates)
+    for mandatory in (False, True):
+        updates.upsert_app_update({
+            "enabled": True, "mandatory": mandatory,
+            "latest_version_code": 105, "latest_version_name": "2.0.3.6",
+            "message": "Nouvelle version",
+        })
+        for installed, expected in ((68, True), (104, True), (105, False), (106, False)):
+            response = updates.get_app_update_for_client(installed)
+            # Existing APKs use enabled; newer APKs also check update_available.
+            assert response["enabled"] is expected
+            assert response["update_available"] is expected
+            assert response["force_update"] is (expected and mandatory)
+        assert updates.get_app_update_admin()["enabled"] is True
+    updates.remove_app_update()
+    assert updates.get_app_update_for_client(68)["enabled"] is False
