@@ -638,7 +638,6 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
-    private var entryUpdateShown = false
     private var entryUpdateGeneration = 0L
     private var homePageResumed = false
 
@@ -648,13 +647,11 @@ class MainActivity : AppCompatActivity() {
                 val generation = entryUpdateGeneration
                 updateCoordinator.check(showNoUpdate = false, force = true) { update ->
                     if (update != null && !update.updateAvailable && homePageResumed &&
-                        generation == entryUpdateGeneration && !entryUpdateShown &&
+                        generation == entryUpdateGeneration &&
                         !isFinishing && !isDestroyed) {
-                        entryUpdateShown = true
-                        com.google.android.material.snackbar.Snackbar.make(
-                            findViewById(android.R.id.content), R.string.startup_sync_current,
-                            com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
-                        ).show()
+                        com.barkatunnel.app.ui.common.UpdateSuccessFeedback.showOnce(
+                            this@MainActivity, R.string.startup_sync_current
+                        )
                     }
                 }
             }
@@ -671,7 +668,6 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         homePageResumed = true
-        entryUpdateShown = false
         entryUpdateGeneration += 1L
         mainHandler.removeCallbacks(foregroundUpdatePoll)
         mainHandler.post(foregroundUpdatePoll)
@@ -1696,10 +1692,9 @@ class MainActivity : AppCompatActivity() {
                         if (result.updatedCount > 0) {
                             runOnUiThread {
                                 if (homePageResumed && !isFinishing && !isDestroyed) {
-                                    com.google.android.material.snackbar.Snackbar.make(
-                                        findViewById(android.R.id.content), R.string.config_update_applied_message,
-                                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
-                                    ).show()
+                                    com.barkatunnel.app.ui.common.UpdateSuccessFeedback.showOnce(
+                                        this@MainActivity, R.string.config_update_applied_message
+                                    )
                                 }
                             }
                         }

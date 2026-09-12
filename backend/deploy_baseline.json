@@ -1,11 +1,11 @@
 {
   "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "app/admin_ops.py": "5a4ec817e7d50e508b6b5b444372c1a783cab06615006b264310bf99fe386aa2",
-  "app/admin_panel.py": "eb89737d59d3a0e7d111cd98f7ce81a75fa4da8fbe494d0676343c4cc8675497",
+  "app/admin_panel.py": "5e778e61ae899b4f3b5950a3ace6356f9ee1cba97334f85fe86113aff79813f1",
   "app/app_updates.py": "a23f1b26cf39ad9ffce0b12665ed2083f2b9f91b15b2c4007ef4405af5c00c86",
   "app/config.py": "cfc6380a09e2f0524377f517521d708d5d358deff7bd82c0bd33587fb480f4b6",
   "app/db.py": "b6ce2de52f1a6ecefc0015a9a95e949bb63d4f16fe2bd36221b7d206cfcafba0",
-  "app/main.py": "cfd557d65dfb38843b661ebaabf5d593deb38886929010a15671a236fe5b221f",
+  "app/main.py": "5f67c2795e137dcab8ce43bc674bcd5d9a4ca3ac1a2153f7e98fc4affbcf60f2",
   "app/models.py": "3aaac16bcbd4baaf26b83408e5fa5b65be5c1cc0142300869fe9a6c08002d636",
   "app/panel_management.py": "994c3baea3f341b43d0607baf7f6f24b5955b92e23ad8fb366686f55108c2e10",
   "app/plans.py": "0ef1c700cd6414847c087eb3edbaf5f07862eadeb370739586f380f972fbbe42",

@@ -164,13 +164,18 @@ class AdminCodeListItem(BaseModel):
 
 
 class AdminResellerCreateRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9._-]+$")
+    username: str = Field(min_length=1, max_length=200)
     expires_at: datetime
 
-    @field_validator("username")
+    @field_validator("username", mode="before")
     @classmethod
     def clean_reseller_username(cls, value: str) -> str:
-        return value.strip().lower()
+        if not isinstance(value, str):
+            raise ValueError("Le nom doit être du texte.")
+        value = value.strip().lower()
+        if not value or any(ord(c) < 32 or ord(c) == 127 for c in value):
+            raise ValueError("Indiquez un nom non vide, sur une seule ligne.")
+        return value
 
 
 class AdminResellerExpiryRequest(BaseModel):
@@ -178,13 +183,18 @@ class AdminResellerExpiryRequest(BaseModel):
 
 
 class ResellerLoginRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=40)
+    username: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=12, max_length=200)
 
-    @field_validator("username")
+    @field_validator("username", mode="before")
     @classmethod
     def clean_login_username(cls, value: str) -> str:
-        return value.strip().lower()
+        if not isinstance(value, str):
+            raise ValueError("Le nom doit être du texte.")
+        value = value.strip().lower()
+        if not value or any(ord(c) < 32 or ord(c) == 127 for c in value):
+            raise ValueError("Indiquez un nom non vide, sur une seule ligne.")
+        return value
 
 
 class ResellerGenerateSubscriptionRequest(BaseModel):

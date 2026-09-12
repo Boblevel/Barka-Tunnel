@@ -28,7 +28,7 @@ RESELLER_PANEL_HTML = r"""<!doctype html>
     <div class="login-card">
       <div class="brand-lockup"><div class="brand-mark"><svg viewBox="0 0 72 72" role="img" aria-label="Logo Barka Tunnel"><path d="M62 9C47 0 24 2 11 16C-1 29 1 50 15 62C29 74 51 70 63 56" fill="none" stroke="#126ee8" stroke-width="5" stroke-linecap="round"/><path d="M22 16V58M22 16H40C51 16 57 22 57 30C57 36 52 40 47 41C54 42 59 47 59 54C59 63 51 67 40 67H22" fill="none" stroke="#111827" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h1>Barka Tunnel</h1><p>Sous-panel revendeur sécurisé</p></div></div>
       <div class="title">Connexion revendeur</div><div class="section-note">Utilisez les coordonnées remises par l'administrateur.</div>
-      <label>Nom d'utilisateur</label><input id="username" autocomplete="username" maxlength="40">
+      <label>Nom d'utilisateur</label><input id="username" autocomplete="username" maxlength="200">
       <label>Mot de passe</label><input id="password" type="password" autocomplete="current-password" maxlength="200">
       <div style="height:14px"></div><button style="width:100%" onclick="login()">SE CONNECTER</button><div id="loginStatus"></div>
     </div>
