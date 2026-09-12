@@ -28,11 +28,15 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
-    fun checkAccess(): BackendAccessState {
+    fun checkAccess(socksPort: Int? = null): BackendAccessState {
         val body = post(
             path = "/v1/access/check",
-            payload = JSONObject().put("device_id", deviceId)
+            payload = JSONObject().put("device_id", deviceId),
+            socksPort = socksPort
         )
+        if (socksPort != null && body.opt("allowed") !is Boolean) {
+            throw BarkaBackendException("Réponse de contrôle d’accès invalide.")
+        }
         return parseAccess(body)
     }
 
@@ -141,9 +145,10 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
-    fun checkAppUpdate(currentVersionCode: Long): BackendAppUpdate {
+    fun checkAppUpdate(currentVersionCode: Long, socksPort: Int? = null): BackendAppUpdate {
         val body = getObject(
-            path = "/v1/app/update?version_code=${currentVersionCode.coerceAtLeast(1L)}&t=${System.currentTimeMillis()}"
+            path = "/v1/app/update?version_code=${currentVersionCode.coerceAtLeast(1L)}&t=${System.currentTimeMillis()}",
+            socksPort = socksPort
         )
         if (body.opt("enabled") !is Boolean || body.opt("update_available") !is Boolean ||
             body.opt("force_update") !is Boolean || body.optLong("latest_version_code", 0L) < 1L) {
@@ -199,7 +204,8 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
-    private fun getObject(path: String): JSONObject {
+    private fun getObject(path: String, socksPort: Int? = null): JSONObject {
+        if (socksPort != null) return TunnelControlTransport.request(BASE_URL + path, null, socksPort)
         val connection = (URL(BASE_URL + path).openConnection() as HttpURLConnection)
         try {
             connection.requestMethod = "GET"
@@ -267,7 +273,8 @@ class BarkaBackendClient(context: Context) {
         }
     }
 
-    private fun post(path: String, payload: JSONObject): JSONObject {
+    private fun post(path: String, payload: JSONObject, socksPort: Int? = null): JSONObject {
+        if (socksPort != null) return TunnelControlTransport.request(BASE_URL + path, payload, socksPort)
         val connection = (URL(BASE_URL + path).openConnection() as HttpURLConnection)
         try {
             connection.requestMethod = "POST"

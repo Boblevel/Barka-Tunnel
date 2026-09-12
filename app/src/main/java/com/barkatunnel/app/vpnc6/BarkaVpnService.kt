@@ -220,10 +220,6 @@ class BarkaVpnService : VpnService() {
                 return
             }
 
-            val access = com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess()
-            if (!access.allowed) throw IllegalStateException("Accès retiré ou expiré.")
-            sessionAccessRevision = access.accessRevision
-
             var lastFailure: Throwable? = null
             for (attempt in 1..MAX_CONNECTION_ATTEMPTS) {
                 if (!isConnectOperationActive(connectGeneration)) {
@@ -405,6 +401,13 @@ class BarkaVpnService : VpnService() {
                 "Le proxy ${protocol.name} n’achemine aucune donnée Internet."
             )
         }
+
+        // Mobile may reach the control API only through the native proxy.
+        // Authorize BEFORE establishing TUN or forwarding other applications.
+        if (!isConnectOperationActive(connectGeneration)) throw InterruptedException("Connexion annulée.")
+        val access = com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess(localSocksPort)
+        if (!access.allowed) throw IllegalStateException("Accès retiré ou expiré.")
+        sessionAccessRevision = access.accessRevision
 
         val dns = when (profileConfig) {
             is VpnProfileConfig.SlowDns -> profileConfig.dns
@@ -616,13 +619,13 @@ class BarkaVpnService : VpnService() {
         var lastUpdateRevision = ""
         accessFuture = accessExecutor.scheduleWithFixedDelay({
             if (connected && !stopping && operationGeneration.get() == accessGeneration) {
-                val access = runCatching { com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess() }.getOrNull()
+                val access = runCatching { com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess(socksPort(protocol)) }.getOrNull()
                 val now = android.os.SystemClock.elapsedRealtime()
                 if (now >= nextUpdateCheckAt) {
                     nextUpdateCheckAt = now + 60_000L
                     val update = runCatching {
                         com.barkatunnel.app.backend.BarkaBackendClient(this)
-                            .checkAppUpdate(com.barkatunnel.app.BuildConfig.VERSION_CODE.toLong())
+                            .checkAppUpdate(com.barkatunnel.app.BuildConfig.VERSION_CODE.toLong(), socksPort(protocol))
                     }.getOrNull()
                     if (update != null && operationGeneration.get() == accessGeneration && connected && !stopping) {
                         if (update.updateAvailable && update.forceUpdate) {

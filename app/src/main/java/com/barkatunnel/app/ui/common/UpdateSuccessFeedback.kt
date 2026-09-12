@@ -9,15 +9,20 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import com.barkatunnel.app.R
-import java.util.concurrent.atomic.AtomicBoolean
+import com.barkatunnel.app.BuildConfig
+import android.content.Context
 
-/** One successful automatic check per app process, including activity recreation. */
+/** Persist acknowledgement across process death; new revisions remain visible. */
 object UpdateSuccessFeedback {
-    private val shown = AtomicBoolean(false)
 
+    @Synchronized
     @Suppress("DEPRECATION")
-    fun showOnce(activity: Activity, message: Int) {
-        if (activity.isFinishing || activity.isDestroyed || !shown.compareAndSet(false, true)) return
+    fun showOnce(activity: Activity, message: Int, revision: String = "apk:${BuildConfig.VERSION_CODE}") {
+        if (activity.isFinishing || activity.isDestroyed) return
+        val prefs = activity.applicationContext.getSharedPreferences("barka_update_feedback", Context.MODE_PRIVATE)
+        val key = activity.resources.getResourceEntryName(message)
+        if (prefs.getString(key, null) == revision) return
+        if (!prefs.edit().putString(key, revision).commit()) return
         fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL

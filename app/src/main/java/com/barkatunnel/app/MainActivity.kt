@@ -1693,7 +1693,10 @@ class MainActivity : AppCompatActivity() {
                             runOnUiThread {
                                 if (homePageResumed && !isFinishing && !isDestroyed) {
                                     com.barkatunnel.app.ui.common.UpdateSuccessFeedback.showOnce(
-                                        this@MainActivity, R.string.config_update_applied_message
+                                        this@MainActivity, R.string.config_update_applied_message,
+                                        result.profiles.sortedBy { it.networkId }.joinToString("|") {
+                                            "${it.networkId}:${it.version}:${it.updatedAt}"
+                                        }
                                     )
                                 }
                             }
