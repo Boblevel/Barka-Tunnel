@@ -26,6 +26,8 @@ class SubscriptionActivity : AppCompatActivity() {
     private val paymentHandler = Handler(Looper.getMainLooper())
     @Volatile private var checkingPayment = false
     private var paymentPollAttempts = 0
+    private var confirmationDialog: AlertDialog? = null
+    @Volatile private var paymentPageResumed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,21 +57,27 @@ class SubscriptionActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        paymentPageResumed = true
         paymentPollAttempts = 0
         checkPendingPayment()
     }
 
     override fun onPause() {
+        paymentPageResumed = false
         paymentHandler.removeCallbacksAndMessages(null)
         super.onPause()
     }
 
     override fun onDestroy() {
+        confirmationDialog?.dismiss()
+        confirmationDialog = null
         paymentHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
     private fun startPayment() {
+        PendingPaymentStore.confirmedCode(this)?.let { showActivationCode(it); return }
+        val purchasePlanId = selectedPlanId
         payButton.isEnabled = false
         AppLogStore.add(
             this,
@@ -78,12 +86,21 @@ class SubscriptionActivity : AppCompatActivity() {
 
         Thread {
             try {
-                val payment = BarkaBackendClient(this).startPayment(selectedPlanId)
-                PendingPaymentStore.save(
+                val payment = BarkaBackendClient(this).startPayment(purchasePlanId)
+                val saved = PendingPaymentStore.save(
                     context = this,
                     reference = payment.paymentReference,
-                    planId = selectedPlanId
+                    planId = purchasePlanId
                 )
+                if (!saved) {
+                    runOnUiThread {
+                        payButton.isEnabled = true
+                        val previous = PendingPaymentStore.confirmedCode(this)
+                        if (previous != null) showActivationCode(previous)
+                        else Toast.makeText(this, R.string.payment_action_retry, Toast.LENGTH_LONG).show()
+                    }
+                    return@Thread
+                }
                 AppLogStore.add(
                     this,
                     "Paiement • Demande créée • ${payment.amount} ${payment.currency}."
@@ -110,6 +127,8 @@ class SubscriptionActivity : AppCompatActivity() {
     }
 
     private fun checkPendingPayment() {
+        if (!paymentPageResumed || isFinishing || isDestroyed) return
+        PendingPaymentStore.confirmedCode(this)?.let { showActivationCode(it); return }
         val reference = PendingPaymentStore.reference(this) ?: return
         if (checkingPayment) return
         checkingPayment = true
@@ -118,6 +137,7 @@ class SubscriptionActivity : AppCompatActivity() {
             try {
                 val status = BarkaBackendClient(this).checkPaymentStatus(reference)
                 runOnUiThread {
+                    if (PendingPaymentStore.reference(this) != reference) return@runOnUiThread
                     when (status.status) {
                         "paid" -> {
                             AppLogStore.add(this, "Paiement • Confirmation reçue.")
@@ -130,8 +150,8 @@ class SubscriptionActivity : AppCompatActivity() {
                                 ).show()
                                 schedulePaymentCheck()
                             } else {
-                                PendingPaymentStore.clear(this)
-                                showActivationCode(code)
+                                val saved = PendingPaymentStore.saveConfirmedCode(this, reference, code)
+                                if (saved && paymentPageResumed && !isFinishing && !isDestroyed) showActivationCode(code)
                             }
                         }
 
@@ -154,7 +174,7 @@ class SubscriptionActivity : AppCompatActivity() {
     }
 
     private fun schedulePaymentCheck() {
-        if (paymentPollAttempts >= MAX_PAYMENT_POLL_ATTEMPTS) return
+        if (!paymentPageResumed || paymentPollAttempts >= MAX_PAYMENT_POLL_ATTEMPTS) return
         paymentPollAttempts += 1
         paymentHandler.postDelayed(
             { checkPendingPayment() },
@@ -163,22 +183,28 @@ class SubscriptionActivity : AppCompatActivity() {
     }
 
     private fun showActivationCode(code: String) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.payment_confirmed)
-            .setMessage(getString(R.string.payment_code_format, code))
-            .setPositiveButton(R.string.payment_activate_now) { _, _ ->
-                startActivity(
-                    Intent(this, ActivationActivity::class.java)
-                        .putExtra(ActivationActivity.EXTRA_ACTIVATION_CODE, code)
-                )
-            }
-            .setNeutralButton(R.string.copy_code) { _, _ ->
+        if (isFinishing || isDestroyed || confirmationDialog?.isShowing == true) return
+        val planLabel = when (PendingPaymentStore.planId(this)) {
+            "24h" -> R.string.subscription_24h
+            "1w" -> R.string.subscription_week
+            "2w" -> R.string.subscription_two_weeks
+            "1m" -> R.string.subscription_month
+            else -> R.string.payment_purchased_subscription
+        }
+        val offer = getString(planLabel).replace(Regex("\\s+"), " ").trim()
+        confirmationDialog = PaymentConfirmationDialog.show(this, code, offer,
+            onCopy = {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("Code Barka Tunnel", code))
+                PendingPaymentStore.clear(this)
                 Toast.makeText(this, R.string.code_copied, Toast.LENGTH_SHORT).show()
+            },
+            onActivate = {
+                startActivity(Intent(this, ActivationActivity::class.java)
+                    .putExtra(ActivationActivity.EXTRA_ACTIVATION_CODE, code))
+                PendingPaymentStore.clear(this)
             }
-            .setNegativeButton(R.string.close, null)
-            .show()
+        )
     }
 
     private fun select(planId: String, amount: Int) {

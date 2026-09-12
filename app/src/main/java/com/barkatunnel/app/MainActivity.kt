@@ -638,22 +638,41 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
+    private var entryUpdateShown = false
+    private var entryUpdateGeneration = 0L
+    private var homePageResumed = false
+
     private val foregroundUpdatePoll = object : Runnable {
         override fun run() {
             if (::updateCoordinator.isInitialized) {
-                updateCoordinator.check(showNoUpdate = false, force = true)
+                val generation = entryUpdateGeneration
+                updateCoordinator.check(showNoUpdate = false, force = true) { update ->
+                    if (update != null && !update.updateAvailable && homePageResumed &&
+                        generation == entryUpdateGeneration && !entryUpdateShown &&
+                        !isFinishing && !isDestroyed) {
+                        entryUpdateShown = true
+                        com.google.android.material.snackbar.Snackbar.make(
+                            findViewById(android.R.id.content), R.string.startup_sync_current,
+                            com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             }
             mainHandler.postDelayed(this, 30_000L)
         }
     }
 
     override fun onPause() {
+        homePageResumed = false
         mainHandler.removeCallbacks(foregroundUpdatePoll)
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
+        homePageResumed = true
+        entryUpdateShown = false
+        entryUpdateGeneration += 1L
         mainHandler.removeCallbacks(foregroundUpdatePoll)
         mainHandler.post(foregroundUpdatePoll)
         com.barkatunnel.app.update.RemoteUpdateScheduler.requestNow(this)
@@ -1605,11 +1624,6 @@ class MainActivity : AppCompatActivity() {
                 .apply()
             mainHandler.removeCallbacks(initialSyncRetryRunnable)
             if (!update.updateAvailable) {
-                Toast.makeText(
-                    this,
-                    R.string.startup_sync_current,
-                    Toast.LENGTH_SHORT
-                ).show()
                 AppLogStore.add(this, "Barka Tunnel est à jour.")
             }
             resumePendingConnectionAfterInitialSync()
@@ -1681,11 +1695,12 @@ class MainActivity : AppCompatActivity() {
                         }
                         if (result.updatedCount > 0) {
                             runOnUiThread {
-                                androidx.appcompat.app.AlertDialog.Builder(this)
-                                    .setTitle(R.string.config_update_required_title)
-                                    .setMessage(R.string.config_update_applied_message)
-                                    .setPositiveButton(android.R.string.ok, null)
-                                    .show()
+                                if (homePageResumed && !isFinishing && !isDestroyed) {
+                                    com.google.android.material.snackbar.Snackbar.make(
+                                        findViewById(android.R.id.content), R.string.config_update_applied_message,
+                                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         }
                     }

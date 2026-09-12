@@ -11,7 +11,7 @@ android {
         applicationId = "com.barkatunnel.app"
         minSdk = 23
         targetSdk = 35
-        versionCode = 106
+        versionCode = 107
         versionName = "2.0.3.6"
 
         ndk {

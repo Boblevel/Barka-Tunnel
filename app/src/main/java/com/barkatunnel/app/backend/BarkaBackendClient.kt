@@ -145,6 +145,10 @@ class BarkaBackendClient(context: Context) {
         val body = getObject(
             path = "/v1/app/update?version_code=${currentVersionCode.coerceAtLeast(1L)}&t=${System.currentTimeMillis()}"
         )
+        if (body.opt("enabled") !is Boolean || body.opt("update_available") !is Boolean ||
+            body.opt("force_update") !is Boolean || body.optLong("latest_version_code", 0L) < 1L) {
+            throw BarkaBackendException("Réponse de mise à jour invalide.")
+        }
         val available = body.optBoolean("enabled", false) &&
             body.optLong("latest_version_code", 1L) > currentVersionCode &&
             body.optBoolean("update_available", false)

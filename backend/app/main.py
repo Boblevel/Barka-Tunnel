@@ -22,6 +22,7 @@ from .admin_ops import (
     revoke_redeem_code,
 )
 from .panel_management import FilterRequest, filtered_codes, reseller_details
+from .custom_subscriptions import CustomSubscriptionRequest, issue_custom_subscription
 from .admin_panel import ADMIN_PANEL_HTML
 from .reseller_panel import RESELLER_PANEL_HTML
 from .app_updates import (
@@ -381,6 +382,12 @@ def admin_codes(body: AdminCodeRequest):
         source_ref = f"MANUAL:{uuid.uuid4().hex}"
         codes.append(issue_activation_code(source_ref, body.plan_id))
     return AdminCodeResponse(plan_id=body.plan_id, codes=codes)
+
+
+@app.post("/v1/admin/codes/custom", response_model=AdminCodeResponse, dependencies=[Depends(require_admin)])
+def admin_custom_subscription(body: CustomSubscriptionRequest):
+    plan_id, code = issue_custom_subscription(body.days)
+    return AdminCodeResponse(plan_id=plan_id, codes=[code])
 
 
 @app.post(

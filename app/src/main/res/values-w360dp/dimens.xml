@@ -5,7 +5,7 @@
     <dimen name="home_header_height">72dp</dimen>
     <dimen name="home_header_logo_size">46dp</dimen>
     <dimen name="home_brand_margin_start">8dp</dimen>
-    <dimen name="home_brand_text_size">18sp</dimen>
+    <dimen name="home_brand_text_size">20sp</dimen>
     <dimen name="home_header_action_width">56dp</dimen>
     <dimen name="home_header_action_height">58dp</dimen>
     <dimen name="home_header_action_icon_size">34dp</dimen>

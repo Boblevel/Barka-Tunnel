@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="payment_purchased_subscription">Abonnement acheté</string>
+    <string name="payment_keep_code_private">Ce code est personnel. Copiez-le pour le conserver ou activez votre abonnement maintenant.</string>
+    <string name="payment_action_retry">Action impossible. Votre code reste disponible ; réessayez.</string>
+</resources>
