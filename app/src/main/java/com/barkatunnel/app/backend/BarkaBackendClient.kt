@@ -8,6 +8,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 
 class BarkaBackendClient(context: Context) {
 
@@ -65,7 +66,9 @@ class BarkaBackendClient(context: Context) {
 
         val checkoutUrl = body.optString("checkout_url").trim()
         val reference = body.optString("payment_reference").trim()
-        if (checkoutUrl.isBlank() || reference.isBlank()) {
+        if (!body.optBoolean("success", false) || checkoutUrl.isBlank() ||
+            reference.isBlank() || reference == "null" ||
+            runCatching { URL(checkoutUrl).let { it.protocol != "https" || it.host.isBlank() } }.getOrDefault(true)) {
             throw BarkaBackendException("Réponse de paiement incomplète.")
         }
 
@@ -86,9 +89,9 @@ class BarkaBackendClient(context: Context) {
                 .put("sync_provider", true)
         )
 
-        val rawCode = body.optString("activation_code", "").trim()
+        val rawCode = if (body.isNull("activation_code")) "" else body.optString("activation_code", "").trim()
         return BackendPaymentStatus(
-            status = body.optString("status", "error").lowercase(),
+            status = body.optString("status", "error").lowercase(Locale.ROOT),
             activationCode = rawCode.ifBlank { null },
             message = cleanMessage(body.optString("message", "Statut du paiement vérifié."))
         )
@@ -140,7 +143,7 @@ class BarkaBackendClient(context: Context) {
 
     fun checkAppUpdate(currentVersionCode: Long): BackendAppUpdate {
         val body = getObject(
-            path = "/v1/app/update?version_code=${currentVersionCode.coerceAtLeast(1L)}"
+            path = "/v1/app/update?version_code=${currentVersionCode.coerceAtLeast(1L)}&t=${System.currentTimeMillis()}"
         )
         val available = body.optBoolean("enabled", false) &&
             body.optLong("latest_version_code", 1L) > currentVersionCode &&
@@ -196,6 +199,8 @@ class BarkaBackendClient(context: Context) {
         val connection = (URL(BASE_URL + path).openConnection() as HttpURLConnection)
         try {
             connection.requestMethod = "GET"
+            connection.useCaches = false
+            connection.setRequestProperty("Cache-Control", "no-cache")
             connection.connectTimeout = CONNECT_TIMEOUT_MS
             connection.readTimeout = READ_TIMEOUT_MS
             connection.setRequestProperty("Accept", "application/json")
@@ -300,7 +305,7 @@ class BarkaBackendClient(context: Context) {
     }
 
     private fun cleanMessage(message: String): String {
-        return message.replace(Regex("(?i)lomopay"), "service de paiement")
+        return message.replace(Regex("(?i)saspay"), "service de paiement")
     }
 }
 

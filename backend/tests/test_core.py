@@ -532,7 +532,7 @@ def test_reseller_credentials_sessions_origin_and_freeze_preserve_code(tmp_path)
         datetime.now(timezone.utc) + timedelta(days=2),
     )
     assert account["username"] == "vendeur.01"
-    assert len(account["password"]) == 18
+    assert len(account["password"]) >= 18
     assert account["panel_url"] == "https://api.test.local/reseller"
 
     cx = db.connect()

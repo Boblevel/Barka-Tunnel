@@ -638,8 +638,25 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
+    private val foregroundUpdatePoll = object : Runnable {
+        override fun run() {
+            if (::updateCoordinator.isInitialized) {
+                updateCoordinator.check(showNoUpdate = false, force = true)
+            }
+            mainHandler.postDelayed(this, 30_000L)
+        }
+    }
+
+    override fun onPause() {
+        mainHandler.removeCallbacks(foregroundUpdatePoll)
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
+        mainHandler.removeCallbacks(foregroundUpdatePoll)
+        mainHandler.post(foregroundUpdatePoll)
+        com.barkatunnel.app.update.RemoteUpdateScheduler.requestNow(this)
 
         if (::networkIpValue.isInitialized) {
             applySystemBars()
@@ -671,6 +688,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(foregroundUpdatePoll)
         vpnStateReconciliationActive = false
         mainHandler.removeCallbacks(networkIpRefreshRunnable)
         mainHandler.removeCallbacks(weeklyGiftRefreshRunnable)

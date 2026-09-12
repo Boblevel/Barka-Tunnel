@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import calendar
 import hashlib
 import hmac
 import secrets
@@ -57,6 +58,65 @@ def _password_digest(password: str, salt: bytes) -> bytes:
     )
 
 
+def _recoverable_password(nonce: str) -> str:
+    if not settings.code_secret or settings.code_secret == "CHANGE_ME":
+        raise RuntimeError("CODE_SECRET n'est pas configuré")
+    digest = hmac.new(settings.code_secret.encode("utf-8"),
+                      ("barka-reseller-password-v1:" + nonce).encode("ascii"),
+                      hashlib.sha256).digest()
+    return "Bt7!" + base64.urlsafe_b64encode(digest).decode("ascii")[:24]
+
+
+def reseller_credentials(reseller_id: int) -> dict:
+    cx = connect()
+    try:
+        row = cx.execute("SELECT * FROM reseller_accounts WHERE id=? AND deleted_at IS NULL", (reseller_id,)).fetchone()
+        if not row:
+            raise ValueError("Sous-panel introuvable.")
+        password = _recoverable_password(row["password_nonce"]) if row["password_nonce"] else None
+        # A changed CODE_SECRET must never display incorrect credentials.
+        if password is not None and not _verify_password(password, row):
+            password = None
+        result = _public_account(row)
+        result.update(password=password, password_reset_required=password is None)
+        return result
+    finally:
+        cx.close()
+
+
+def reset_reseller_password(reseller_id: int) -> dict:
+    nonce = secrets.token_hex(32)
+    password = _recoverable_password(nonce)
+    salt = secrets.token_bytes(16)
+    with transaction() as cx:
+        row = cx.execute("SELECT id FROM reseller_accounts WHERE id=? AND deleted_at IS NULL", (reseller_id,)).fetchone()
+        if not row:
+            raise ValueError("Sous-panel introuvable.")
+        now = now_ts()
+        cx.execute("UPDATE reseller_accounts SET password_hash=?, password_salt=?, password_nonce=?, updated_at=? WHERE id=?",
+                   (_encode(_password_digest(password, salt)), _encode(salt), nonce, now, reseller_id))
+        _revoke_sessions(cx, reseller_id, now)
+        record_event(cx, reseller_id, "password_reset")
+    return reseller_credentials(reseller_id)
+
+
+def renew_reseller_month(reseller_id: int) -> dict:
+    with transaction() as cx:
+        row = cx.execute("SELECT * FROM reseller_accounts WHERE id=? AND deleted_at IS NULL", (reseller_id,)).fetchone()
+        if not row:
+            raise ValueError("Sous-panel introuvable.")
+        now = now_ts()
+        start = datetime.fromtimestamp(max(now, int(row["expires_at"])), timezone.utc)
+        year, month = (start.year + 1, 1) if start.month == 12 else (start.year, start.month + 1)
+        end = start.replace(year=year, month=month, day=min(start.day, calendar.monthrange(year, month)[1]))
+        expiry = _expiry_timestamp(end)
+        cx.execute("UPDATE reseller_accounts SET expires_at=?, updated_at=? WHERE id=?", (expiry, now, reseller_id))
+        _revoke_sessions(cx, reseller_id, now)
+        record_event(cx, reseller_id, "renewed", detail=iso(expiry))
+        row = cx.execute("SELECT * FROM reseller_accounts WHERE id=?", (reseller_id,)).fetchone()
+    return _public_account(row)
+
+
 def _generate_password() -> str:
     required = [
         secrets.choice(string.ascii_uppercase),
@@ -96,7 +156,8 @@ def public_reseller_account(row) -> dict:
 def create_reseller(username: str, expires_at: datetime) -> dict:
     normalized_username = username.strip().lower()
     expiry = _expiry_timestamp(expires_at)
-    password = _generate_password()
+    nonce = secrets.token_hex(32)
+    password = _recoverable_password(nonce)
     salt = secrets.token_bytes(16)
     digest = _password_digest(password, salt)
     now = now_ts()
@@ -107,8 +168,8 @@ def create_reseller(username: str, expires_at: datetime) -> dict:
                 """
                 INSERT INTO reseller_accounts(
                     username, password_hash, password_salt, status,
-                    expires_at, created_at, updated_at
-                ) VALUES(?,?,?,'active',?,?,?)
+                    expires_at, created_at, updated_at, password_nonce
+                ) VALUES(?,?,?,'active',?,?,?,?)
                 """,
                 (
                     normalized_username,
@@ -117,6 +178,7 @@ def create_reseller(username: str, expires_at: datetime) -> dict:
                     expiry,
                     now,
                     now,
+                    nonce,
                 ),
             )
             row = cx.execute(
@@ -236,7 +298,7 @@ def delete_reseller(reseller_id: int) -> None:
         cx.execute(
             """
             UPDATE reseller_accounts
-            SET status='frozen', deleted_at=?, updated_at=?
+            SET status='frozen', deleted_at=?, updated_at=?, password_nonce=NULL
             WHERE id=?
             """,
             (now, now, reseller_id),

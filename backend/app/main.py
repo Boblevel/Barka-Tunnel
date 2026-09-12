@@ -6,7 +6,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, HTMLResponse
 
 from .admin_ops import (
@@ -35,7 +35,7 @@ from .app_updates import (
 
 from .config import settings
 from .db import connect, init_db
-from .lomopay import LomoPayError, create_payment, get_payment
+from .saspay import SasPayError, create_payment, get_payment
 from .models import (
     AccessResponse,
     ActivationRequest,
@@ -70,9 +70,12 @@ from .models import (
     VpnProfileResponse,
 )
 from .plans import PLANS, get_plan
-from .security import require_admin, verify_lomopay_signature
+from .security import require_admin, verify_saspay_signature
 from .resellers import (
     create_reseller,
+    reseller_credentials,
+    reset_reseller_password,
+    renew_reseller_month,
     delete_reseller,
     delete_reseller_code,
     freeze_reseller,
@@ -101,6 +104,7 @@ from .services import (
     mark_payment_failed,
     mark_payment_paid,
     mark_connection_attempt,
+    pending_payments_for_reconciliation,
     recent_pending_payment,
     redeem_activation_code,
     register_webhook_event,
@@ -144,7 +148,8 @@ def plans():
     return list(PLANS.values())
 
 @app.get("/v1/app/update", response_model=AppUpdateResponse)
-def app_update(version_code: int = 1):
+def app_update(response: Response, version_code: int = 1):
+    response.headers["Cache-Control"] = "no-store, max-age=0"
     if version_code < 1:
         raise HTTPException(status_code=400, detail="Version Android invalide")
     return get_app_update_for_client(version_code)
@@ -200,7 +205,7 @@ async def payment_start(body: PaymentStartRequest):
             customer_name=body.customer_name,
             customer_email=body.customer_email,
         )
-    except LomoPayError as exc:
+    except SasPayError as exc:
         mark_payment_error(reference, str(exc))
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -235,14 +240,14 @@ async def payment_status(body: PaymentStatusRequest):
         provider_lookup = payment["provider_payment_id"] or payment["reference"]
         try:
             remote = await get_payment(str(provider_lookup))
-            remote_status = str(remote.get("status", "")).lower()
-            if remote_status == "completed":
+            remote_status = str(remote.get("status", "")).upper()
+            if remote_status == "PAID":
                 mark_payment_paid(payment["reference"])
                 current_status = "paid"
-            elif remote_status == "failed":
+            elif remote_status in {"CANCELLED", "EXPIRED"}:
                 mark_payment_failed(payment["reference"])
                 current_status = "failed"
-        except LomoPayError:
+        except SasPayError:
             # Le webhook reste la source principale. Une erreur de synchronisation
             # ne doit pas transformer un paiement en échec.
             pass
@@ -312,60 +317,57 @@ def admin_vpn_profile_upsert(body: AdminVpnProfileUpsert):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/v1/webhooks/lomopay")
-async def lomopay_webhook(
+async def _reconcile_saspay_pending() -> dict[str, int]:
+    checked = paid = failed = 0
+    for payment in pending_payments_for_reconciliation(limit=50):
+        provider_id = payment["provider_payment_id"]
+        if not provider_id:
+            continue
+        try:
+            remote = await get_payment(str(provider_id))
+        except SasPayError:
+            continue
+        checked += 1
+        remote_status = str(remote.get("status", "")).upper()
+        if remote_status == "PAID":
+            mark_payment_paid(payment["reference"])
+            paid += 1
+        elif remote_status in {"CANCELLED", "EXPIRED"}:
+            mark_payment_failed(payment["reference"])
+            failed += 1
+    return {"checked": checked, "paid": paid, "failed": failed}
+
+
+@app.post("/v1/webhooks/saspay")
+async def saspay_webhook(
     request: Request,
-    x_lomopay_signature: str | None = Header(default=None),
-    x_lomopay_event_id: str | None = Header(default=None),
+    x_webhook_signature: str | None = Header(default=None),
+    x_webhook_timestamp: str | None = Header(default=None),
+    x_webhook_event: str | None = Header(default=None),
 ):
     raw = await request.body()
-
-    if not verify_lomopay_signature(raw, x_lomopay_signature):
-        raise HTTPException(status_code=401, detail="Signature webhook invalide")
-
+    if not verify_saspay_signature(raw, x_webhook_signature, x_webhook_timestamp):
+        raise HTTPException(status_code=401, detail="Signature webhook SasPay invalide")
     try:
         payload = json.loads(raw.decode("utf-8"))
     except Exception as exc:
         raise HTTPException(status_code=400, detail="JSON webhook invalide") from exc
-
+    event_type = str(payload.get("event") or "").strip()
+    if x_webhook_event and event_type and x_webhook_event.strip() != event_type:
+        raise HTTPException(status_code=400, detail="Type d'événement webhook incohérent")
+    data = payload.get("data") or {}
+    provider_event_id = str(data.get("id") or data.get("reference") or "")
     event_id = (
-        x_lomopay_event_id
-        or str(payload.get("id") or "")
-        or f"evt-local-{uuid.uuid4().hex}"
+        f"saspay:{event_type}:{provider_event_id}"
+        if event_type or provider_event_id
+        else f"saspay:sha256:{hashlib.sha256(raw).hexdigest()}"
     )
     if not register_webhook_event(event_id):
         return {"ok": True, "duplicate": True}
-
-    event_type = str(payload.get("type", "")).lower()
-    pay = payload.get("data") or {}
-    remote_status = str(pay.get("status", "")).lower()
-    provider_id = str(pay.get("transaction_id") or pay.get("id") or "")
-    external_reference = str(pay.get("external_reference") or "")
-
-    payment = get_payment_by_any_reference(
-        local_reference=external_reference or None,
-        provider_payment_id=provider_id or None,
-    )
-    if not payment:
-        # On accuse réception afin d'éviter des retries infinis du prestataire.
-        return {"ok": True, "ignored": "unknown_payment"}
-
-    succeeded = (
-        remote_status == "completed"
-        or event_type in {
-            "payment.succeeded",
-            "payment.completed",
-            "payment.success",
-        }
-    )
-    failed = remote_status == "failed" or event_type == "payment.failed"
-
-    if succeeded:
-        mark_payment_paid(payment["reference"])
-    elif failed:
-        mark_payment_failed(payment["reference"])
-
-    return {"ok": True}
+    reconciliation = {"checked": 0, "paid": 0, "failed": 0}
+    if event_type.startswith("transaction."):
+        reconciliation = await _reconcile_saspay_pending()
+    return {"ok": True, "event": event_type, "reconciliation": reconciliation}
 
 
 @app.post(
@@ -460,7 +462,7 @@ def admin_stats_reset(body: AdminStatsResetRequest):
     dependencies=[Depends(require_admin)],
 )
 def admin_codes_list(limit: int = 100, offset: int = 0):
-    return list_activation_codes(limit, offset=offset)
+    return list_activation_codes(limit, offset=offset, own_only=True)
 
 
 @app.post(
@@ -555,6 +557,37 @@ def admin_reseller_delete(reseller_id: int, body: AdminStatsResetRequest):
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"success": True, "message": "Sous-panel et codes supprimés. Les accès associés sont révoqués."}
+
+
+@app.get("/v1/admin/resellers/{reseller_id}/credentials", dependencies=[Depends(require_admin)])
+def admin_reseller_credentials(reseller_id: int, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return reseller_credentials(reseller_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.post("/v1/admin/resellers/{reseller_id}/password", dependencies=[Depends(require_admin)])
+def admin_reseller_password(reseller_id: int, body: AdminStatsResetRequest, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return reset_reseller_password(reseller_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.post("/v1/admin/resellers/{reseller_id}/renew", dependencies=[Depends(require_admin)])
+def admin_reseller_renew(reseller_id: int, body: AdminStatsResetRequest):
+    try:
+        return renew_reseller_month(reseller_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/v1/admin/resellers/{reseller_id}/codes", dependencies=[Depends(require_admin)], response_model=list[AdminCodeListItem])
+def admin_reseller_codes(reseller_id: int, limit: int = 100, offset: int = 0):
+    return list_reseller_codes(reseller_id, limit, offset)
 
 
 @app.post("/v1/reseller/login")

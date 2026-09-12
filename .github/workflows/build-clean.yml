@@ -174,7 +174,7 @@ jobs:
           ssh-keyscan -p "$VPS_PORT" -H "$BARKA_VPS_HOST" >> "$HOME/.ssh/known_hosts"
 
           LOCAL_SHA256="$(sha256sum BarkaTunnel-release.apk | awk '{print $1}')"
-          tar -C backend -czf "$BACKEND_ARCHIVE" app
+          tar -C backend --exclude=__pycache__ -czf "$BACKEND_ARCHIVE" app deploy_baseline.json verify_deploy.py
           BACKEND_SHA256="$(sha256sum "$BACKEND_ARCHIVE" | awk '{print $1}')"
           scp -P "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
             BarkaTunnel-release.apk \
@@ -196,6 +196,11 @@ jobs:
           test -d "$BARKA_BACKEND_ROOT/app"
           test "$(sha256sum "$BARKA_REMOTE_BACKEND" | awk '{print $1}')" = "$BARKA_BACKEND_SHA256"
 
+          BARKA_STAGE="$(mktemp -d /tmp/BarkaBackendStage.XXXXXX)"
+          tar -xzf "$BARKA_REMOTE_BACKEND" -C "$BARKA_STAGE"
+          python3 "$BARKA_STAGE/verify_deploy.py" "$BARKA_BACKEND_ROOT" "$BARKA_STAGE"
+          rm -rf "$BARKA_STAGE"
+
           install -d -m 700 "$BARKA_BACKUP_ROOT"
           cp -a "$BARKA_BACKEND_ROOT/app" "$BARKA_BACKUP_ROOT/app"
 
@@ -204,7 +209,7 @@ jobs:
             cd "$BARKA_BACKEND_ROOT" &&
             docker compose up -d --build &&
             curl -fsS --retry 10 --retry-delay 2 --retry-all-errors \
-              http://127.0.0.1:8085/health >/dev/null
+              http://127.0.0.1:8085/health | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") and d.get("payment_configured") else 1)'
           ); then
             mv "$BARKA_BACKEND_ROOT/app" "$BARKA_BACKUP_ROOT/app-failed"
             cp -a "$BARKA_BACKUP_ROOT/app" "$BARKA_BACKEND_ROOT/app"

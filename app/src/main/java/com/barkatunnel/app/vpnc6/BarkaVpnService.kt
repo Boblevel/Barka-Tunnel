@@ -612,10 +612,32 @@ class BarkaVpnService : VpnService() {
         accessFuture?.cancel(true)
         val accessGeneration = operationGeneration.get()
         val revision = sessionAccessRevision
+        var nextUpdateCheckAt = 0L
+        var lastUpdateRevision = ""
         accessFuture = accessExecutor.scheduleWithFixedDelay({
             if (connected && !stopping && operationGeneration.get() == accessGeneration) {
                 val access = runCatching { com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess() }.getOrNull()
-                if (access != null && (!access.allowed || access.accessRevision != revision)) {
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now >= nextUpdateCheckAt) {
+                    nextUpdateCheckAt = now + 60_000L
+                    val update = runCatching {
+                        com.barkatunnel.app.backend.BarkaBackendClient(this)
+                            .checkAppUpdate(com.barkatunnel.app.BuildConfig.VERSION_CODE.toLong())
+                    }.getOrNull()
+                    if (update != null && operationGeneration.get() == accessGeneration && connected && !stopping) {
+                        if (update.updateAvailable && update.forceUpdate) {
+                            com.barkatunnel.app.update.AppUpdateGate.setRequired(
+                                com.barkatunnel.app.update.AppUpdateDestination.APKPURE_URL, update.message)
+                        } else com.barkatunnel.app.update.AppUpdateGate.clear()
+                        val key = "${update.latestVersionCode}:${update.updatedAt}:${update.forceUpdate}"
+                        if (update.updateAvailable && key != lastUpdateRevision) {
+                            com.barkatunnel.app.update.RemoteUpdateScheduler.requestNow(this)
+                            lastUpdateRevision = key
+                        }
+                    }
+                }
+                if ((access != null && (!access.allowed || access.accessRevision != revision)) ||
+                    com.barkatunnel.app.update.AppUpdateGate.isBlocked()) {
                     mainHandler.post {
                         if (connected && !stopping && operationGeneration.get() == accessGeneration) {
                             AppLogStore.add(this, "Accès modifié par le serveur. Déconnexion.")

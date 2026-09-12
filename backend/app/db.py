@@ -201,6 +201,10 @@ def init_db() -> None:
             if "maintenance" not in columns:
                 cx.execute("ALTER TABLE vpn_profiles ADD COLUMN maintenance INTEGER NOT NULL DEFAULT 0")
 
+            reseller_columns = {row["name"] for row in cx.execute("PRAGMA table_info(reseller_accounts)").fetchall()}
+            if "password_nonce" not in reseller_columns:
+                cx.execute("ALTER TABLE reseller_accounts ADD COLUMN password_nonce TEXT")
+
             device_columns = {row["name"] for row in cx.execute("PRAGMA table_info(devices)").fetchall()}
             if "access_revision" not in device_columns:
                 cx.execute("ALTER TABLE devices ADD COLUMN access_revision INTEGER NOT NULL DEFAULT 0")

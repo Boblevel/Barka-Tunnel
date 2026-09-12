@@ -37,7 +37,7 @@ def filtered_codes(body: FilterRequest, reseller_id: int | None = None, *, delet
             ).fetchone()
             if not account:
                 raise HTTPException(403, "Sous-panel indisponible.")
-        rows = (list_activation_codes(None, reseller_id, connection=cx)
+        rows = (list_activation_codes(None, reseller_id, connection=cx, own_only=reseller_id is None)
                 if body.kind == "subscription" else list_redeem_codes(None, connection=cx))
         fields = ("code", "plan_id", "status", "redeemed_device_id", "source_type", "reseller_username", "code_type") if body.kind == "subscription" else ("code", "status")
         query = body.query.strip().lower()

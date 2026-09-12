@@ -419,6 +419,29 @@ def recent_pending_payment(device_id: str, plan_id: str, max_age_seconds: int = 
         cx.close()
 
 
+def pending_payments_for_reconciliation(
+    *,
+    max_age_seconds: int = 24 * 60 * 60,
+    limit: int = 50,
+):
+    cutoff = now_ts() - max_age_seconds
+    cx = connect()
+    try:
+        return cx.execute(
+            """
+            SELECT * FROM payments
+            WHERE status='pending'
+              AND provider_payment_id IS NOT NULL
+              AND created_at>=?
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (cutoff, max(1, min(int(limit), 200))),
+        ).fetchall()
+    finally:
+        cx.close()
+
+
 def update_payment_created(
     reference: str,
     provider_payment_id: str,

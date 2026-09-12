@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import re
+import time
 
 from fastapi import Header, HTTPException, status
 
@@ -33,15 +34,27 @@ def activation_code_for_source(source_ref: str) -> str:
     return f"BARKA-{token[:4]}-{token[4:8]}-{token[8:12]}"
 
 
-def verify_lomopay_signature(raw_body: bytes, signature: str | None) -> bool:
-    if not signature or not settings.lomopay_secret_key:
+def verify_saspay_signature(
+    raw_body: bytes,
+    signature: str | None,
+    timestamp: str | None,
+    tolerance_seconds: int = 300,
+) -> bool:
+    if not signature or not timestamp or not settings.saspay_webhook_secret:
         return False
-    expected = "sha256=" + hmac.new(
-        settings.lomopay_secret_key.encode("utf-8"),
-        raw_body,
+    try:
+        ts = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+    if abs(int(time.time()) - ts) > tolerance_seconds:
+        return False
+    signed = f"{timestamp}.".encode("utf-8") + raw_body
+    expected = hmac.new(
+        settings.saspay_webhook_secret.encode("utf-8"),
+        signed,
         hashlib.sha256,
     ).hexdigest()
-    return hmac.compare_digest(expected, signature.strip())
+    return hmac.compare_digest(expected, signature.strip().lower())
 
 
 def require_admin(x_admin_token: str | None = Header(default=None)) -> None:

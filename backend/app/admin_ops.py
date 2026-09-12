@@ -8,7 +8,7 @@ from .services import iso, now_ts
 from .reseller_audit import record_event
 
 
-def list_activation_codes(limit: int | None = 100, reseller_id: int | None = None, *, connection=None, offset: int = 0) -> list[dict]:
+def list_activation_codes(limit: int | None = 100, reseller_id: int | None = None, *, connection=None, offset: int = 0, own_only: bool = False) -> list[dict]:
     safe_limit = -1 if limit is None else max(1, min(int(limit), 200))
     cx = connection if connection is not None else connect()
     try:
@@ -17,6 +17,8 @@ def list_activation_codes(limit: int | None = 100, reseller_id: int | None = Non
         if reseller_id is not None:
             where += " AND a.created_by_reseller_id=?"
             params.append(int(reseller_id))
+        if own_only:
+            where += " AND a.created_by_reseller_id IS NULL"
         params.extend((safe_limit, max(0, offset)))
         rows = cx.execute(
             f"""

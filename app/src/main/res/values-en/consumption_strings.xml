@@ -3,7 +3,6 @@
     <string name="consumption_title">My data usage</string>
     <string name="settings_rate_app">Rate the app</string>
     <string name="browser_unavailable">No browser is available on this phone.</string>
-    <string name="payment_moov_notice">Orange payments are temporarily unavailable. Please pay with Moov Africa.</string>
     <string name="consumption_today">Today</string>
     <string name="consumption_yesterday">Yesterday</string>
     <string name="consumption_total">BARKA TUNNEL TOTAL</string>

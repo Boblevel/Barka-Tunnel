@@ -23,6 +23,7 @@ class AppUpdateCoordinator(
     private var lastCheckAt = 0L
 
     private var updateDialog: AlertDialog? = null
+    private var lastPresentedUpdate = ""
 
     private val callbackLock = Any()
     private val waitingCallbacks = mutableListOf<(BackendAppUpdate?) -> Unit>()
@@ -103,6 +104,7 @@ class AppUpdateCoordinator(
     private fun applyResult(update: BackendAppUpdate, showNoUpdate: Boolean) {
         if (!update.enabled || !update.updateAvailable || update.latestVersionCode <= currentVersionCode()) {
             AppUpdateGate.clear()
+            lastPresentedUpdate = ""
             updateDialog?.dismiss()
             updateDialog = null
             RemoteUpdateWorker.clearApkNotification(activity)
@@ -122,6 +124,10 @@ class AppUpdateCoordinator(
             AppUpdateGate.clear()
         }
 
+        val key = "${update.latestVersionCode}:${update.updatedAt}:${update.forceUpdate}:${update.message}"
+        if (!showNoUpdate && key == lastPresentedUpdate &&
+            (!update.forceUpdate || updateDialog?.isShowing == true)) return
+        lastPresentedUpdate = key
         AppLogStore.add(
             activity,
             "Mise à jour disponible${if (update.forceUpdate) " • obligatoire" else ""}."

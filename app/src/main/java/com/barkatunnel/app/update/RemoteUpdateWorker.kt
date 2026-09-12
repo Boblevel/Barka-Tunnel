@@ -41,7 +41,13 @@ class RemoteUpdateWorker(
 
         return try {
             val appUpdate = backend.checkAppUpdate(BuildConfig.VERSION_CODE.toLong())
-            val panelRevision = appUpdate.updatedAt.trim()
+            if (appUpdate.enabled && appUpdate.updateAvailable && appUpdate.forceUpdate &&
+                appUpdate.latestVersionCode > BuildConfig.VERSION_CODE) {
+                AppUpdateGate.setRequired(AppUpdateDestination.APKPURE_URL, appUpdate.message)
+            } else {
+                AppUpdateGate.clear()
+            }
+            val panelRevision = "${appUpdate.latestVersionCode}:${appUpdate.updatedAt}:${appUpdate.forceUpdate}"
             val lastNotifiedRevision = prefs.getString(
                 KEY_LAST_NOTIFIED_APK_REVISION,
                 ""
@@ -222,12 +228,18 @@ object RemoteUpdateScheduler {
             periodic
         )
 
+        requestNow(context)
+    }
+
+    fun requestNow(context: Context) {
+        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        val workManager = WorkManager.getInstance(context.applicationContext)
         val immediate = OneTimeWorkRequestBuilder<RemoteUpdateWorker>()
             .setConstraints(constraints)
             .build()
         workManager.enqueueUniqueWork(
             IMMEDIATE_WORK_NAME,
-            ExistingWorkPolicy.REPLACE,
+            ExistingWorkPolicy.KEEP,
             immediate
         )
     }
