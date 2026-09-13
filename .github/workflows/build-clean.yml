@@ -236,5 +236,5 @@ jobs:
 
           test -n "$REMOTE_SHA256" || { echo "SHA256 distant absent"; exit 1; }
           test "$LOCAL_SHA256" = "$REMOTE_SHA256" || { echo "SHA256 distant incorrect"; exit 1; }
-          echo "APK publié: https://api.rhaffservice.shop/downloads/BarkaTunnel.apk"
+          echo "APK publié: https://api.rhaffservice.com/downloads/BarkaTunnel.apk"
           echo "SHA256=$REMOTE_SHA256"

@@ -13,7 +13,7 @@ import java.util.Locale
 class BarkaBackendClient(context: Context) {
 
     companion object {
-        const val BASE_URL = "https://api.rhaffservice.shop"
+        const val BASE_URL = "https://api.rhaffservice.com"
         private const val CONNECT_TIMEOUT_MS = 15_000
         private const val READ_TIMEOUT_MS = 20_000
     }
