@@ -1323,16 +1323,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadSelectedNetwork(): NetworkOption {
-        val savedId = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
-            .getString(PREF_SELECTED_NETWORK, null)
-        return NetworkOption.ALL.firstOrNull { it.id == savedId }
-            ?: NetworkOption.ALL.first()
+        val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+        val installId = vpnProfileRepository.currentInstallId()
+        // The legacy sync stamp preserves choices on an ordinary app update.
+        val selectionInstallId = preferences.getString(PREF_SELECTED_NETWORK_INSTALL_ID, null)
+            ?: preferences.getString(PREF_INITIAL_REMOTE_SYNC_INSTALL_ID, null)
+        val savedId = preferences.getString(PREF_SELECTED_NETWORK, null)
+            .takeIf { selectionInstallId == null || selectionInstallId == installId }
+        val network = NetworkOption.ALL.firstOrNull { it.id == savedId }
+            ?: NetworkOption.ALL.first { it.id == "moov_bf" }
+        if (preferences.getString(PREF_SELECTED_NETWORK_INSTALL_ID, null) != installId ||
+            preferences.getString(PREF_SELECTED_NETWORK, null) != network.id) {
+            saveSelectedNetwork(network)
+        }
+        return network
     }
 
     private fun saveSelectedNetwork(network: NetworkOption) {
         getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
             .edit()
             .putString(PREF_SELECTED_NETWORK, network.id)
+            .putString(PREF_SELECTED_NETWORK_INSTALL_ID, vpnProfileRepository.currentInstallId())
             .commit()
     }
 
@@ -1847,6 +1858,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val PREFERENCES_NAME = "barka_home_preferences"
         private const val PREF_SELECTED_NETWORK = "selected_network_id"
+        private const val PREF_SELECTED_NETWORK_INSTALL_ID = "selected_network_install_id"
         private const val PREF_INITIAL_REMOTE_SYNC_COMPLETE = "initial_remote_sync_complete"
         private const val PREF_INITIAL_REMOTE_SYNC_INSTALL_ID = "initial_remote_sync_install_id"
         private const val PREF_CHANNEL_INVITE_INSTALL_STAMP = "channel_invite_install_stamp"
