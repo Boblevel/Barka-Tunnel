@@ -1,6 +1,8 @@
 package com.barkatunnel.app.ui.home
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.barkatunnel.app.access.AccessCoordinator
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.network.ApiResult
@@ -8,7 +10,8 @@ import com.barkatunnel.app.trial.TrialStatus
 
 class HomeAccessController private constructor(
     private val refreshAction: () -> HomeAccessState,
-    private val trialAction: () -> HomeAccessState
+    private val trialAction: () -> HomeAccessState,
+    private val connectionSnapshot: () -> HomeAccessState? = { null }
 ) {
 
     constructor(coordinator: AccessCoordinator) : this(
@@ -66,6 +69,16 @@ class HomeAccessController private constructor(
     )
 
     constructor(context: Context, backendClient: BarkaBackendClient) : this(
+        connectionSnapshot = {
+            val manager = context.applicationContext
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val capabilities = manager?.activeNetwork?.let(manager::getNetworkCapabilities)
+            if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true &&
+                !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                HomeAccessSnapshotStore.restore(context)
+            } else null
+        },
         refreshAction = {
             try {
                 val access = backendClient.checkAccess()
@@ -114,6 +127,12 @@ class HomeAccessController private constructor(
     )
 
     fun refreshAccess(): HomeAccessState = refreshAction()
+
+    // This snapshot only permits starting the native proxy. BarkaVpnService
+    // still checks live server authorization over SOCKS BEFORE creating TUN.
+    fun prepareConnectionAccess(): HomeAccessState =
+        connectionSnapshot()?.takeIf { it.allowed && it.remainingSeconds > 0L }
+            ?: refreshAction()
 
     fun startFreeTrial(): HomeAccessState = trialAction()
 }

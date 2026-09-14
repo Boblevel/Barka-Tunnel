@@ -80,7 +80,7 @@ class HomeController(
             return HomeControllerResult.State(currentState())
         }
 
-        val refreshedAccess = runtime.accessController.refreshAccess()
+        val refreshedAccess = runtime.accessController.prepareConnectionAccess()
         updateState { it.copy(access = refreshedAccess) }
 
         if (isCancellationRequested()) {

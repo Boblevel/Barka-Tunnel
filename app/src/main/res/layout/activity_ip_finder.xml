@@ -44,7 +44,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <com.barkatunnel.app.ui.common.AdaptiveNoScrollView
+    <com.barkatunnel.app.ui.home.NonScrollingScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -237,12 +237,12 @@
                 android:text="@string/ip_finder_stop"
                 android:textColor="@color/barka_red"
                 android:textStyle="bold"
-                android:visibility="gone"
+                android:visibility="invisible"
                 app:backgroundTint="@color/barka_card"
                 app:cornerRadius="14dp"
                 app:strokeColor="@color/barka_red"
                 app:strokeWidth="1dp" />
         </LinearLayout>
-    </com.barkatunnel.app.ui.common.AdaptiveNoScrollView>
+    </com.barkatunnel.app.ui.home.NonScrollingScrollView>
 
 </LinearLayout>

@@ -373,7 +373,7 @@ class IpFinderActivity : AppCompatActivity() {
         handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)
         scanButton.isEnabled = true
-        stopButton.visibility = View.GONE
+        stopButton.visibility = View.INVISIBLE
         statusText.setText(R.string.ip_finder_found)
         statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_green))
         progressText.setText(R.string.ip_finder_current_cellular_ip)
@@ -394,7 +394,7 @@ class IpFinderActivity : AppCompatActivity() {
         handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)
         scanButton.isEnabled = true
-        stopButton.visibility = View.GONE
+        stopButton.visibility = View.INVISIBLE
         statusText.text = message
         statusText.setTextColor(ContextCompat.getColor(this, colorRes))
         AppLogStore.add(this, "IP Finder • $message")
