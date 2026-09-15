@@ -27,10 +27,14 @@ class HomeUiBinder(
     }
 
     fun showAccess(state: HomeAccessState) {
-        accessRemainingTime.text =
-            ConnectionTimeFormatter.formatRemaining(state.remainingSeconds)
-
+        showAccessRemaining(state.remainingSeconds)
         accessStatus.text = localizedAccessLabel(state.label)
+    }
+
+    fun showAccessRemaining(seconds: Long) {
+        accessRemainingTime.text = ConnectionTimeFormatter.formatRemaining(seconds)
+        accessRemainingTime.setTextColor(ContextCompat.getColor(accessRemainingTime.context,
+            if (seconds == ConnectionTimeFormatter.UNLIMITED_SECONDS) R.color.barka_green else R.color.barka_text))
     }
 
     fun showConnection(state: HomeConnectionState) {

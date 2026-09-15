@@ -89,6 +89,12 @@
                 android:text="@string/menu_settings" />
 
             <TextView
+                android:id="@+id/menuReseller"
+                style="@style/BarkaMenuItem"
+                android:drawableStart="@drawable/ic_menu_card_line"
+                android:text="Devenir Revendeur" />
+
+            <TextView
                 android:id="@+id/menuSupport"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_support_line"

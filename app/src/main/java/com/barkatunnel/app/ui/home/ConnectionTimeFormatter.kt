@@ -3,6 +3,8 @@ package com.barkatunnel.app.ui.home
 import java.util.Locale
 
 object ConnectionTimeFormatter {
+    // Display marker, never an expiry timestamp. Live authorization remains server-side.
+    const val UNLIMITED_SECONDS = 1_000_000_000_000L
 
     fun format(totalSeconds: Long): String {
         val safe = totalSeconds.coerceAtLeast(0L)
@@ -20,6 +22,7 @@ object ConnectionTimeFormatter {
     }
 
     fun formatRemaining(totalSeconds: Long): String {
+        if (totalSeconds == UNLIMITED_SECONDS) return "Illimité"
         val safe = totalSeconds.coerceAtLeast(0L)
         val months = safe / MONTH_SECONDS
         val days = (safe % MONTH_SECONDS) / DAY_SECONDS

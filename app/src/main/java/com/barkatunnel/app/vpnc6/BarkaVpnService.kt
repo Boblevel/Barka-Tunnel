@@ -190,6 +190,7 @@ class BarkaVpnService : VpnService() {
         C6VpnRuntime.complete(activeConnectRequestId, C6VpnResult.Disconnected)
         activeConnectRequestId = null
         updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
+        stopForegroundCompat()
         super.onDestroy()
     }
 
@@ -578,6 +579,11 @@ class BarkaVpnService : VpnService() {
             activeConnectRequestId = null
         }
         C6VpnRuntime.complete(requestId, result)
+        // The first idle check can run before the worker clears its request ID.
+        // Recheck after completion so a failed/cancelled attempt cannot retain FGS.
+        if (runtimeState == RuntimeConnectionState.DISCONNECTED) {
+            finishServiceIfIdle(operationGeneration.get())
+        }
     }
 
     private fun finishServiceIfIdle(expectedGeneration: Long) {
@@ -610,6 +616,7 @@ class BarkaVpnService : VpnService() {
         } else {
             stopForeground(true)
         }
+        getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
     }
 
     private fun startConnectionMonitor(protocol: VpnProfileProtocol) {
@@ -845,8 +852,14 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun updateNotification(text: String) {
-        getSystemService(NotificationManager::class.java)
-            .notify(NOTIFICATION_ID, buildNotification(this, text))
+        val generation = operationGeneration.get()
+        mainHandler.post {
+            if (operationGeneration.get() != generation || stopping ||
+                runtimeState == RuntimeConnectionState.DISCONNECTED ||
+                runtimeState == RuntimeConnectionState.DISCONNECTING) return@post
+            getSystemService(NotificationManager::class.java)
+                .notify(NOTIFICATION_ID, buildNotification(this, text))
+        }
     }
 
     private fun sanitizeError(value: String): String {

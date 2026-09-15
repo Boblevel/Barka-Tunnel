@@ -330,7 +330,7 @@ class MainActivity : AppCompatActivity() {
 
         timerController = HomeTimerController(
             onAccessTick = { seconds ->
-                accessRemainingTime.text = ConnectionTimeFormatter.formatRemaining(seconds)
+                uiBinder.showAccessRemaining(seconds)
 
                 if (seconds <= 0L) {
                     accessStatus.setText(R.string.no_active_time)
@@ -1423,6 +1423,12 @@ class MainActivity : AppCompatActivity() {
 
         dialog.findViewById<TextView>(R.id.menuVersion).text =
             getString(R.string.version_format, BuildConfig.VERSION_NAME)
+
+        dialog.findViewById<android.view.View>(R.id.menuReseller)
+            .setOnClickListener {
+                dialog.dismiss()
+                startActivity(Intent(this, com.barkatunnel.app.reseller.ResellerPurchaseActivity::class.java))
+            }
 
         dialog.findViewById<android.view.View>(R.id.menuSupport)
             .setOnClickListener {

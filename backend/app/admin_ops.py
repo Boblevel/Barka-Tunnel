@@ -436,7 +436,10 @@ def admin_stats_extended() -> dict:
         active_subscriptions = cx.execute(
             """SELECT COUNT(DISTINCT d.device_id) AS n
                FROM devices d
-               WHERE d.subscription_expires_at>?
+               WHERE (d.subscription_expires_at>? OR EXISTS(
+                   SELECT 1 FROM activation_codes u WHERE u.redeemed_device_id=d.device_id
+                     AND u.plan_id='unlimited' AND u.created_by_reseller_id IS NULL
+                     AND u.status='redeemed' AND u.deleted_at IS NULL))
                  AND d.access_disabled=0
                  AND (
                      d.rowid>?
@@ -458,6 +461,9 @@ def admin_stats_extended() -> dict:
             """SELECT COUNT(*) AS n FROM devices
                WHERE trial_expires_at>?
                  AND (subscription_expires_at IS NULL OR subscription_expires_at<=?)
+                 AND NOT EXISTS(SELECT 1 FROM activation_codes u
+                     WHERE u.redeemed_device_id=devices.device_id AND u.plan_id='unlimited'
+                       AND u.created_by_reseller_id IS NULL AND u.status='redeemed' AND u.deleted_at IS NULL)
                  AND (rowid>? OR trial_started_at>?)""",
             (now, now, devices_rowid, reset_at),
         ).fetchone()["n"]

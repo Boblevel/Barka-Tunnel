@@ -192,6 +192,21 @@ def init_db() -> None:
                     FOREIGN KEY(reseller_id) REFERENCES reseller_accounts(id)
                 );
 
+                CREATE TABLE IF NOT EXISTS reseller_purchase_owners(
+                    owner_hash TEXT PRIMARY KEY,
+                    reseller_id INTEGER NOT NULL REFERENCES reseller_accounts(id)
+                );
+                CREATE TABLE IF NOT EXISTS reseller_purchases(
+                    reference TEXT PRIMARY KEY REFERENCES payments(reference),
+                    owner_hash TEXT NOT NULL,
+                    request_id TEXT NOT NULL,
+                    months INTEGER NOT NULL CHECK(months IN (1,2)),
+                    reseller_id INTEGER REFERENCES reseller_accounts(id),
+                    fulfilled_at INTEGER,
+                    fulfillment_error TEXT,
+                    UNIQUE(owner_hash, request_id)
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_reseller_sessions_lookup
                 ON reseller_sessions(token_hash, expires_at);
                 """

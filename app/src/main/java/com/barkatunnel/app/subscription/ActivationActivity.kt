@@ -71,7 +71,9 @@ class ActivationActivity : AppCompatActivity() {
                         if (result.success) {
                             AppLogStore.add(
                                 this,
-                                "Activation • Abonnement activé • ${result.access.remainingSeconds}s restantes."
+                                if (result.access.remainingSeconds == com.barkatunnel.app.ui.home.ConnectionTimeFormatter.UNLIMITED_SECONDS)
+                                    "Activation • Abonnement illimité activé."
+                                else "Activation • Abonnement activé • ${result.access.remainingSeconds}s restantes."
                             )
                             Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                             finish()

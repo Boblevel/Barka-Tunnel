@@ -17,6 +17,7 @@ class DeviceRequest(BaseModel):
 
 class AccessResponse(BaseModel):
     allowed: bool
+    unlimited: bool = False
     access_revision: int = 0
     trial_used: bool = False
     trial_week_start: int | None = None
@@ -72,7 +73,7 @@ class ActivationResponse(BaseModel):
 
 
 class AdminCodeRequest(BaseModel):
-    plan_id: Literal["24h", "1w", "2w", "1m"]
+    plan_id: Literal["24h", "1w", "2w", "1m", "unlimited"]
     count: int = Field(default=1, ge=1, le=100)
 
 

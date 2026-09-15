@@ -58,6 +58,12 @@ def access_state(device_id: str) -> dict:
             "SELECT * FROM devices WHERE device_id=?",
             (device_id,),
         ).fetchone()
+        unlimited_code = cx.execute(
+            """SELECT redeemed_at FROM activation_codes
+               WHERE redeemed_device_id=? AND plan_id='unlimited'
+                 AND created_by_reseller_id IS NULL AND status='redeemed'
+                 AND deleted_at IS NULL LIMIT 1""", (device_id,)
+        ).fetchone()
         sub_exp = subscription_expiry(cx, device_id, row["subscription_expires_at"], now)
         week = trial_week_start(now)
         claimed = cx.execute(
@@ -83,6 +89,14 @@ def access_state(device_id: str) -> dict:
             "started_at": None,
             "expires_at": None,
             "remaining_seconds": 0,
+        }
+
+    if unlimited_code is not None:
+        return {
+            **weekly, "trial_used": row["trial_started_at"] is not None,
+            "allowed": True, "unlimited": True, "access_type": "SUBSCRIPTION",
+            "server_time": iso(now), "started_at": iso(unlimited_code["redeemed_at"]),
+            "expires_at": None, "remaining_seconds": 0,
         }
 
     if sub_exp is not None and int(sub_exp) > now:
@@ -181,7 +195,8 @@ def issue_activation_code(
     plan_id: str,
     payment_reference: str | None = None,
 ) -> str:
-    plan = get_plan(plan_id)
+    # Admin-only plan: no arbitrary distant expiration and no paid catalog entry.
+    plan = {"duration_seconds": 0} if plan_id == "unlimited" else get_plan(plan_id)
     if not plan:
         raise ValueError("Plan inconnu")
 
@@ -337,6 +352,14 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
         elif row["status"] != "issued":
             success = False
             message = "Ce code a été désactivé."
+        elif row["plan_id"] == "unlimited" and row["created_by_reseller_id"] is None:
+            cx.execute(
+                """UPDATE activation_codes SET status='redeemed', redeemed_at=?,
+                   redeemed_device_id=?, applied_from=?, applied_until=NULL WHERE id=?""",
+                (now, device_id, now, row["id"]),
+            )
+            success = True
+            message = "Abonnement illimité activé avec succès."
         else:
             device = cx.execute(
                 "SELECT * FROM devices WHERE device_id=?",
@@ -528,6 +551,12 @@ def mark_payment_paid(reference: str) -> str:
         if not payment:
             raise ValueError("Paiement local introuvable")
 
+        if str(payment["plan_id"]).startswith("reseller_"):
+            from .reseller_purchases import fulfill
+            fulfill(cx, payment)
+            cx.execute("UPDATE payments SET status='paid', updated_at=? WHERE reference=?", (now, reference))
+            return ""
+
         if payment["status"] != "paid":
             source_ref = payment["activation_source_ref"] or f"PAYMENT:{reference}"
             cx.execute(
@@ -547,7 +576,7 @@ def mark_payment_paid(reference: str) -> str:
 def mark_payment_failed(reference: str) -> None:
     with transaction() as cx:
         cx.execute(
-            "UPDATE payments SET status='failed', updated_at=? WHERE reference=?",
+            "UPDATE payments SET status='failed', updated_at=? WHERE reference=? AND (plan_id NOT LIKE 'reseller_%' OR status!='paid')",
             (now_ts(), reference),
         )
 
@@ -561,7 +590,7 @@ def activation_code_for_payment(reference: str) -> str | None:
         ).fetchone()
     finally:
         cx.close()
-    if not payment or payment["status"] != "paid":
+    if not payment or payment["status"] != "paid" or str(payment["plan_id"]).startswith("reseller_"):
         return None
     source_ref = payment["activation_source_ref"] or f"PAYMENT:{reference}"
     return activation_code_for_source(source_ref)

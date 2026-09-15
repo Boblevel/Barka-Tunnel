@@ -37,14 +37,19 @@ internal object TunnelControlTransport {
         }
         try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw IOException("Contrôle serveur HTTP ${response.code}")
                 val body = response.body ?: throw IOException("Réponse serveur vide")
                 val source = body.source()
                 if (source.request(65_537L)) throw IOException("Réponse serveur trop volumineuse")
-                return JSONObject(source.readUtf8())
+                val data = JSONObject(source.readUtf8())
+                if (!response.isSuccessful) throw BarkaBackendException(
+                    data.optString("detail", "Erreur serveur HTTP ${response.code}")
+                        .replace(Regex("(?i)saspay"), "service de paiement"))
+                return data
             }
+        } catch (error: BarkaBackendException) {
+            throw error
         } catch (error: Exception) {
-            throw BarkaBackendException("Impossible de joindre le serveur via le tunnel : ${error.javaClass.simpleName}")
+            throw BarkaBackendException("Connectez-vous à un réseau, puis réessayez.")
         }
     }
 }

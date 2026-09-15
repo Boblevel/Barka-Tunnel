@@ -20,7 +20,8 @@ class ConnectedApiRoutingTest {
         val backend = BarkaBackendClient(RuntimeEnvironment.getApplication())
         val calls: List<() -> Unit> = listOf({ backend.startPayment("24h") },
             { backend.checkPaymentStatus("test-reference") }, { backend.redeemActivationCode("BARKA-TEST") },
-            { backend.checkAppUpdate(110) }, { backend.checkAccess() })
+            { backend.checkAppUpdate(110) }, { backend.checkAccess() },
+            { backend.resellerPurchase("account", org.json.JSONObject().put("owner_key", "test")) })
         val executor = Executors.newSingleThreadExecutor()
         try {
             for (call in calls) ServerSocket(0).use { server ->
@@ -40,7 +41,7 @@ class ConnectedApiRoutingTest {
                     true
                 }
                 try { call(); fail("La panne du proxy doit être signalée") }
-                catch (error: BarkaBackendException) { assertTrue(error.message.orEmpty().contains("via le tunnel")) }
+                catch (error: BarkaBackendException) { assertTrue(error.message.orEmpty().contains("Connectez-vous à un réseau")) }
                 assertTrue(accepted.get(5, TimeUnit.SECONDS))
             }
         } finally {

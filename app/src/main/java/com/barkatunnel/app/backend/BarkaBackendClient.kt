@@ -198,6 +198,12 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
+    fun resellerPurchase(action: String, payload: JSONObject): JSONObject {
+        require(action in setOf("start", "status", "account", "restore"))
+        return post("/v1/reseller-purchases/$action", payload.put("device_id", deviceId),
+            BarkaVpnService.connectedSocksPort())
+    }
+
     private fun parseAccess(body: JSONObject): BackendAccessState {
         val week = body.optLong("trial_week_start", -1L)
         val serverTime = body.optLong("server_timestamp", -1L)
@@ -209,7 +215,9 @@ class BarkaBackendClient(context: Context) {
             allowed = body.optBoolean("allowed", false),
             accessRevision = body.optLong("access_revision", 0L),
             accessType = body.optString("access_type", "NONE"),
-            remainingSeconds = body.optLong("remaining_seconds", 0L).coerceAtLeast(0L)
+            remainingSeconds = if (body.optBoolean("allowed", false) && body.optBoolean("unlimited", false))
+                com.barkatunnel.app.ui.home.ConnectionTimeFormatter.UNLIMITED_SECONDS
+            else body.optLong("remaining_seconds", 0L).coerceAtLeast(0L)
         )
     }
 
@@ -245,7 +253,7 @@ class BarkaBackendClient(context: Context) {
         } catch (e: BarkaBackendException) {
             throw e
         } catch (_: Exception) {
-            throw BarkaBackendException("Impossible de joindre le serveur Barka Tunnel.")
+            throw BarkaBackendException("Connectez-vous à un réseau, puis réessayez.")
         } finally {
             connection.disconnect()
         }
@@ -276,7 +284,7 @@ class BarkaBackendClient(context: Context) {
         } catch (e: BarkaBackendException) {
             throw e
         } catch (_: Exception) {
-            throw BarkaBackendException("Impossible de joindre le serveur Barka Tunnel.")
+            throw BarkaBackendException("Connectez-vous à un réseau, puis réessayez.")
         } finally {
             connection.disconnect()
         }
@@ -318,7 +326,7 @@ class BarkaBackendClient(context: Context) {
         } catch (e: BarkaBackendException) {
             throw e
         } catch (_: Exception) {
-            throw BarkaBackendException("Impossible de joindre le serveur Barka Tunnel.")
+            throw BarkaBackendException("Connectez-vous à un réseau, puis réessayez.")
         } finally {
             connection.disconnect()
         }

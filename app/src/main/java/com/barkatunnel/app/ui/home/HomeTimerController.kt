@@ -69,8 +69,8 @@ class HomeTimerController(
                 (SystemClock.elapsedRealtime() - accessStartedElapsed) / 1000L
 
             onAccessTick(
-                (accessBaseSeconds - elapsedSeconds)
-                    .coerceAtLeast(0L)
+                if (accessBaseSeconds == ConnectionTimeFormatter.UNLIMITED_SECONDS) accessBaseSeconds
+                else (accessBaseSeconds - elapsedSeconds).coerceAtLeast(0L)
             )
         }
 

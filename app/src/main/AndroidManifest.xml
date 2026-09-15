@@ -30,6 +30,8 @@
             android:name=".subscription.ActivationActivity"
             android:exported="false" />
 
+        <activity android:name=".reseller.ResellerPurchaseActivity" android:exported="false" />
+
         <activity
             android:name=".subscription.SubscriptionActivity"
             android:exported="false" />
