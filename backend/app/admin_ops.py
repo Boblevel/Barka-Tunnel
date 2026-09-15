@@ -25,7 +25,7 @@ def list_activation_codes(limit: int | None = 100, reseller_id: int | None = Non
             SELECT a.source_ref, a.plan_id, a.duration_seconds, a.status,
                    a.created_at, a.redeemed_at, a.redeemed_device_id,
                    a.applied_until, a.created_by_reseller_id,
-                   r.username AS reseller_username
+                   r.username AS reseller_username, r.expires_at AS reseller_expires_at
             FROM activation_codes a
             LEFT JOIN reseller_accounts r ON r.id=a.created_by_reseller_id
             WHERE {where}
@@ -51,6 +51,10 @@ def list_activation_codes(limit: int | None = 100, reseller_id: int | None = Non
             and int(applied_until) <= now
             else stored_status
         )
+        if (display_status in ("issued", "redeemed") and
+                row["created_by_reseller_id"] is not None and
+                row["reseller_expires_at"] is not None and int(row["reseller_expires_at"]) <= now):
+            display_status = "frozen"
         reseller_username = row["reseller_username"]
         source_type = (
             "PAIEMENT"

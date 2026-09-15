@@ -43,11 +43,11 @@ class RemoteUpdateWorker(
             val appUpdate = backend.checkAppUpdate(BuildConfig.VERSION_CODE.toLong())
             if (appUpdate.enabled && appUpdate.updateAvailable && appUpdate.forceUpdate &&
                 appUpdate.latestVersionCode > BuildConfig.VERSION_CODE) {
-                AppUpdateGate.setRequired(AppUpdateDestination.APKPURE_URL, appUpdate.message)
+                AppUpdateGate.setRequired(appUpdate.apkUrl, appUpdate.message)
             } else {
                 AppUpdateGate.clear()
             }
-            val panelRevision = "${appUpdate.latestVersionCode}:${appUpdate.updatedAt}:${appUpdate.forceUpdate}"
+            val panelRevision = "${appUpdate.latestVersionCode}:${appUpdate.updatedAt}:${appUpdate.forceUpdate}:${appUpdate.apkUrl}"
             val lastNotifiedRevision = prefs.getString(
                 KEY_LAST_NOTIFIED_APK_REVISION,
                 ""
@@ -66,7 +66,7 @@ class RemoteUpdateWorker(
                     appUpdate.message.ifBlank {
                         applicationContext.getString(R.string.update_available)
                     },
-                    AppUpdateDestination.APKPURE_URL
+                    appUpdate.apkUrl
                 )
                 if (notificationShown) {
                     AppLogStore.add(applicationContext, "Mise à jour disponible.")
@@ -136,7 +136,7 @@ class RemoteUpdateWorker(
         if (!notificationManager.areNotificationsEnabled()) return false
 
         createChannel()
-        val openIntent = if (openUrl.startsWith("https://")) {
+        val openIntent = if (AppUpdateDestination.isValid(openUrl)) {
             Intent(Intent.ACTION_VIEW, Uri.parse(openUrl)).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }

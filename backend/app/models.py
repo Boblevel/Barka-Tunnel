@@ -152,7 +152,7 @@ class AdminVpnProfileResponse(VpnProfileResponse):
 class AdminCodeListItem(BaseModel):
     code: str
     plan_id: str
-    status: Literal["issued", "redeemed", "revoked", "expired"]
+    status: Literal["issued", "redeemed", "revoked", "expired", "frozen"]
     created_at: str
     redeemed_at: str | None = None
     expires_at: str | None = None

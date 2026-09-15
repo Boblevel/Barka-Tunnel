@@ -64,12 +64,13 @@ def test_expiry_blocks_issuance_and_renewal_restores_without_changing_codes(env)
     with pytest.raises(PermissionError): rs.generate_reseller_subscription(a['id'], '24h')
     with pytest.raises(PermissionError): rs.generate_reseller_test(a['id'])
     with pytest.raises(HTTPException): rs.require_reseller('Bearer '+token)
-    assert services.redeem_activation_code('unused-after-expiry-123', code)[0]
+    assert not services.redeem_activation_code('unused-after-expiry-123', code)[0]
     with client_for(main) as client:
         route = f"/v1/admin/resellers/{a['id']}/renew"
         assert client.post(route,json={'confirmation':'non'}).status_code==422
         renewed=client.post(route,json={'confirmation':'oui'})
         assert renewed.status_code==200 and renewed.json()['status']=='active'
+    assert services.redeem_activation_code('unused-after-expiry-123', code)[0]
     assert rs.generate_reseller_test(a['id'])
     rs.freeze_reseller(a['id']);rs.renew_reseller_month(a['id'])
     with pytest.raises(PermissionError):rs.generate_reseller_test(a['id'])

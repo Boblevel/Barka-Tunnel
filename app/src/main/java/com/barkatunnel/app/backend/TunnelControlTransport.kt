@@ -11,7 +11,7 @@ import java.net.Proxy
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
-/** Control requests only: no global proxy or changes to payment requests. */
+/** Explicit API requests through the active tunnel; no global proxy or automatic retry. */
 internal object TunnelControlTransport {
     private val clients = ConcurrentHashMap<Int, OkHttpClient>()
     private val jsonType = "application/json; charset=utf-8".toMediaType()
@@ -44,7 +44,7 @@ internal object TunnelControlTransport {
                 return JSONObject(source.readUtf8())
             }
         } catch (error: Exception) {
-            throw BarkaBackendException("Impossible de vérifier l’accès via le tunnel : ${error.javaClass.simpleName}")
+            throw BarkaBackendException("Impossible de joindre le serveur via le tunnel : ${error.javaClass.simpleName}")
         }
     }
 }

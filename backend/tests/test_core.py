@@ -212,7 +212,7 @@ def test_app_update_is_server_controlled(tmp_path):
     assert current_client["update_available"] is False
     assert current_client["force_update"] is False
     assert current_client["updated_at"] == saved["updated_at"]
-    assert current_client["apk_url"] == "https://apkpure.com/p/com.barkatunnel.app"
+    assert current_client["apk_url"] == "https://downloads.example.test/BarkaTunnel.apk"
 
     removed = app_updates.remove_app_update()
     assert removed["enabled"] is False
@@ -817,6 +817,7 @@ def test_update_notifications_only_target_older_installed_versions(tmp_path):
         updates.upsert_app_update({
             "enabled": True, "mandatory": mandatory,
             "latest_version_code": 105, "latest_version_name": "2.0.3.6",
+            "apk_url": "https://downloads.example.test/BarkaTunnel.apk",
             "message": "Nouvelle version",
         })
         for installed, expected in ((68, True), (104, True), (105, False), (106, False)):

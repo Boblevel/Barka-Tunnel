@@ -2,6 +2,8 @@ package com.barkatunnel.app.backend
 
 import android.content.Context
 import com.barkatunnel.app.device.DeviceIdentity
+import com.barkatunnel.app.vpnc6.BarkaVpnService
+import com.barkatunnel.app.update.AppUpdateDestination
 import com.barkatunnel.app.trial.TrialUsageStore
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -28,7 +30,7 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
-    fun checkAccess(socksPort: Int? = null): BackendAccessState {
+    fun checkAccess(socksPort: Int? = BarkaVpnService.connectedSocksPort()): BackendAccessState {
         val body = post(
             path = "/v1/access/check",
             payload = JSONObject().put("device_id", deviceId),
@@ -65,7 +67,8 @@ class BarkaBackendClient(context: Context) {
             path = "/v1/payments/start",
             payload = JSONObject()
                 .put("device_id", deviceId)
-                .put("plan_id", planId)
+                .put("plan_id", planId),
+            socksPort = BarkaVpnService.connectedSocksPort()
         )
 
         val checkoutUrl = body.optString("checkout_url").trim()
@@ -90,7 +93,8 @@ class BarkaBackendClient(context: Context) {
             payload = JSONObject()
                 .put("device_id", deviceId)
                 .put("payment_reference", paymentReference)
-                .put("sync_provider", true)
+                .put("sync_provider", true),
+            socksPort = BarkaVpnService.connectedSocksPort()
         )
 
         val rawCode = if (body.isNull("activation_code")) "" else body.optString("activation_code", "").trim()
@@ -145,7 +149,7 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
-    fun checkAppUpdate(currentVersionCode: Long, socksPort: Int? = null): BackendAppUpdate {
+    fun checkAppUpdate(currentVersionCode: Long, socksPort: Int? = BarkaVpnService.connectedSocksPort()): BackendAppUpdate {
         val body = getObject(
             path = "/v1/app/update?version_code=${currentVersionCode.coerceAtLeast(1L)}&t=${System.currentTimeMillis()}",
             socksPort = socksPort
@@ -157,13 +161,17 @@ class BarkaBackendClient(context: Context) {
         val available = body.optBoolean("enabled", false) &&
             body.optLong("latest_version_code", 1L) > currentVersionCode &&
             body.optBoolean("update_available", false)
+        val apkUrl = body.optString("apk_url", "").trim()
+        if (available && !AppUpdateDestination.isValid(apkUrl)) {
+            throw BarkaBackendException("Lien de mise à jour invalide.")
+        }
         return BackendAppUpdate(
             enabled = body.optBoolean("enabled", false),
             updateAvailable = available,
             forceUpdate = available && body.optBoolean("force_update", false),
             latestVersionCode = body.optLong("latest_version_code", 1L),
             latestVersionName = body.optString("latest_version_name", "").trim(),
-            apkUrl = body.optString("apk_url", "").trim(),
+            apkUrl = apkUrl,
             message = cleanMessage(
                 body.optString(
                     "message",
@@ -179,7 +187,8 @@ class BarkaBackendClient(context: Context) {
             path = "/v1/activation/redeem",
             payload = JSONObject()
                 .put("device_id", deviceId)
-                .put("code", code)
+                .put("code", code),
+            socksPort = BarkaVpnService.connectedSocksPort()
         )
 
         return BackendActivationResult(

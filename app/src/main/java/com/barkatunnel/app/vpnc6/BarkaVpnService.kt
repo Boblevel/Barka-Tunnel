@@ -498,6 +498,7 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun stopTunnel() {
+        runtimeSocksPort = null
         accessFuture?.cancel(true)
         accessFuture = null
         keepAliveFuture?.cancel(true)
@@ -630,7 +631,7 @@ class BarkaVpnService : VpnService() {
                     if (update != null && operationGeneration.get() == accessGeneration && connected && !stopping) {
                         if (update.updateAvailable && update.forceUpdate) {
                             com.barkatunnel.app.update.AppUpdateGate.setRequired(
-                                com.barkatunnel.app.update.AppUpdateDestination.APKPURE_URL, update.message)
+                                update.apkUrl, update.message)
                         } else com.barkatunnel.app.update.AppUpdateGate.clear()
                         val key = "${update.latestVersionCode}:${update.updatedAt}:${update.forceUpdate}"
                         if (update.updateAvailable && key != lastUpdateRevision) {
@@ -858,6 +859,9 @@ class BarkaVpnService : VpnService() {
         profileName: String?,
         connectedAtElapsedMs: Long
     ) {
+        runtimeSocksPort = if (state == RuntimeConnectionState.CONNECTED) {
+            activeSession?.let { socksPort(it.protocol) }
+        } else null
         runtimeState = state
         runtimeProfileName = profileName?.takeIf { it.isNotBlank() }
         runtimeConnectedAtElapsedMs = connectedAtElapsedMs
@@ -883,6 +887,11 @@ class BarkaVpnService : VpnService() {
     )
 
     companion object {
+        @Volatile private var runtimeSocksPort: Int? = null
+
+        fun connectedSocksPort(): Int? =
+            if (runtimeState == RuntimeConnectionState.CONNECTED) runtimeSocksPort else null
+
         @Volatile private var runtimeState = RuntimeConnectionState.DISCONNECTED
         @Volatile private var runtimeProfileName: String? = null
         @Volatile private var runtimeConnectedAtElapsedMs: Long = 0L

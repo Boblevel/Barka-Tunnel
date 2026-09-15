@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from .config import settings
 
@@ -11,12 +12,24 @@ from .services import iso, now_ts
 APKPURE_UPDATE_URL = "https://apkpure.com/p/com.barkatunnel.app"
 
 
+def valid_download_url(value: str) -> bool:
+    if not value or len(value) > 1000 or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in value) or "\\" in value:
+        return False
+    try:
+        url = urlsplit(value)
+        return (url.scheme == "https" and bool(url.hostname)
+                and url.username is None and url.password is None
+                and (url.port is None or 1 <= url.port <= 65535))
+    except ValueError:
+        return False
+
+
 def _row_to_admin(row) -> dict:
     return {
         "enabled": bool(row["enabled"]),
         "latest_version_code": int(row["latest_version_code"]),
         "latest_version_name": str(row["latest_version_name"]),
-        "apk_url": APKPURE_UPDATE_URL,
+        "apk_url": str(row["apk_url"] or APKPURE_UPDATE_URL),
         "message": str(row["message"] or ""),
         "mandatory": bool(row["mandatory"]),
         "updated_at": iso(int(row["updated_at"])),
@@ -58,7 +71,11 @@ def upsert_app_update(payload: dict) -> dict:
     message = str(payload.get("message", "")).strip()
     if not version_name:
         raise ValueError("Le nom de version est obligatoire.")
-    apk_url = APKPURE_UPDATE_URL
+    apk_url = str(payload.get("apk_url", "")).strip()
+    if not apk_url and not enabled:
+        apk_url = get_app_update_admin()["apk_url"]
+    if not valid_download_url(apk_url):
+        raise ValueError("Indiquez un lien HTTPS valide, sans identifiants ni espaces.")
     if mandatory and not enabled:
         raise ValueError("Une mise à jour obligatoire doit être activée.")
     with transaction() as cx:
@@ -98,4 +115,4 @@ def release_apk_path() -> Path:
 
 
 def release_apk_url() -> str:
-    return APKPURE_UPDATE_URL
+    return settings.public_base_url + "/downloads/BarkaTunnel.apk"

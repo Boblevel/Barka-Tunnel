@@ -19,6 +19,7 @@ from .security import activation_code_for_source, code_hash
 from .services import now_ts, iso
 from .reseller_audit import record_event
 from .reseller_deletion import remove_reseller_access
+from .reseller_access import RENEWAL_MESSAGE, code_suspended
 
 
 PASSWORD_ITERATIONS = 600_000
@@ -346,6 +347,8 @@ def login_reseller(username: str, password: str, client_ip: str | None = None) -
         if row:
             with transaction() as tx:
                 record_event(tx, int(row["id"]), "login_failed", client_ip)
+        if row and valid_password and int(row["expires_at"]) <= now:
+            raise ValueError(RENEWAL_MESSAGE)
         raise ValueError("Identifiants invalides ou sous-panel indisponible.")
 
     token = secrets.token_urlsafe(32)
@@ -353,6 +356,8 @@ def login_reseller(username: str, password: str, client_ip: str | None = None) -
     session_expiry = min(int(row["expires_at"]), now + SESSION_LIFETIME_SECONDS)
     with transaction() as tx:
         current = tx.execute("SELECT * FROM reseller_accounts WHERE id=?", (row["id"],)).fetchone()
+        if current["deleted_at"] is None and current["expires_at"] <= now_ts():
+            raise ValueError(RENEWAL_MESSAGE)
         if current["deleted_at"] is not None or current["status"] != "active" or current["expires_at"] <= now_ts():
             raise ValueError("Identifiants invalides ou sous-panel indisponible.")
         session_expiry = min(session_expiry, int(current["expires_at"]))
@@ -403,19 +408,18 @@ def require_reseller(authorization: str | None = Header(default=None)) -> dict:
             JOIN reseller_accounts r ON r.id=s.reseller_id
             WHERE s.token_hash=?
               AND s.revoked_at IS NULL
-              AND s.expires_at>?
               AND r.deleted_at IS NULL
-              AND r.status='active'
-              AND r.expires_at>?
             """,
-            (digest, now, now),
+            (digest,),
         ).fetchone()
     finally:
         cx.close()
-    if not row:
+    if row and int(row["expires_at"]) <= now:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=RENEWAL_MESSAGE)
+    if not row or row["status"] != "active" or int(row["session_expires_at"]) <= now:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session revendeur expirée ou refusée",
+            detail="Session revendeur expirée ou refusée. Reconnectez-vous ; si votre sous-panel a expiré, veuillez vous réabonner.",
         )
     return dict(row)
 
@@ -435,6 +439,7 @@ def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int) 
     code = activation_code_for_source(source_ref)
     now = now_ts()
     with transaction() as cx:
+        now = now_ts()
         account = cx.execute(
             """
             SELECT id FROM reseller_accounts
@@ -443,6 +448,8 @@ def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int) 
             (reseller_id, now),
         ).fetchone()
         if not account:
+            if code_suspended(cx, reseller_id, now):
+                raise PermissionError(RENEWAL_MESSAGE)
             raise PermissionError("Sous-panel expiré, gelé ou supprimé.")
         cx.execute(
             """

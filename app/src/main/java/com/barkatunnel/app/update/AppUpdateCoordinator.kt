@@ -94,7 +94,7 @@ class AppUpdateCoordinator(
                 forceUpdate = true,
                 latestVersionCode = 0L,
                 latestVersionName = "",
-                apkUrl = AppUpdateDestination.APKPURE_URL,
+                apkUrl = AppUpdateGate.requiredUrl(),
                 message = AppUpdateGate.requiredMessage()
             )
         )
@@ -119,12 +119,12 @@ class AppUpdateCoordinator(
         }
 
         if (update.forceUpdate) {
-            AppUpdateGate.setRequired(AppUpdateDestination.APKPURE_URL, update.message)
+            AppUpdateGate.setRequired(update.apkUrl, update.message)
         } else {
             AppUpdateGate.clear()
         }
 
-        val key = "${update.latestVersionCode}:${update.updatedAt}:${update.forceUpdate}:${update.message}"
+        val key = "${update.latestVersionCode}:${update.updatedAt}:${update.forceUpdate}:${update.apkUrl}:${update.message}"
         if (!showNoUpdate && key == lastPresentedUpdate &&
             (!update.forceUpdate || updateDialog?.isShowing == true)) return
         lastPresentedUpdate = key
@@ -152,7 +152,7 @@ class AppUpdateCoordinator(
             .setTitle(title)
             .setMessage(update.message + versionSuffix)
             .setPositiveButton(R.string.update_now) { _, _ ->
-                openApk(AppUpdateDestination.APKPURE_URL)
+                openApk(update.apkUrl)
             }
 
         if (!update.forceUpdate) {
@@ -168,7 +168,7 @@ class AppUpdateCoordinator(
     }
 
     private fun openApk(url: String) {
-        if (!url.startsWith("https://")) {
+        if (!AppUpdateDestination.isValid(url)) {
             Toast.makeText(
                 activity,
                 activity.getString(R.string.update_invalid_link),

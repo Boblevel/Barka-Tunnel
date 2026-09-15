@@ -8,6 +8,7 @@ from .config import settings
 from .db import connect, transaction
 from .plans import get_plan
 from .security import activation_code_for_source, code_hash
+from .reseller_access import code_suspended, subscription_expiry
 
 
 def now_ts() -> int:
@@ -57,6 +58,7 @@ def access_state(device_id: str) -> dict:
             "SELECT * FROM devices WHERE device_id=?",
             (device_id,),
         ).fetchone()
+        sub_exp = subscription_expiry(cx, device_id, row["subscription_expires_at"], now)
         week = trial_week_start(now)
         claimed = cx.execute(
             "SELECT 1 FROM weekly_trial_claims WHERE device_id=? AND week_start>=? LIMIT 1",
@@ -83,7 +85,6 @@ def access_state(device_id: str) -> dict:
             "remaining_seconds": 0,
         }
 
-    sub_exp = row["subscription_expires_at"]
     if sub_exp is not None and int(sub_exp) > now:
         start = row["subscription_started_at"]
         return {
@@ -307,6 +308,7 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
         return False, "Accès désactivé par l’administration.", access_state(device_id)
 
     with transaction() as cx:
+        now = now_ts()
         row = cx.execute(
             "SELECT * FROM activation_codes WHERE code_hash=?",
             (hashed,),
@@ -319,6 +321,12 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
                 message = "Code invalide."
             else:
                 success, message = shared_result
+        elif row["deleted_at"] is not None or row["status"] == "revoked":
+            success = False
+            message = "Ce code a été désactivé."
+        elif code_suspended(cx, row["created_by_reseller_id"], now):
+            success = False
+            message = "Ce code est gelé : le sous-panel du revendeur a expiré. Contactez votre revendeur pour son réabonnement."
         elif row["status"] == "redeemed":
             if row["redeemed_device_id"] == device_id:
                 success = True
