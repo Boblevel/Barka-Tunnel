@@ -173,3 +173,39 @@ async def status(body: StatusRequest,response: Response):
             elif state in {'CANCELLED','EXPIRED'}:services.mark_payment_failed(body.payment_reference)
         except saspay.SasPayError:pass
     return payment_result(body.payment_reference,owner)
+
+
+@router.post('/cancel')
+async def cancel(body: StatusRequest, response: Response):
+    """On checkout return, cancel only after provider confirmation, never by UI guess."""
+    from .reseller_checkout import cancel_checkout
+    response.headers['Cache-Control'] = 'no-store'
+    owner = key_hash(body.owner_key)
+    result = payment_result(body.payment_reference, owner)
+    if result['status'] != 'pending':
+        return result
+    cx = connect()
+    try:
+        row = cx.execute('SELECT provider_payment_id FROM payments WHERE reference=?',
+                         (body.payment_reference,)).fetchone()
+    finally:
+        cx.close()
+    try:
+        remote = await saspay.get_payment(row['provider_payment_id'])
+        state = str(remote.get('status', '')).upper()
+        if state == 'PENDING':
+            remote = await cancel_checkout(row['provider_payment_id'])
+            state = str(remote.get('status', '')).upper()
+        if state == 'PAID':
+            services.mark_payment_paid(body.payment_reference)
+        elif state in {'CANCELLED', 'EXPIRED'}:
+            # The conditional update cannot overwrite a simultaneous paid webhook.
+            services.mark_payment_failed(body.payment_reference)
+        else:
+            raise saspay.SasPayError('Statut non confirmé')
+    except saspay.SasPayError:
+        result = payment_result(body.payment_reference, owner)
+        if result['status'] == 'paid':
+            return result
+        raise HTTPException(503, 'Connectez-vous à un réseau, puis réessayez.')
+    return payment_result(body.payment_reference, owner)

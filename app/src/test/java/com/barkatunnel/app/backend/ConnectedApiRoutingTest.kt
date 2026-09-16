@@ -21,7 +21,8 @@ class ConnectedApiRoutingTest {
         val calls: List<() -> Unit> = listOf({ backend.startPayment("24h") },
             { backend.checkPaymentStatus("test-reference") }, { backend.redeemActivationCode("BARKA-TEST") },
             { backend.checkAppUpdate(110) }, { backend.checkAccess() },
-            { backend.resellerPurchase("account", org.json.JSONObject().put("owner_key", "test")) })
+            { backend.resellerPurchase("account", org.json.JSONObject().put("owner_key", "test")) },
+            { backend.resellerPurchase("cancel", org.json.JSONObject().put("owner_key", "test").put("payment_reference", "BTR-test")) })
         val executor = Executors.newSingleThreadExecutor()
         try {
             for (call in calls) ServerSocket(0).use { server ->

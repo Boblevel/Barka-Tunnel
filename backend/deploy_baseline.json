@@ -1,7 +1,7 @@
 {
   "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "app/admin_ops.py": "79084fde9bc6e278570e7be2d7a076ca3c8926d971450a328889279604c28f84",
-  "app/admin_panel.py": "3a8abaa15cde7a85d2908989a6c8272cf6d03f0dd2ef1afa4a93081019db311a",
+  "app/admin_panel.py": "c4fe778e23134cd0f1409624fbdb2a83494d5263d49e7767669772f18a809a27",
   "app/app_updates.py": "62e88ab56c229c5ce7843397dd7ffa44e74b3159d9ad43c5b74832138753baf2",
   "app/config.py": "cfc6380a09e2f0524377f517521d708d5d358deff7bd82c0bd33587fb480f4b6",
   "app/custom_subscriptions.py": "7e91bc50e0e09a3acb9cfebc45bc583ef4b60ae37ccb3ee755058277f14ab8bf",

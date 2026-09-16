@@ -47,6 +47,7 @@ def list_activation_codes(limit: int | None = 100, reseller_id: int | None = Non
         display_status = (
             "expired"
             if stored_status == "redeemed"
+            and not (row["plan_id"] == "unlimited" and row["created_by_reseller_id"] is None)
             and applied_until is not None
             and int(applied_until) <= now
             else stored_status

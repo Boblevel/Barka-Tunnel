@@ -42,4 +42,5 @@
     <string name="reseller_finish_payment">Complete the current payment before recovering another account.</string>
     <string name="reseller_payment_exists">A payment is already in progress. Check its confirmation.</string>
     <string name="reseller_not_found">Payment not found.</string>
+    <string name="reseller_processing">CHECKING PAYMENT…</string>
 </resources>

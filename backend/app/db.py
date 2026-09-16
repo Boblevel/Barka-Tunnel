@@ -257,9 +257,16 @@ def init_db() -> None:
                 SET applied_from=COALESCE(applied_from, redeemed_at),
                     applied_until=COALESCE(applied_until, redeemed_at + duration_seconds)
                 WHERE redeemed_at IS NOT NULL
+                  AND NOT (plan_id='unlimited' AND created_by_reseller_id IS NULL)
                   AND (applied_from IS NULL OR applied_until IS NULL)
                 """
             )
+
+            # Repair unlimited dates filled by the legacy finite-duration backfill.
+            # Keep revocation/deletion and all finite subscriptions untouched.
+            cx.execute("""UPDATE activation_codes SET applied_until=NULL
+                          WHERE plan_id='unlimited' AND created_by_reseller_id IS NULL
+                            AND applied_until IS NOT NULL""")
 
             now = int(__import__("time").time())
             defaults = (

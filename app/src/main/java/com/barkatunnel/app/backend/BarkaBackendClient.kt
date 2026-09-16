@@ -199,7 +199,7 @@ class BarkaBackendClient(context: Context) {
     }
 
     fun resellerPurchase(action: String, payload: JSONObject): JSONObject {
-        require(action in setOf("start", "status", "account", "restore"))
+        require(action in setOf("start", "status", "account", "restore", "cancel"))
         return post("/v1/reseller-purchases/$action", payload.put("device_id", deviceId),
             BarkaVpnService.connectedSocksPort())
     }

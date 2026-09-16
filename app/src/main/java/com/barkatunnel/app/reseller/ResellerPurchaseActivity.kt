@@ -1,6 +1,5 @@
 package com.barkatunnel.app.reseller
 
-import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -8,7 +7,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -26,15 +24,14 @@ class ResellerPurchaseActivity : AppCompatActivity() {
     private lateinit var statusCard: View
     private lateinit var status: TextView
     private lateinit var pay: MaterialButton
-    private lateinit var restore: MaterialButton
     private lateinit var plans: RadioGroup
     private var months = 1
     private var account: JSONObject? = null
     private var busy = false
     private var resumed = false
+    private var returningFromCheckout = false
     private var polls = 0
     private val handler = Handler(Looper.getMainLooper())
-    private var dialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +47,6 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         plans.check(if (state.optInt("months", 1) == 2) R.id.resellerTwoMonths else R.id.resellerMonth)
         pay = findViewById(R.id.resellerPay)
         pay.setOnClickListener { startPurchase() }
-        findViewById<View>(R.id.resellerVerify).setOnClickListener { polls=0; refresh() }
         status = findViewById(R.id.resellerStatus)
         statusCard = findViewById(R.id.resellerStatusCard)
         credentialsCard = findViewById(R.id.resellerCredentialsCard)
@@ -61,13 +57,11 @@ class ResellerPurchaseActivity : AppCompatActivity() {
                 Toast.makeText(this,R.string.reseller_copied,Toast.LENGTH_SHORT).show()
             }
         }
-        restore = findViewById(R.id.resellerRestore)
-        restore.setOnClickListener { restoreAccount() }
     }
 
-    override fun onResume() { super.onResume(); if (!::state.isInitialized || isFinishing) return; resumed=true; polls=0; refresh() }
+    override fun onResume() { super.onResume(); if (!::state.isInitialized || isFinishing) return; resumed=true; polls=0; returningFromCheckout=state.optString("reference").isNotBlank(); refresh() }
     override fun onPause() { resumed=false; handler.removeCallbacksAndMessages(null); super.onPause() }
-    override fun onDestroy() { dialog?.dismiss(); handler.removeCallbacksAndMessages(null); super.onDestroy() }
+    override fun onDestroy() { handler.removeCallbacksAndMessages(null); super.onDestroy() }
 
     private fun showStatus(message: String) {
         status.text = message
@@ -111,23 +105,23 @@ class ResellerPurchaseActivity : AppCompatActivity() {
     private fun api(action:String,data:JSONObject):JSONObject = BarkaBackendClient(this).resellerPurchase(action,data)
     private fun request(action:()->JSONObject,done:(JSONObject)->Unit) {
         if(busy)return
-        busy=true;pay.isEnabled=false;restore.isEnabled=false
+        busy=true; updateControls()
         Thread {
             val result=runCatching(action)
             runOnUiThread {
                 busy=false
                 if(isDestroyed || isFinishing)return@runOnUiThread
-                pay.isEnabled=true;restore.isEnabled=true
                 result.onSuccess(done).onFailure { showStatus(localizedMessage(it.message));schedule() }
+                updateControls()
             }
         }.start()
     }
-    private fun startPurchase() {
+    private fun startPurchase(openWhenReady: Boolean = true) {
         if(busy)return
         val reference=state.optString("reference")
         if(reference.isNotBlank()) {
-            val url=state.optString("checkout_url")
-            if(url.isNotBlank())openCheckout(url) else refresh()
+            returningFromCheckout = true
+            refresh()
             return
         }
         if(state.optString("request_id").isBlank()) {
@@ -141,7 +135,10 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             val url=if(it.isNull("checkout_url")) "" else it.optString("checkout_url")
             state.put("checkout_url",url);ResellerPurchaseStore.write(this,state)
             render(it)
-            if(it.optString("status")=="pending" && url.isNotBlank())openCheckout(url)
+            if(it.optString("status")=="pending" && url.isNotBlank()) {
+                if (openWhenReady && resumed) openCheckout(url)
+                else { returningFromCheckout = true; refresh() }
+            }
         }
     }
     private fun openCheckout(url:String) {
@@ -156,9 +153,9 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         val reference=state.optString("reference")
         if(reference.isBlank() && state.optString("request_id").isNotBlank()) {
             // Reuse the persisted request identifier when the first reply was lost.
-            startPurchase();return
+            startPurchase(openWhenReady = false);return
         }
-        request({ if(reference.isBlank())api("account",payload()) else api("status",payload().put("payment_reference",reference)) }) { render(it) }
+        request({ if(reference.isBlank())api("account",payload()) else api(if (returningFromCheckout) "cancel" else "status",payload().put("payment_reference",reference)) }) { render(it) }
     }
     private fun render(result:JSONObject) {
         result.optJSONObject("account")?.let { account=it;showCredentials(it) }
@@ -179,18 +176,26 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         if(paymentState in listOf("paid","failed","error")) {
             if(paymentState!="paid" || result.optJSONObject("account")!=null) {
                 for(key in listOf("reference","checkout_url","request_id","months"))state.remove(key)
+                returningFromCheckout = false
+                handler.removeCallbacksAndMessages(null)
                 ResellerPurchaseStore.write(this,state)
             }
         }
         if(state.optString("reference").isNotBlank()) {
             status.append("\n" + getString(R.string.reseller_reference, state.optString("reference")))
             statusCard.visibility = View.VISIBLE
-            pay.setText(R.string.reseller_resume)
+            pay.setText(R.string.reseller_processing)
             schedule()
         } else pay.setText(if(account==null)R.string.subscription_pay else R.string.reseller_renew)
+        updateControls()
+    }
+    private fun updateControls() {
+        val editable = !busy && state.optString("reference").isBlank() && state.optString("request_id").isBlank()
+        pay.isEnabled = !busy && state.optString("reference").isBlank()
+        for (index in 0 until plans.childCount) plans.getChildAt(index).isEnabled = editable
     }
     private fun schedule() {
-        if(resumed && state.optString("reference").isNotBlank() && polls++<30) {
+        if(resumed && (state.optString("reference").isNotBlank() || state.optString("request_id").isNotBlank()) && polls++<30) {
             handler.removeCallbacksAndMessages(null);handler.postDelayed({refresh()},3000)
         }
     }
@@ -201,21 +206,5 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             getString(R.string.reseller_password) to passwordText(value),
             getString(R.string.reseller_expiry) to expiryText(value)
         ).joinToString("\n") { (label, text) -> "$label : $text" }
-    }
-    private fun restoreAccount() {
-        if(busy)return
-        val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(32,16,32,16) }
-        val username=EditText(this).apply { hint=getString(R.string.reseller_username);setSingleLine() }
-        val password=EditText(this).apply { hint=getString(R.string.reseller_password);inputType=InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
-        box.addView(username);box.addView(password)
-        dialog=AlertDialog.Builder(this).setTitle(R.string.reseller_restore_title).setView(box)
-            .setNegativeButton(R.string.reseller_cancel,null).setPositiveButton(R.string.reseller_continue) { _,_ ->
-                if(username.text.toString().isBlank() || password.text.length < 12) {
-                    showStatus(getString(R.string.reseller_enter_credentials))
-                    return@setPositiveButton
-                }
-                val data=payload().put("username",username.text.toString().trim()).put("password",password.text.toString())
-                request({api("restore",data)}) { render(it) }
-            }.show()
     }
 }

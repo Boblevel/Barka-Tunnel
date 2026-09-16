@@ -42,4 +42,5 @@
     <string name="reseller_finish_payment">Terminez le paiement en cours avant de récupérer un autre compte.</string>
     <string name="reseller_payment_exists">Un paiement est déjà en cours. Vérifiez sa confirmation.</string>
     <string name="reseller_not_found">Paiement introuvable.</string>
+    <string name="reseller_processing">VÉRIFICATION EN COURS…</string>
 </resources>
