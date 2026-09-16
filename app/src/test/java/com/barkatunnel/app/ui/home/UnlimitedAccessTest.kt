@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk=[28], application=Application::class)
+@Config(sdk=[28], application=Application::class, qualifiers="fr")
 class UnlimitedAccessTest {
     @Test fun serverFlagSurvivesCacheAndTimerWithoutCountingDown() {
         val app=RuntimeEnvironment.getApplication()
@@ -45,16 +45,25 @@ class UnlimitedAccessTest {
         assertEquals(0L,(parse.invoke(client,data.put("allowed",false)) as BackendAccessState).remainingSeconds)
     }
 
-    @Test fun unlimitedIsGreenAndFiniteAccessRestoresItsColor() {
+    @Test fun unlimitedIsRedVioletAndFiniteAccessRestoresItsColor() {
         val app=RuntimeEnvironment.getApplication()
         val context=android.view.ContextThemeWrapper(app,R.style.Theme_BarkaTunnel)
         val remaining=TextView(context)
         val binder=HomeUiBinder(TextView(context),TextView(context),TextView(context),TextView(context),remaining,TextView(context),MaterialButton(context))
         binder.showAccessRemaining(ConnectionTimeFormatter.UNLIMITED_SECONDS)
         assertEquals("Illimité",remaining.text.toString())
-        assertEquals(ContextCompat.getColor(context,R.color.barka_green),remaining.currentTextColor)
+        assertEquals(ContextCompat.getColor(context,R.color.barka_unlimited),remaining.currentTextColor)
         binder.showAccessRemaining(3600)
         assertNotEquals("Illimité",remaining.text.toString())
         assertEquals(ContextCompat.getColor(context,R.color.barka_text),remaining.currentTextColor)
     }
+    @Test @Config(qualifiers="en") fun unlimitedUsesSelectedEnglishLanguage() {
+        val context=android.view.ContextThemeWrapper(RuntimeEnvironment.getApplication(),R.style.Theme_BarkaTunnel)
+        val remaining=TextView(context)
+        val binder=HomeUiBinder(TextView(context),TextView(context),TextView(context),TextView(context),remaining,TextView(context),MaterialButton(context))
+        binder.showAccessRemaining(ConnectionTimeFormatter.UNLIMITED_SECONDS)
+        assertEquals("Unlimited",remaining.text.toString())
+        assertEquals(ContextCompat.getColor(context,R.color.barka_unlimited),remaining.currentTextColor)
+    }
+
 }

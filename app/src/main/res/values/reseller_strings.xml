@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="access_unlimited">Illimité</string>
+    <string name="reseller_title">Devenir Revendeur</string>
+    <string name="reseller_choose">Choisissez votre offre revendeur</string>
+    <string name="reseller_month">1 MOIS — 5 000 XOF\nRenouvelable</string>
+    <string name="reseller_two_months">2 MOIS — 10 000 XOF\nRenouvelable</string>
+    <string name="reseller_help">Payez votre offre pour obtenir votre compte revendeur Barka Tunnel.</string>
+    <string name="reseller_after_payment">Après confirmation du paiement, vos identifiants apparaissent ici automatiquement.</string>
+    <string name="reseller_verify">VÉRIFIER LE PAIEMENT</string>
+    <string name="reseller_resume">REPRENDRE LE PAIEMENT</string>
+    <string name="reseller_renew">RENOUVELER</string>
+    <string name="reseller_restore">J’AI DÉJÀ UN COMPTE REVENDEUR</string>
+    <string name="reseller_credentials">Mes identifiants revendeur</string>
+    <string name="reseller_link">Lien de connexion</string>
+    <string name="reseller_username">Identifiant</string>
+    <string name="reseller_password">Mot de passe</string>
+    <string name="reseller_expiry">Valable jusqu’au</string>
+    <string name="reseller_copy">TOUT COPIER</string>
+    <string name="reseller_copied">Identifiants copiés.</string>
+    <string name="reseller_restore_title">Retrouver mon compte revendeur</string>
+    <string name="reseller_enter_credentials">Renseignez les identifiants de votre compte revendeur.</string>
+    <string name="reseller_continue">CONTINUER</string>
+    <string name="reseller_cancel">Annuler</string>
+    <string name="reseller_storage_error">Impossible de récupérer le paiement mémorisé. Contactez le support.</string>
+    <string name="reseller_network_error">Connectez-vous à un réseau, puis réessayez.</string>
+    <string name="reseller_incomplete">Réponse de paiement incomplète.</string>
+    <string name="reseller_bad_link">Lien de paiement invalide.</string>
+    <string name="reseller_browser">Ouvrez un navigateur pour continuer le paiement.</string>
+    <string name="reseller_pending">Paiement en attente de confirmation.</string>
+    <string name="reseller_creating">Préparation du paiement en cours.</string>
+    <string name="reseller_paid">Paiement confirmé.</string>
+    <string name="reseller_failed">Paiement annulé ou expiré.</string>
+    <string name="reseller_error">Le paiement n’a pas pu être préparé. Réessayez après avoir vérifié votre connexion.</string>
+    <string name="reseller_amount">Montant : %1$s XOF</string>
+    <string name="reseller_reference">Référence : %1$s</string>
+    <string name="reseller_password_help">Contactez le support pour récupérer votre mot de passe.</string>
+    <string name="reseller_deleted">Compte revendeur supprimé. Contactez le support avec la référence du paiement.</string>
+    <string name="reseller_disabled">Compte revendeur désactivé par l’administration. Contactez le support.</string>
+    <string name="reseller_bad_credentials">Identifiants incorrects.</string>
+    <string name="reseller_other_account">Cet appareil est déjà associé à un autre compte revendeur.</string>
+    <string name="reseller_finish_payment">Terminez le paiement en cours avant de récupérer un autre compte.</string>
+    <string name="reseller_payment_exists">Un paiement est déjà en cours. Vérifiez sa confirmation.</string>
+    <string name="reseller_not_found">Paiement introuvable.</string>
+</resources>

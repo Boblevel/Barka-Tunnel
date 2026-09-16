@@ -22,8 +22,8 @@ import java.util.UUID
 
 class ResellerPurchaseActivity : AppCompatActivity() {
     private lateinit var state: JSONObject
-    private lateinit var content: LinearLayout
-    private lateinit var details: TextView
+    private lateinit var credentialsCard: View
+    private lateinit var statusCard: View
     private lateinit var status: TextView
     private lateinit var pay: MaterialButton
     private lateinit var restore: MaterialButton
@@ -39,54 +39,74 @@ class ResellerPurchaseActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         state = try { ResellerPurchaseStore.read(this) } catch (_: Exception) {
-            Toast.makeText(this,"Impossible de récupérer le paiement mémorisé. Contactez le support.",Toast.LENGTH_LONG).show()
+            Toast.makeText(this,R.string.reseller_storage_error,Toast.LENGTH_LONG).show()
             finish(); return
         }
-        content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = (24 * resources.displayMetrics.density).toInt()
-            setPadding(pad,pad,pad,pad)
-            setBackgroundColor(ContextCompat.getColor(this@ResellerPurchaseActivity,R.color.barka_background))
-        }
-        setContentView(ScrollView(this).apply { isFillViewport = true; addView(content) })
+        setContentView(R.layout.activity_reseller_purchase)
         SystemBars.apply(this)
-        button("RETOUR") { finish() }
-        label("Devenir Revendeur",24f)
-        label("Choisissez votre durée. Votre sous-panel sera créé après confirmation du paiement.")
-        plans = RadioGroup(this)
-        for (n in 1..2) {
-            plans.addView(RadioButton(this).apply {
-                id = View.generateViewId(); text = "$n MOIS — ${if(n==1) "5 000" else "10 000"} XOF\nRenouvelable"
-                setPadding(0,20,0,20)
-                setOnClickListener { months=n }
-            })
-        }
-        plans.check(plans.getChildAt(0).id)
-        content.addView(plans)
-        pay = button("PAYER") { startPurchase() }
-        button("VÉRIFIER LE PAIEMENT") { polls=0; refresh() }
-        status = label("")
-        details = label("").apply { setTextIsSelectable(true) }
-        button("TOUT COPIER") {
+        findViewById<View>(R.id.resellerBackButton).setOnClickListener { finish() }
+        plans = findViewById(R.id.resellerPlans)
+        plans.setOnCheckedChangeListener { _, id -> months = if (id == R.id.resellerTwoMonths) 2 else 1 }
+        plans.check(if (state.optInt("months", 1) == 2) R.id.resellerTwoMonths else R.id.resellerMonth)
+        pay = findViewById(R.id.resellerPay)
+        pay.setOnClickListener { startPurchase() }
+        findViewById<View>(R.id.resellerVerify).setOnClickListener { polls=0; refresh() }
+        status = findViewById(R.id.resellerStatus)
+        statusCard = findViewById(R.id.resellerStatusCard)
+        credentialsCard = findViewById(R.id.resellerCredentialsCard)
+        findViewById<View>(R.id.resellerCopy).setOnClickListener {
             account?.let {
-                getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Sous-panel Barka",credentialText(it)))
-                Toast.makeText(this,"Identifiants copiés.",Toast.LENGTH_SHORT).show()
-            } ?: Toast.makeText(this,"Les identifiants apparaîtront après confirmation du paiement.",Toast.LENGTH_LONG).show()
+                getSystemService(ClipboardManager::class.java).setPrimaryClip(
+                    ClipData.newPlainText(getString(R.string.reseller_credentials), credentialText(it)))
+                Toast.makeText(this,R.string.reseller_copied,Toast.LENGTH_SHORT).show()
+            }
         }
-        restore = button("J’AI DÉJÀ UN SOUS-PANEL") { restoreAccount() }
+        restore = findViewById(R.id.resellerRestore)
+        restore.setOnClickListener { restoreAccount() }
     }
 
     override fun onResume() { super.onResume(); if (!::state.isInitialized || isFinishing) return; resumed=true; polls=0; refresh() }
     override fun onPause() { resumed=false; handler.removeCallbacksAndMessages(null); super.onPause() }
     override fun onDestroy() { dialog?.dismiss(); handler.removeCallbacksAndMessages(null); super.onDestroy() }
 
-    private fun label(value:String,size:Float=16f):TextView = TextView(this).apply {
-        text=value; textSize=size; setPadding(0,16,0,16)
-        setTextColor(ContextCompat.getColor(this@ResellerPurchaseActivity,R.color.barka_text));content.addView(this)
+    private fun showStatus(message: String) {
+        status.text = message
+        statusCard.visibility = if (message.isBlank()) View.GONE else View.VISIBLE
     }
-    private fun button(value:String,action:()->Unit):MaterialButton = MaterialButton(this).apply {
-        text=value; content.addView(this);setOnClickListener { action() }
+
+    private fun localizedMessage(message: String?): String {
+        val key = when (message) {
+            "Sous-panel supprimé. Contactez le support avec la référence du paiement." -> R.string.reseller_deleted
+            "Sous-panel désactivé par l’administration. Contactez le support." -> R.string.reseller_disabled
+            "Identifiants incorrects." -> R.string.reseller_bad_credentials
+            "Cet appareil est déjà associé à un autre sous-panel." -> R.string.reseller_other_account
+            "Terminez le paiement en cours avant de récupérer un autre compte." -> R.string.reseller_finish_payment
+            "Un paiement est déjà en cours. Vérifiez sa confirmation." -> R.string.reseller_payment_exists
+            "Paiement introuvable." -> R.string.reseller_not_found
+            null, "Connectez-vous à un réseau, puis réessayez." -> R.string.reseller_network_error
+            else -> null
+        }
+        return if (key != null) getString(key) else message.orEmpty()
+            .replace(Regex("(?i)sous[- ]panel"), if (androidx.core.os.ConfigurationCompat.getLocales(resources.configuration)[0]?.language == "en") "reseller account" else "compte revendeur")
     }
+
+    private fun showCredentials(value: JSONObject) {
+        credentialsCard.visibility = View.VISIBLE
+        findViewById<TextView>(R.id.resellerLink).text = value.optString("panel_url")
+        findViewById<TextView>(R.id.resellerUsername).text = value.optString("username")
+        findViewById<TextView>(R.id.resellerPassword).text = passwordText(value)
+        findViewById<TextView>(R.id.resellerExpiry).text = expiryText(value)
+    }
+
+    private fun passwordText(value: JSONObject): String = if (value.isNull("password"))
+        getString(R.string.reseller_password_help) else value.optString("password")
+
+    private fun expiryText(value: JSONObject): String = runCatching {
+        val date = java.util.Date(java.time.Instant.parse(value.getString("expires_at")).toEpochMilli())
+        java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT,
+            androidx.core.os.ConfigurationCompat.getLocales(resources.configuration)[0]).format(date)
+    }.getOrDefault(value.optString("expires_at"))
+
     private fun payload():JSONObject = JSONObject().put("owner_key",state.getString("owner_key"))
     private fun api(action:String,data:JSONObject):JSONObject = BarkaBackendClient(this).resellerPurchase(action,data)
     private fun request(action:()->JSONObject,done:(JSONObject)->Unit) {
@@ -98,7 +118,7 @@ class ResellerPurchaseActivity : AppCompatActivity() {
                 busy=false
                 if(isDestroyed || isFinishing)return@runOnUiThread
                 pay.isEnabled=true;restore.isEnabled=true
-                result.onSuccess(done).onFailure { status.text=it.message ?: "Connectez-vous à un réseau, puis réessayez.";schedule() }
+                result.onSuccess(done).onFailure { showStatus(localizedMessage(it.message));schedule() }
             }
         }.start()
     }
@@ -116,7 +136,7 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         }
         request({ api("start",payload().put("request_id",state.getString("request_id")).put("months",state.getInt("months"))) }) {
             val ref=it.optString("payment_reference")
-            if(ref.isBlank()) { status.text="Réponse de paiement incomplète.";return@request }
+            if(ref.isBlank()) { showStatus(getString(R.string.reseller_incomplete));return@request }
             state.put("reference",ref)
             val url=if(it.isNull("checkout_url")) "" else it.optString("checkout_url")
             state.put("checkout_url",url);ResellerPurchaseStore.write(this,state)
@@ -126,10 +146,10 @@ class ResellerPurchaseActivity : AppCompatActivity() {
     }
     private fun openCheckout(url:String) {
         if(!com.barkatunnel.app.update.AppUpdateDestination.isValid(url)) {
-            status.text="Lien de paiement invalide.";return
+            showStatus(getString(R.string.reseller_bad_link));return
         }
         try { startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))) }
-        catch(_:Exception) { status.text="Ouvrez un navigateur pour continuer le paiement." }
+        catch(_:Exception) { showStatus(getString(R.string.reseller_browser)) }
     }
     private fun refresh() {
         if(!resumed || busy)return
@@ -141,10 +161,21 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         request({ if(reference.isBlank())api("account",payload()) else api("status",payload().put("payment_reference",reference)) }) { render(it) }
     }
     private fun render(result:JSONObject) {
-        result.optJSONObject("account")?.let { account=it;details.text=credentialText(it) }
+        result.optJSONObject("account")?.let { account=it;showCredentials(it) }
         val paymentState=result.optString("status")
-        status.text=result.optString("message")
-        if (result.has("amount")) status.append("\nMontant : ${result.optInt("amount")} XOF")
+        val messageKey = when (paymentState) {
+            "pending" -> R.string.reseller_pending
+            "creating" -> R.string.reseller_creating
+            "paid" -> R.string.reseller_paid
+            "failed" -> R.string.reseller_failed
+            "error" -> R.string.reseller_error
+            else -> null
+        }
+        val rawMessage = result.optString("message")
+        showStatus(if (paymentState == "paid" && rawMessage != "Paiement confirmé.") localizedMessage(rawMessage)
+            else messageKey?.let { getString(it) } ?: localizedMessage(rawMessage))
+        if (result.has("amount")) status.append("\n" + getString(R.string.reseller_amount,
+            java.text.NumberFormat.getIntegerInstance(androidx.core.os.ConfigurationCompat.getLocales(resources.configuration)[0]).format(result.optInt("amount"))))
         if(paymentState in listOf("paid","failed","error")) {
             if(paymentState!="paid" || result.optJSONObject("account")!=null) {
                 for(key in listOf("reference","checkout_url","request_id","months"))state.remove(key)
@@ -152,10 +183,11 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             }
         }
         if(state.optString("reference").isNotBlank()) {
-            status.append("\nRéférence : ${state.optString("reference")}")
-            pay.text="REPRENDRE LE PAIEMENT"
+            status.append("\n" + getString(R.string.reseller_reference, state.optString("reference")))
+            statusCard.visibility = View.VISIBLE
+            pay.setText(R.string.reseller_resume)
             schedule()
-        } else pay.text=if(account==null)"PAYER" else "RENOUVELER"
+        } else pay.setText(if(account==null)R.string.subscription_pay else R.string.reseller_renew)
     }
     private fun schedule() {
         if(resumed && state.optString("reference").isNotBlank() && polls++<30) {
@@ -163,19 +195,23 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         }
     }
     private fun credentialText(value:JSONObject):String {
-        val password=if(value.isNull("password"))"Contactez le support pour récupérer votre mot de passe." else value.optString("password")
-        return "Lien : ${value.optString("panel_url")}\nIdentifiant : ${value.optString("username")}\nMot de passe : $password\nExpiration : ${value.optString("expires_at")}"
+        return listOf(
+            getString(R.string.reseller_link) to value.optString("panel_url"),
+            getString(R.string.reseller_username) to value.optString("username"),
+            getString(R.string.reseller_password) to passwordText(value),
+            getString(R.string.reseller_expiry) to expiryText(value)
+        ).joinToString("\n") { (label, text) -> "$label : $text" }
     }
     private fun restoreAccount() {
         if(busy)return
         val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(32,16,32,16) }
-        val username=EditText(this).apply { hint="Identifiant du sous-panel";setSingleLine() }
-        val password=EditText(this).apply { hint="Mot de passe";inputType=InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
+        val username=EditText(this).apply { hint=getString(R.string.reseller_username);setSingleLine() }
+        val password=EditText(this).apply { hint=getString(R.string.reseller_password);inputType=InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
         box.addView(username);box.addView(password)
-        dialog=AlertDialog.Builder(this).setTitle("Retrouver mon sous-panel").setView(box)
-            .setNegativeButton("Annuler",null).setPositiveButton("CONTINUER") { _,_ ->
+        dialog=AlertDialog.Builder(this).setTitle(R.string.reseller_restore_title).setView(box)
+            .setNegativeButton(R.string.reseller_cancel,null).setPositiveButton(R.string.reseller_continue) { _,_ ->
                 if(username.text.toString().isBlank() || password.text.length < 12) {
-                    status.text="Renseignez les identifiants de votre sous-panel."
+                    showStatus(getString(R.string.reseller_enter_credentials))
                     return@setPositiveButton
                 }
                 val data=payload().put("username",username.text.toString().trim()).put("password",password.text.toString())

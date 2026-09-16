@@ -32,9 +32,11 @@ class HomeUiBinder(
     }
 
     fun showAccessRemaining(seconds: Long) {
-        accessRemainingTime.text = ConnectionTimeFormatter.formatRemaining(seconds)
+        accessRemainingTime.text = if (seconds == ConnectionTimeFormatter.UNLIMITED_SECONDS)
+            accessRemainingTime.context.getString(R.string.access_unlimited)
+        else ConnectionTimeFormatter.formatRemaining(seconds)
         accessRemainingTime.setTextColor(ContextCompat.getColor(accessRemainingTime.context,
-            if (seconds == ConnectionTimeFormatter.UNLIMITED_SECONDS) R.color.barka_green else R.color.barka_text))
+            if (seconds == ConnectionTimeFormatter.UNLIMITED_SECONDS) R.color.barka_unlimited else R.color.barka_text))
     }
 
     fun showConnection(state: HomeConnectionState) {

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="access_unlimited">Unlimited</string>
+    <string name="reseller_title">Become a Reseller</string>
+    <string name="reseller_choose">Choose your reseller plan</string>
+    <string name="reseller_month">1 MONTH — 5,000 XOF\nRenewable</string>
+    <string name="reseller_two_months">2 MONTHS — 10,000 XOF\nRenewable</string>
+    <string name="reseller_help">Pay for your plan to get your Barka Tunnel reseller account.</string>
+    <string name="reseller_after_payment">Once payment is confirmed, your login details will appear here automatically.</string>
+    <string name="reseller_verify">CHECK PAYMENT</string>
+    <string name="reseller_resume">RESUME PAYMENT</string>
+    <string name="reseller_renew">RENEW</string>
+    <string name="reseller_restore">I ALREADY HAVE A RESELLER ACCOUNT</string>
+    <string name="reseller_credentials">My reseller login details</string>
+    <string name="reseller_link">Sign-in link</string>
+    <string name="reseller_username">Username</string>
+    <string name="reseller_password">Password</string>
+    <string name="reseller_expiry">Valid until</string>
+    <string name="reseller_copy">COPY ALL</string>
+    <string name="reseller_copied">Login details copied.</string>
+    <string name="reseller_restore_title">Recover my reseller account</string>
+    <string name="reseller_enter_credentials">Enter your reseller account login details.</string>
+    <string name="reseller_continue">CONTINUE</string>
+    <string name="reseller_cancel">Cancel</string>
+    <string name="reseller_storage_error">Unable to recover the saved payment. Contact support.</string>
+    <string name="reseller_network_error">Connect to a network, then try again.</string>
+    <string name="reseller_incomplete">Incomplete payment response.</string>
+    <string name="reseller_bad_link">Invalid payment link.</string>
+    <string name="reseller_browser">Open a browser to continue payment.</string>
+    <string name="reseller_pending">Waiting for payment confirmation.</string>
+    <string name="reseller_creating">Preparing your payment.</string>
+    <string name="reseller_paid">Payment confirmed.</string>
+    <string name="reseller_failed">Payment cancelled or expired.</string>
+    <string name="reseller_error">Payment could not be prepared. Check your connection and try again.</string>
+    <string name="reseller_amount">Amount: %1$s XOF</string>
+    <string name="reseller_reference">Reference: %1$s</string>
+    <string name="reseller_password_help">Contact support to recover your password.</string>
+    <string name="reseller_deleted">Reseller account deleted. Contact support with the payment reference.</string>
+    <string name="reseller_disabled">Reseller account disabled by the administrator. Contact support.</string>
+    <string name="reseller_bad_credentials">Incorrect login details.</string>
+    <string name="reseller_other_account">This device is already linked to another reseller account.</string>
+    <string name="reseller_finish_payment">Complete the current payment before recovering another account.</string>
+    <string name="reseller_payment_exists">A payment is already in progress. Check its confirmation.</string>
+    <string name="reseller_not_found">Payment not found.</string>
+</resources>
