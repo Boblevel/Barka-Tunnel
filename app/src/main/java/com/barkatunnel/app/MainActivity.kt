@@ -821,7 +821,23 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    private fun networkSelectionLocked(): Boolean {
+        val state = homeController?.currentState()?.connection
+        return connectionStartRequested || disconnectRequested ||
+            pendingConnectAfterInitialSync || pendingConnectAfterVpnPermission ||
+            BarkaVpnService.connectionSnapshot().state != BarkaVpnService.RuntimeConnectionState.DISCONNECTED ||
+            state is HomeConnectionState.Connected || state is HomeConnectionState.Connecting ||
+            state is HomeConnectionState.Disconnecting
+    }
+
+    private fun allowNetworkSelection(): Boolean {
+        if (!networkSelectionLocked()) return true
+        Toast.makeText(this, R.string.disconnect_before_network_change, Toast.LENGTH_SHORT).show()
+        return false
+    }
+
     private fun showNetworkDialog() {
+        if (!allowNetworkSelection()) return
         val dialog = Dialog(this)
         dialog.setContentView(R.layout.dialog_network_selection)
 
@@ -853,6 +869,7 @@ class MainActivity : AppCompatActivity() {
         checkTelecel.text = if (selectedId == "telecel_bf") "✓" else "○"
 
         fun select(networkId: String) {
+            if (!allowNetworkSelection()) { dialog.dismiss(); return }
             val network = NetworkOption.ALL.firstOrNull { it.id == networkId }
                 ?: return
             if (vpnProfileRepository.isMaintenance(networkId)) {

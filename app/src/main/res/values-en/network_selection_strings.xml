@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="disconnect_before_network_change">Disconnect the VPN before changing networks.</string>
+</resources>

@@ -2,11 +2,22 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:viewportWidth="72"
+    android:viewportHeight="72">
 
+    <group android:pivotX="36" android:pivotY="36" android:scaleX="0.84" android:scaleY="0.84">
     <path
-        android:fillColor="@android:color/white"
-        android:fillType="evenOdd"
-        android:pathData="M5,2.5 L12.2,2.5 C15.9,2.5 18.3,4.5 18.3,7.6 C18.3,9.3 17.4,10.8 15.9,11.7 C17.9,12.5 19.1,14.2 19.1,16.4 C19.1,19.6 16.5,21.5 12.5,21.5 L5,21.5 Z M8.3,5.6 L8.3,10.3 L11.9,10.3 C13.9,10.3 15,9.5 15,7.9 C15,6.4 13.9,5.6 11.9,5.6 Z M8.3,13.2 L8.3,18.4 L12.2,18.4 C14.5,18.4 15.8,17.5 15.8,15.8 C15.8,14.1 14.5,13.2 12.2,13.2 Z" />
+        android:fillColor="@android:color/transparent"
+        android:pathData="M62,9 C47,0 24,2 11,16 C-1,29 1,50 15,62 C29,74 51,70 63,56"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeWidth="5" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M22,16 L22,58 M22,16 L40,16 C51,16 57,22 57,30 C57,36 52,40 47,41 C54,42 59,47 59,54 C59,63 51,67 40,67 L22,67"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="6" />
+    </group>
 </vector>
