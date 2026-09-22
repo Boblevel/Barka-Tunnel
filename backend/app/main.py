@@ -832,31 +832,6 @@ def reseller_panel():
 
 
 @app.get("/payment-return", response_class=HTMLResponse)
-def payment_return(reference: str = ""):
-    safe_ref = reference.replace("<", "").replace(">", "")
-    return f"""
-    <!doctype html>
-    <html lang="fr">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>Barka Tunnel</title>
-        <style>
-          body {{ font-family: sans-serif; background:#f7f9fc; color:#101828;
-                 display:flex; min-height:100vh; align-items:center;
-                 justify-content:center; margin:0; }}
-          .card {{ background:white; padding:28px; border-radius:18px;
-                   max-width:420px; box-shadow:0 8px 30px #00000012; }}
-          h1 {{ color:#136fe8; }}
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <h1>Barka Tunnel</h1>
-          <p>Le paiement a été transmis. Retournez dans l'application
-             pour vérifier sa confirmation et récupérer votre code.</p>
-          <small>Référence : {safe_ref}</small>
-        </div>
-      </body>
-    </html>
-    """
+async def payment_return(reference: str = ""):
+    from .payment_return import payment_return_response
+    return await payment_return_response(reference)

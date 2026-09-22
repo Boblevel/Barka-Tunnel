@@ -153,6 +153,25 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     private fun requestAssistantSelection() {
+        // Le rôle officiel ouvre la sélection système sans passer par une page
+        // vocale intermédiaire. Les réglages restent accessibles si le rôle est
+        // déjà détenu, absent ou indisponible sur cette version constructeur.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val opened = runCatching {
+                val roles = getSystemService(RoleManager::class.java)
+                if (roles?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true &&
+                    !roles.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
+                    @Suppress("DEPRECATION")
+                    startActivityForResult(
+                        roles.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT),
+                        REQUEST_ASSISTANT_ROLE
+                    )
+                    true
+                } else false
+            }.getOrDefault(false)
+            if (opened) return
+        }
+
         // La page montrée par Android pour choisir l'assistant numérique.
         // Le composant AOSP direct est prioritaire sur les ROM Transsion qui
         // résolvent parfois l'action publique vers une page vocale générique.
@@ -179,26 +198,12 @@ class IpFinderActivity : AppCompatActivity() {
             return
         }
 
-        // Android 10+ fournit aussi le rôle officiel ASSISTANT. Il permet
-        // d'afficher un sélecteur système quand la page Réglages n'est pas
-        // directement exposée par le constructeur.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val roleManager = getSystemService(RoleManager::class.java)
-            if (roleManager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true) {
-                val roleIntent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
-                if (startIfResolvable(roleIntent)) {
-                    return
-                }
-            }
-        }
-
         if (!openAssistantSettingsFallback()) {
             setAssistantButton.isEnabled = true
         }
     }
 
     private fun startIfResolvable(intent: Intent): Boolean {
-        if (intent.resolveActivity(packageManager) == null) return false
         return runCatching {
             startActivity(intent)
             true
@@ -539,10 +544,11 @@ class IpFinderActivity : AppCompatActivity() {
         const val PREFERENCES_NAME = "barka_ipfinder"
         private const val KEY_SEARCH_PATTERN = "search_pattern"
         const val KEY_LAST_FOUND_IP = "last_found_ip"
-        private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.46;10.75;10.102;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
+        private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.75;10.102;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
         private const val LEGACY_IP_SEQUENCE = "10.208;10.210"
         private const val UPDATED_IP_SEQUENCE = "10.208;10.209;10.210"
-        private const val RETIRED_IP_PREFIX = "10.148"
+        private val RETIRED_IP_PREFIXES = setOf("10.148", "10.46")
+        private const val REQUEST_ASSISTANT_ROLE = 112
         private const val IP_FINDER_VIBRATION_MS = 70L
         private const val MAX_NETWORK_POLLS = 15
         private const val MAX_SERVICE_READY_RETRIES = 20
@@ -559,18 +565,19 @@ class IpFinderActivity : AppCompatActivity() {
             val savedPattern = preferences.getString(KEY_SEARCH_PATTERN, "")
                 .orEmpty()
             val resolvedPattern = savedPattern.ifBlank { DEFAULT_SEARCH_PATTERN }
-            val migratedPattern = resolvedPattern
+            val patterns = resolvedPattern
                 .replace(LEGACY_IP_SEQUENCE, UPDATED_IP_SEQUENCE)
                 .split(Regex("[;,\\n]+"))
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
-                .filterNot { pattern ->
+            val migratedPattern = patterns.filterNot { pattern ->
                     pattern.removePrefix("=")
                         .removePrefix("^")
                         .removeSuffix("$")
-                        .trim() == RETIRED_IP_PREFIX
+                        .trim() in RETIRED_IP_PREFIXES
                 }
                 .joinToString(";")
+                .ifBlank { if (patterns.isNotEmpty()) DEFAULT_SEARCH_PATTERN.replace(',', ';') else "" }
 
             if (migratedPattern != savedPattern) {
                 preferences.edit()

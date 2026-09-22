@@ -59,6 +59,7 @@ class SubscriptionActivity : AppCompatActivity() {
         super.onResume()
         paymentPageResumed = true
         paymentPollAttempts = 0
+        syncPendingPlan()
         checkPendingPayment()
     }
 
@@ -77,6 +78,15 @@ class SubscriptionActivity : AppCompatActivity() {
 
     private fun startPayment() {
         PendingPaymentStore.confirmedCode(this)?.let { showActivationCode(it); return }
+        if (PendingPaymentStore.reference(this) != null) {
+            checkPendingPayment()
+            PendingPaymentStore.checkoutUrl(this)?.let { url ->
+                if (com.barkatunnel.app.update.AppUpdateDestination.isValid(url)) {
+                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                }
+            }
+            return
+        }
         val purchasePlanId = selectedPlanId
         payButton.isEnabled = false
         AppLogStore.add(
@@ -90,7 +100,8 @@ class SubscriptionActivity : AppCompatActivity() {
                 val saved = PendingPaymentStore.save(
                     context = this,
                     reference = payment.paymentReference,
-                    planId = purchasePlanId
+                    planId = purchasePlanId,
+                    checkoutUrl = payment.checkoutUrl
                 )
                 if (!saved) {
                     runOnUiThread {
@@ -108,6 +119,7 @@ class SubscriptionActivity : AppCompatActivity() {
 
                 runOnUiThread {
                     payButton.isEnabled = true
+                    syncPendingPlan()
                     startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse(payment.checkoutUrl))
                     )
@@ -159,6 +171,7 @@ class SubscriptionActivity : AppCompatActivity() {
 
                         "failed", "error" -> {
                             PendingPaymentStore.clear(this)
+                            syncPendingPlan()
                             AppLogStore.add(this, "Paiement • ${status.message}")
                             Toast.makeText(this, status.message, Toast.LENGTH_LONG).show()
                         }
@@ -174,11 +187,11 @@ class SubscriptionActivity : AppCompatActivity() {
     }
 
     private fun schedulePaymentCheck() {
-        if (!paymentPageResumed || paymentPollAttempts >= MAX_PAYMENT_POLL_ATTEMPTS) return
+        if (!paymentPageResumed || isFinishing || isDestroyed) return
         paymentPollAttempts += 1
         paymentHandler.postDelayed(
             { checkPendingPayment() },
-            PAYMENT_POLL_DELAY_MS
+            if (paymentPollAttempts <= MAX_PAYMENT_POLL_ATTEMPTS) PAYMENT_POLL_DELAY_MS else 10_000L
         )
     }
 
@@ -197,14 +210,32 @@ class SubscriptionActivity : AppCompatActivity() {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("Code Barka Tunnel", code))
                 PendingPaymentStore.clear(this)
+                syncPendingPlan()
                 Toast.makeText(this, R.string.code_copied, Toast.LENGTH_SHORT).show()
             },
             onActivate = {
                 startActivity(Intent(this, ActivationActivity::class.java)
                     .putExtra(ActivationActivity.EXTRA_ACTIVATION_CODE, code))
                 PendingPaymentStore.clear(this)
+                syncPendingPlan()
             }
         )
+    }
+
+    private fun syncPendingPlan() {
+        val plans = findViewById<RadioGroup>(R.id.plansGroup)
+        val pending = PendingPaymentStore.reference(this) != null
+        if (pending) {
+            val selected = when (PendingPaymentStore.planId(this)) {
+                "24h" -> R.id.plan24h
+                "1w" -> R.id.plan1w
+                "2w" -> R.id.plan2w
+                "1m" -> R.id.plan1m
+                else -> plans.checkedRadioButtonId
+            }
+            plans.check(selected)
+        }
+        for (index in 0 until plans.childCount) plans.getChildAt(index).isEnabled = !pending
     }
 
     private fun select(planId: String, amount: Int) {

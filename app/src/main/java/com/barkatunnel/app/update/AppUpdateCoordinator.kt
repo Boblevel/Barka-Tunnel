@@ -18,6 +18,7 @@ class AppUpdateCoordinator(
 
     @Volatile
     private var checking = false
+    private var manualResultRequested = false
 
     @Volatile
     private var lastCheckAt = 0L
@@ -36,14 +37,16 @@ class AppUpdateCoordinator(
         val now = System.currentTimeMillis()
         synchronized(callbackLock) {
             if (checking) {
+                manualResultRequested = manualResultRequested || showNoUpdate
                 onResult?.let(waitingCallbacks::add)
                 return
             }
-            if (!force && now - lastCheckAt < 5 * 60 * 1000L) {
+            if (!force && !showNoUpdate && now - lastCheckAt < 5 * 60 * 1000L) {
                 onResult?.invoke(null)
                 return
             }
             checking = true
+            manualResultRequested = showNoUpdate
         }
         Thread {
             try {
@@ -51,14 +54,14 @@ class AppUpdateCoordinator(
                 lastCheckAt = System.currentTimeMillis()
                 activity.runOnUiThread {
                     try {
-                        applyResult(update, showNoUpdate)
+                        applyResult(update, synchronized(callbackLock) { manualResultRequested })
                     } finally {
                         finishCheck(update, onResult)
                     }
                 }
             } catch (e: Exception) {
                 activity.runOnUiThread {
-                    if (showNoUpdate) {
+                    if (synchronized(callbackLock) { manualResultRequested }) {
                         Toast.makeText(
                             activity,
                             e.message ?: activity.getString(R.string.update_check_failed),
@@ -77,6 +80,7 @@ class AppUpdateCoordinator(
     ) {
         val callbacks = synchronized(callbackLock) {
             checking = false
+            manualResultRequested = false
             buildList {
                 primaryCallback?.let(::add)
                 addAll(waitingCallbacks)

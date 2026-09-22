@@ -89,7 +89,7 @@
     <string name="ip_finder_disconnect_notice">La recherche d’une nouvelle IP déconnectera toute connexion sécurisée active.</string>
     <string name="ip_finder_idle">Prêt</string>
     <string name="ip_finder_current_cellular_ip">IP mobile actuelle</string>
-    <string name="ip_finder_no_cellular_ip">Aucune IP mobile détectée</string>
+    <string name="ip_finder_no_cellular_ip">...</string>
     <string name="ip_finder_find">TROUVER UNE IP</string>
     <string name="ip_finder_stop">ARRÊTER</string>
     <string name="ip_finder_searching">Recherche en cours…</string>

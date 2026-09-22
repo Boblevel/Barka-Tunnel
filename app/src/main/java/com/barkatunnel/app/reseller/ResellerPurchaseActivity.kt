@@ -59,7 +59,7 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() { super.onResume(); if (!::state.isInitialized || isFinishing) return; resumed=true; polls=0; returningFromCheckout=state.optString("reference").isNotBlank(); refresh() }
+    override fun onResume() { super.onResume(); if (!::state.isInitialized || isFinishing) return; resumed=true; polls=0; returningFromCheckout=state.optString("reference").isNotBlank() && !intent.getBooleanExtra("payment_return", false); intent.removeExtra("payment_return"); refresh() }
     override fun onPause() { resumed=false; handler.removeCallbacksAndMessages(null); super.onPause() }
     override fun onDestroy() { handler.removeCallbacksAndMessages(null); super.onDestroy() }
 
@@ -195,8 +195,8 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         for (index in 0 until plans.childCount) plans.getChildAt(index).isEnabled = editable
     }
     private fun schedule() {
-        if(resumed && (state.optString("reference").isNotBlank() || state.optString("request_id").isNotBlank()) && polls++<30) {
-            handler.removeCallbacksAndMessages(null);handler.postDelayed({refresh()},3000)
+        if(resumed && (state.optString("reference").isNotBlank() || state.optString("request_id").isNotBlank())) {
+            handler.removeCallbacksAndMessages(null);handler.postDelayed({refresh()},if (polls++ < 30) 3000L else 10_000L)
         }
     }
     private fun credentialText(value:JSONObject):String {

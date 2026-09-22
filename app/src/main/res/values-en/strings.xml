@@ -80,7 +80,7 @@
     <string name="ip_finder_disconnect_notice">Finding a new IP will disconnect any active secure connection.</string>
     <string name="ip_finder_idle">Ready</string>
     <string name="ip_finder_current_cellular_ip">Current mobile IP</string>
-    <string name="ip_finder_no_cellular_ip">No mobile IP detected</string>
+    <string name="ip_finder_no_cellular_ip">...</string>
     <string name="ip_finder_find">FIND AN IP</string>
     <string name="ip_finder_stop">STOP</string>
     <string name="ip_finder_searching">Searching…</string>

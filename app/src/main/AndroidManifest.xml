@@ -22,6 +22,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BarkaTunnel">
 
+        <activity android:name=".payment.PaymentReturnActivity"
+            android:exported="true" android:noHistory="true" android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="barkatunnel" android:host="payment-return" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".account.LoginActivity"
             android:exported="false" />

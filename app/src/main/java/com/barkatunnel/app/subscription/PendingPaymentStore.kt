@@ -9,12 +9,13 @@ object PendingPaymentStore {
     private const val KEY_CONFIRMED_CODE = "confirmed_code"
 
     @Synchronized
-    fun save(context: Context, reference: String, planId: String): Boolean {
+    fun save(context: Context, reference: String, planId: String, checkoutUrl: String = ""): Boolean {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!prefs.getString(KEY_CONFIRMED_CODE, null).isNullOrBlank()) return false
         return prefs.edit()
             .putString(KEY_REFERENCE, reference)
             .putString(KEY_PLAN_ID, planId)
+            .putString("checkout_url", checkoutUrl)
             .remove(KEY_CONFIRMED_CODE)
             .commit()
     }
@@ -24,6 +25,10 @@ object PendingPaymentStore {
             .getString(KEY_REFERENCE, null)
             ?.takeIf { it.isNotBlank() }
     }
+
+    fun checkoutUrl(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString("checkout_url", null)?.takeIf { it.isNotBlank() }
 
     fun planId(context: Context): String? =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_PLAN_ID, null)
