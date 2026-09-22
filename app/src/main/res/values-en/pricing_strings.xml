@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="price_offer_day">24 HOURS — %1$s XOF</string>
+    <string name="price_offer_week">1 WEEK — %1$s XOF</string>
+    <string name="price_offer_two_weeks">2 WEEKS — %1$s XOF</string>
+    <string name="price_offer_month">1 MONTH — %1$s XOF</string>
+    <string name="price_reseller_month">1 MONTH — %1$s XOF\nRenewable</string>
+    <string name="price_reseller_two_months">2 MONTHS — %1$s XOF\nRenewable</string>
+</resources>

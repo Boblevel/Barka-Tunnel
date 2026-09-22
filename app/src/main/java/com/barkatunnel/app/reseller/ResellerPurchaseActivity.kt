@@ -11,6 +11,9 @@ import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.barkatunnel.app.pricing.PricingStore
+import com.barkatunnel.app.pricing.PricingLabels
+import com.barkatunnel.app.pricing.PricingSync
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.ui.SystemBars
@@ -25,6 +28,8 @@ class ResellerPurchaseActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var pay: MaterialButton
     private lateinit var plans: RadioGroup
+    private var priceListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
+    private var displayedPrices = PricingStore.defaults
     private var months = 1
     private var account: JSONObject? = null
     private var busy = false
@@ -59,8 +64,8 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() { super.onResume(); if (!::state.isInitialized || isFinishing) return; resumed=true; polls=0; returningFromCheckout=state.optString("reference").isNotBlank() && !intent.getBooleanExtra("payment_return", false); intent.removeExtra("payment_return"); refresh() }
-    override fun onPause() { resumed=false; handler.removeCallbacksAndMessages(null); super.onPause() }
+    override fun onResume() { super.onResume(); if (!::state.isInitialized || isFinishing) return; resumed=true; renderPrices(); priceListener=PricingStore.listen(this) { runOnUiThread { renderPrices() } }; polls=0; returningFromCheckout=state.optString("reference").isNotBlank() && !intent.getBooleanExtra("payment_return", false); intent.removeExtra("payment_return"); refresh() }
+    override fun onPause() { priceListener?.let { PricingStore.unlisten(this,it) }; priceListener=null; resumed=false; handler.removeCallbacksAndMessages(null); super.onPause() }
     override fun onDestroy() { handler.removeCallbacksAndMessages(null); super.onDestroy() }
 
     private fun showStatus(message: String) {
@@ -111,7 +116,14 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             runOnUiThread {
                 busy=false
                 if(isDestroyed || isFinishing)return@runOnUiThread
-                result.onSuccess(done).onFailure { showStatus(localizedMessage(it.message));schedule() }
+                result.onSuccess(done).onFailure {
+                    if (it.message == "PRICING_CHANGED" && state.optString("reference").isBlank()) {
+                        for (key in listOf("request_id", "months", "amount")) state.remove(key)
+                        ResellerPurchaseStore.write(this, state)
+                        showStatus("")
+                        PricingSync.refresh(this)
+                    } else { showStatus(localizedMessage(it.message)); schedule() }
+                }
                 updateControls()
             }
         }.start()
@@ -125,10 +137,10 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             return
         }
         if(state.optString("request_id").isBlank()) {
-            state.put("request_id",UUID.randomUUID().toString()).put("months",months)
+            state.put("request_id",UUID.randomUUID().toString()).put("months",months).put("amount",displayedPrices.getValue("reseller_${months}m"))
             ResellerPurchaseStore.write(this,state)
         }
-        request({ api("start",payload().put("request_id",state.getString("request_id")).put("months",state.getInt("months"))) }) {
+        request({ api("start",payload().put("request_id",state.getString("request_id")).put("months",state.getInt("months")).apply { if (state.has("amount")) put("expected_amount",state.getInt("amount")) }) }) {
             val ref=it.optString("payment_reference")
             if(ref.isBlank()) { showStatus(getString(R.string.reseller_incomplete));return@request }
             state.put("reference",ref)
@@ -159,6 +171,9 @@ class ResellerPurchaseActivity : AppCompatActivity() {
     }
     private fun render(result:JSONObject) {
         result.optJSONObject("account")?.let { account=it;showCredentials(it) }
+        if (result.has("amount") && state.optString("reference").isNotBlank()) {
+            state.put("amount", result.getInt("amount")); ResellerPurchaseStore.write(this,state)
+        }
         val paymentState=result.optString("status")
         val messageKey = when (paymentState) {
             "pending" -> R.string.reseller_pending
@@ -175,7 +190,7 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             java.text.NumberFormat.getIntegerInstance(androidx.core.os.ConfigurationCompat.getLocales(resources.configuration)[0]).format(result.optInt("amount"))))
         if(paymentState in listOf("paid","failed","error")) {
             if(paymentState!="paid" || result.optJSONObject("account")!=null) {
-                for(key in listOf("reference","checkout_url","request_id","months"))state.remove(key)
+                for(key in listOf("reference","checkout_url","request_id","months","amount"))state.remove(key)
                 returningFromCheckout = false
                 handler.removeCallbacksAndMessages(null)
                 ResellerPurchaseStore.write(this,state)
@@ -193,7 +208,21 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         val editable = !busy && state.optString("reference").isBlank() && state.optString("request_id").isBlank()
         pay.isEnabled = !busy && state.optString("reference").isBlank()
         for (index in 0 until plans.childCount) plans.getChildAt(index).isEnabled = editable
+        renderPrices()
     }
+    private fun renderPrices() {
+        if (busy || !::plans.isInitialized || isDestroyed) return
+        displayedPrices = PricingStore.read(this).prices.toMutableMap().apply {
+            if (state.optString("reference").isNotBlank() || state.optString("request_id").isNotBlank()) {
+                val key = "reseller_${state.optInt("months", months)}m"
+                put(key, state.optInt("amount", PricingStore.defaults.getValue(key)))
+            }
+        }
+        for ((key,id) in listOf("reseller_1m" to R.id.resellerMonth, "reseller_2m" to R.id.resellerTwoMonths)) {
+            findViewById<TextView>(id).text = PricingLabels.offer(this, key, displayedPrices.getValue(key))
+        }
+    }
+
     private fun schedule() {
         if(resumed && (state.optString("reference").isNotBlank() || state.optString("request_id").isNotBlank())) {
             handler.removeCallbacksAndMessages(null);handler.postDelayed({refresh()},if (polls++ < 30) 3000L else 10_000L)

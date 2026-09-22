@@ -36,6 +36,7 @@ class TrialStartResponse(AccessResponse):
 
 
 class PaymentStartRequest(DeviceRequest):
+    expected_amount: int | None = Field(default=None, strict=True, ge=1, le=10_000_000)
     plan_id: Literal["24h", "1w", "2w", "1m"]
     customer_name: str | None = Field(default=None, max_length=100)
     customer_email: str | None = Field(default=None, max_length=200)

@@ -12,6 +12,7 @@ from .models import DeviceRequest
 from .db import connect, transaction
 from . import services, saspay, resellers
 from .reseller_audit import record_event
+from .pricing import get_catalog, check_expected_amount
 
 router = APIRouter(prefix='/v1/reseller-purchases')
 
@@ -19,6 +20,7 @@ class OwnerRequest(DeviceRequest):
     owner_key: str = Field(min_length=40, max_length=128, pattern=r'^[a-zA-Z0-9_-]+$')
 
 class StartRequest(OwnerRequest):
+    expected_amount: int | None = Field(default=None, strict=True, ge=1, le=10_000_000)
     months: Literal[1, 2]
     request_id: str = Field(min_length=32, max_length=64, pattern=r'^[a-zA-Z0-9-]+$')
 
@@ -120,13 +122,15 @@ async def start(body: StartRequest, response: Response):
             bound=cx.execute('SELECT a.* FROM reseller_purchase_owners o JOIN reseller_accounts a ON a.id=o.reseller_id WHERE o.owner_hash=?',(owner,)).fetchone()
             if bound and (bound['deleted_at'] is not None or bound['status']!='active'):
                 raise HTTPException(403,'Sous-panel désactivé par l’administration. Contactez le support.')
+            amount = get_catalog(cx)['prices']['reseller_'+str(body.months)+'m']
+            check_expected_amount(amount, body.expected_amount)
             now=services.now_ts();reference='BTR-'+uuid.uuid4().hex
-            cx.execute("INSERT INTO payments(reference,device_id,plan_id,amount,currency,status,created_at,updated_at) VALUES(?,?,?,?,'XOF','creating',?,?)",(reference,body.device_id,'reseller_'+str(body.months)+'m',5000*body.months,now,now))
+            cx.execute("INSERT INTO payments(reference,device_id,plan_id,amount,currency,status,created_at,updated_at) VALUES(?,?,?,?,'XOF','creating',?,?)",(reference,body.device_id,'reseller_'+str(body.months)+'m',amount,now,now))
             cx.execute('INSERT INTO reseller_purchases(reference,owner_hash,request_id,months,reseller_id) VALUES(?,?,?,?,?)',(reference,owner,body.request_id,body.months,bound['id'] if bound else None))
             created=True
     if created:
         try:
-            provider=await saspay.create_payment(amount=5000*body.months,currency='XOF',description=f'Barka Tunnel — Sous-panel {body.months} mois',external_reference=reference)
+            provider=await saspay.create_payment(amount=amount,currency='XOF',description=f'Barka Tunnel — Sous-panel {body.months} mois',external_reference=reference)
             from urllib.parse import urlsplit
             url=str(provider['checkout_url']); parsed=urlsplit(url)
             if parsed.scheme!='https' or not parsed.hostname:raise saspay.SasPayError('Lien de paiement invalide')

@@ -49,7 +49,7 @@ class IpFinderUpdate112Test {
     @Test fun savedPatternsAreMigratedWithoutRemovingSimilarPrefixesOrCustomRules() {
         preferences.edit().putString("search_pattern", "10.46;^10.46;=10.46;10.148,10.146\n^10.75;=192.168.1.2").commit()
         assertFalse(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
-        assertEquals("10.146;^10.75;=192.168.1.2", preferences.getString("search_pattern", ""))
+        assertEquals("10.146;^10.75;=192.168.1.2;10.193;10.194", preferences.getString("search_pattern", ""))
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.146.1.2"))
         assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.2"))
         assertFalse(IpFinderActivity.isIpCompatible(context, "192.168.1.3"))
@@ -61,6 +61,15 @@ class IpFinderUpdate112Test {
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.161.1.2"))
     }
 
+    @Test fun addsNewPrefixesOnceWithoutDuplicatesAndPreservesLaterUserEdits() {
+        preferences.edit().putString("search_pattern", "10.193;10.165").commit()
+        assertTrue(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
+        assertEquals("10.193;10.165;10.194",preferences.getString("search_pattern", ""))
+        preferences.edit().putString("search_pattern", "=192.168.1.1").commit()
+        assertFalse(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
+        assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.1"))
+    }
+
     private fun launchSelection(expectedAction: String) {
         val controller = Robolectric.buildActivity(IpFinderActivity::class.java).setup()
         try {
@@ -70,11 +79,14 @@ class IpFinderUpdate112Test {
             assertNotNull(intent)
             assertEquals(expectedAction, intent.action)
             assertNull(shadowOf(activity).nextStartedActivity)
+            assertTrue(activity.findViewById<View>(R.id.setAssistantButton).isEnabled)
+            activity.findViewById<View>(R.id.setAssistantButton).performClick()
+            assertEquals(expectedAction, shadowOf(activity).nextStartedActivity.action)
         } finally { controller.pause().stop().destroy() }
     }
 
-    @Test fun officialRoleSelectionHasPriority() {
-        launchSelection("android.app.role.action.REQUEST_ROLE")
+    @Test fun directAssistantSettingsHavePriorityEvenWhenRoleRequestIsAvailable() {
+        launchSelection(Settings.ACTION_VOICE_INPUT_SETTINGS)
     }
 
     @Test fun unavailableRoleFallsBackToAssistantSettings() {

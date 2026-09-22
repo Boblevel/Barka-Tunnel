@@ -33,6 +33,7 @@ class BarkaApplication : Application() {
         applySavedTheme()
         container = AppContainer(this)
         RemoteUpdateScheduler.schedule(this)
+        com.barkatunnel.app.pricing.PricingSync.install(this)
     }
 
     @Suppress("DEPRECATION")

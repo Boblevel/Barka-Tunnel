@@ -62,12 +62,15 @@ class BarkaBackendClient(context: Context) {
         }
     }
 
-    fun startPayment(planId: String): BackendPaymentStart {
+    fun getPricing(): JSONObject = getObject("/v1/pricing", BarkaVpnService.connectedSocksPort())
+
+    fun startPayment(planId: String, expectedAmount: Int? = null): BackendPaymentStart {
         val body = post(
             path = "/v1/payments/start",
             payload = JSONObject()
                 .put("device_id", deviceId)
-                .put("plan_id", planId),
+                .put("plan_id", planId)
+                .apply { if (expectedAmount != null) put("expected_amount", expectedAmount) },
             socksPort = BarkaVpnService.connectedSocksPort()
         )
 

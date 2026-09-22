@@ -71,6 +71,7 @@ from .models import (
     VpnProfileResponse,
 )
 from .plans import PLANS, get_plan
+from .pricing import router as pricing_router, public_plans, create_subscription_quote
 from .security import require_admin, verify_saspay_signature
 from .resellers import (
     create_reseller,
@@ -136,6 +137,7 @@ app = FastAPI(
 
 from .reseller_purchases import router as reseller_purchase_router
 app.include_router(reseller_purchase_router)
+app.include_router(pricing_router)
 
 
 @app.get("/health")
@@ -149,8 +151,9 @@ def health():
 
 
 @app.get("/v1/plans", response_model=list[PlanResponse])
-def plans():
-    return list(PLANS.values())
+def plans(response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return public_plans()
 
 @app.get("/v1/app/update", response_model=AppUpdateResponse)
 def app_update(response: Response, version_code: int = 1):
@@ -189,7 +192,7 @@ async def payment_start(body: PaymentStartRequest):
         raise HTTPException(status_code=400, detail="Offre inconnue")
 
     existing = recent_pending_payment(body.device_id, body.plan_id)
-    if existing:
+    if existing and (body.expected_amount is None or existing["amount"] == body.expected_amount):
         return PaymentStartResponse(
             success=True,
             checkout_url=existing["checkout_url"],
@@ -199,11 +202,11 @@ async def payment_start(body: PaymentStartRequest):
             currency=existing["currency"],
         )
 
-    reference = create_payment_record(body.device_id, body.plan_id)
+    reference, quoted_amount = create_subscription_quote(body.device_id, body.plan_id, body.expected_amount)
 
     try:
         provider = await create_payment(
-            amount=int(plan["amount"]),
+            amount=quoted_amount,
             currency=plan["currency"],
             description=f"Barka Tunnel — {plan['label']}",
             external_reference=reference,
@@ -228,7 +231,7 @@ async def payment_start(body: PaymentStartRequest):
         checkout_url=str(provider["checkout_url"]),
         payment_reference=reference,
         status="pending",
-        amount=int(plan["amount"]),
+        amount=quoted_amount,
         currency=plan["currency"],
     )
 

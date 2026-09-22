@@ -20,7 +20,7 @@ class ConnectedApiRoutingTest {
         val backend = BarkaBackendClient(RuntimeEnvironment.getApplication())
         val calls: List<() -> Unit> = listOf({ backend.startPayment("24h") },
             { backend.checkPaymentStatus("test-reference") }, { backend.redeemActivationCode("BARKA-TEST") },
-            { backend.checkAppUpdate(110) }, { backend.checkAccess() },
+            { backend.checkAppUpdate(110) }, { backend.getPricing() }, { backend.checkAccess() },
             { backend.resellerPurchase("account", org.json.JSONObject().put("owner_key", "test")) },
             { backend.resellerPurchase("cancel", org.json.JSONObject().put("owner_key", "test").put("payment_reference", "BTR-test")) })
         val executor = Executors.newSingleThreadExecutor()

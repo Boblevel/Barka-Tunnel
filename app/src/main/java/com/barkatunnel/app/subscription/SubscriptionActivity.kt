@@ -12,6 +12,9 @@ import android.os.Looper
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.barkatunnel.app.pricing.PricingStore
+import com.barkatunnel.app.pricing.PricingLabels
+import com.barkatunnel.app.pricing.PricingSync
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.journal.AppLogStore
@@ -20,6 +23,8 @@ import com.google.android.material.button.MaterialButton
 
 class SubscriptionActivity : AppCompatActivity() {
 
+    private var priceListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
+    private var displayedPrices = PricingStore.defaults
     private var selectedPlanId: String = "24h"
     private var selectedAmount: Int = 300
     private lateinit var payButton: MaterialButton
@@ -43,10 +48,10 @@ class SubscriptionActivity : AppCompatActivity() {
 
         plansGroup.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
-                R.id.plan24h -> select("24h", 300)
-                R.id.plan1w -> select("1w", 800)
-                R.id.plan2w -> select("2w", 1000)
-                R.id.plan1m -> select("1m", 2000)
+                R.id.plan24h -> select("24h", displayedPrices.getValue("24h"))
+                R.id.plan1w -> select("1w", displayedPrices.getValue("1w"))
+                R.id.plan2w -> select("2w", displayedPrices.getValue("2w"))
+                R.id.plan1m -> select("1m", displayedPrices.getValue("1m"))
             }
         }
 
@@ -60,10 +65,12 @@ class SubscriptionActivity : AppCompatActivity() {
         paymentPageResumed = true
         paymentPollAttempts = 0
         syncPendingPlan()
+        priceListener = PricingStore.listen(this) { runOnUiThread { renderPrices() } }
         checkPendingPayment()
     }
 
     override fun onPause() {
+        priceListener?.let { PricingStore.unlisten(this, it) }; priceListener = null
         paymentPageResumed = false
         paymentHandler.removeCallbacksAndMessages(null)
         super.onPause()
@@ -88,6 +95,7 @@ class SubscriptionActivity : AppCompatActivity() {
             return
         }
         val purchasePlanId = selectedPlanId
+        val purchaseAmount = selectedAmount
         payButton.isEnabled = false
         AppLogStore.add(
             this,
@@ -96,12 +104,13 @@ class SubscriptionActivity : AppCompatActivity() {
 
         Thread {
             try {
-                val payment = BarkaBackendClient(this).startPayment(purchasePlanId)
+                val payment = BarkaBackendClient(this).startPayment(purchasePlanId, purchaseAmount)
                 val saved = PendingPaymentStore.save(
                     context = this,
                     reference = payment.paymentReference,
                     planId = purchasePlanId,
-                    checkoutUrl = payment.checkoutUrl
+                    checkoutUrl = payment.checkoutUrl,
+                    amount = payment.amount
                 )
                 if (!saved) {
                     runOnUiThread {
@@ -128,6 +137,11 @@ class SubscriptionActivity : AppCompatActivity() {
                 AppLogStore.add(this, "Paiement • Échec de création.")
                 runOnUiThread {
                     payButton.isEnabled = true
+                    renderPrices()
+                    if (e.message == "PRICING_CHANGED") {
+                        PricingSync.refresh(this)
+                        return@runOnUiThread
+                    }
                     Toast.makeText(
                         this,
                         e.message ?: getString(R.string.payment_unavailable),
@@ -204,7 +218,11 @@ class SubscriptionActivity : AppCompatActivity() {
             "1m" -> R.string.subscription_month
             else -> R.string.payment_purchased_subscription
         }
-        val offer = getString(planLabel).replace(Regex("\\s+"), " ").trim()
+        val planId = PendingPaymentStore.planId(this)
+        val paidAmount = PendingPaymentStore.amount(this)
+        val offerLabel = if (paidAmount != null && planId in displayedPrices)
+            PricingLabels.offer(this, planId!!, paidAmount) else getString(planLabel)
+        val offer = offerLabel.replace(Regex("\\s+"), " ").trim()
         confirmationDialog = PaymentConfirmationDialog.show(this, code, offer,
             onCopy = {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -236,6 +254,23 @@ class SubscriptionActivity : AppCompatActivity() {
             plans.check(selected)
         }
         for (index in 0 until plans.childCount) plans.getChildAt(index).isEnabled = !pending
+        renderPrices()
+    }
+
+    private fun renderPrices() {
+        if (!::payButton.isInitialized || !payButton.isEnabled || isDestroyed) return
+        val pendingPlan = PendingPaymentStore.planId(this)
+        displayedPrices = PricingStore.read(this).prices.toMutableMap().apply {
+            if (PendingPaymentStore.reference(this@SubscriptionActivity) != null && pendingPlan in this) {
+                put(pendingPlan!!, PendingPaymentStore.amount(this@SubscriptionActivity)
+                    ?: PricingStore.defaults.getValue(pendingPlan))
+            }
+        }
+        for ((key, id) in listOf("24h" to R.id.plan24h, "1w" to R.id.plan1w,
+            "2w" to R.id.plan2w, "1m" to R.id.plan1m)) {
+            findViewById<android.widget.TextView>(id).text = PricingLabels.offer(this, key, displayedPrices.getValue(key))
+        }
+        selectedAmount = displayedPrices.getValue(selectedPlanId)
     }
 
     private fun select(planId: String, amount: Int) {
