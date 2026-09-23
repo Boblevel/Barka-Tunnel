@@ -143,7 +143,7 @@ class AdminVpnProfileUpsert(BaseModel):
     protocol: VpnProtocol
     enabled: bool = False
     maintenance: bool = False
-    priority: int = Field(default=100, ge=1, le=1000)
+    priority: int = Field(default=1, ge=1, le=1000)
     config: dict[str, Any] = Field(default_factory=dict)
 
 

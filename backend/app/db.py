@@ -134,7 +134,7 @@ def init_db() -> None:
                     protocol TEXT NOT NULL,
                     enabled INTEGER NOT NULL DEFAULT 0,
                     maintenance INTEGER NOT NULL DEFAULT 0,
-                    priority INTEGER NOT NULL DEFAULT 100,
+                    priority INTEGER NOT NULL DEFAULT 1,
                     version INTEGER NOT NULL DEFAULT 1,
                     config_json TEXT NOT NULL DEFAULT '{}',
                     updated_at INTEGER NOT NULL
@@ -279,7 +279,7 @@ def init_db() -> None:
                 INSERT OR IGNORE INTO vpn_profiles(
                     network_id, display_name, protocol, enabled,
                     priority, version, config_json, updated_at
-                ) VALUES(?,?,?,0,100,1,'{}',?)
+                ) VALUES(?,?,?,0,1,1,'{}',?)
                 """,
                 [(network_id, display_name, protocol, now)
                  for network_id, display_name, protocol in defaults],

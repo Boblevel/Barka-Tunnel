@@ -135,7 +135,7 @@ def upsert_admin_profile(payload: dict) -> dict:
                 protocol,
                 1 if payload.get("enabled") else 0,
                 1 if payload.get("maintenance") else 0,
-                int(payload.get("priority", 100)),
+                int(payload.get("priority", 1)),
                 version,
                 encoded,
                 now,

@@ -138,6 +138,8 @@ app = FastAPI(
 from .reseller_purchases import router as reseller_purchase_router
 app.include_router(reseller_purchase_router)
 app.include_router(pricing_router)
+from .vpn_drafts import router as vpn_drafts_router
+app.include_router(vpn_drafts_router)
 
 
 @app.get("/health")
