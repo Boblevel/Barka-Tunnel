@@ -391,6 +391,7 @@ class BarkaVpnService : VpnService() {
         val diagnosticNetwork = when (protocol) {
             VpnProfileProtocol.VLESS -> "ORANGE"
             VpnProfileProtocol.SLOWDNS -> "MOOV"
+            VpnProfileProtocol.SSH_TLS -> "SSH TLS"
             VpnProfileProtocol.UDP -> "TELECEL"
         }
         AppLogStore.add(
@@ -437,6 +438,7 @@ class BarkaVpnService : VpnService() {
         AppLogStore.add(this, "Diagnostic VPN • interface TUN Android créée.")
 
         val udpgw = when (profileConfig) {
+            is VpnProfileConfig.SshTls -> "${profileConfig.udpGwHost}:${profileConfig.udpGwPort}"
             is VpnProfileConfig.UdpCustom -> "${profileConfig.udpGwHost}:${profileConfig.udpGwPort}"
             is VpnProfileConfig.SlowDns -> DEFAULT_UDPGW
             is VpnProfileConfig.Vless -> null
@@ -638,7 +640,7 @@ class BarkaVpnService : VpnService() {
                     if (update != null && operationGeneration.get() == accessGeneration && connected && !stopping) {
                         if (update.updateAvailable && update.forceUpdate) {
                             com.barkatunnel.app.update.AppUpdateGate.setRequired(
-                                update.apkUrl, update.message)
+                                update)
                         } else com.barkatunnel.app.update.AppUpdateGate.clear()
                         val key = "${update.latestVersionCode}:${update.updatedAt}:${update.forceUpdate}"
                         if (update.updateAvailable && key != lastUpdateRevision) {
@@ -825,6 +827,8 @@ class BarkaVpnService : VpnService() {
         config: VpnProfileConfig,
         connectGeneration: Long
     ): C6ProtocolEngine = when (protocol) {
+        VpnProfileProtocol.SSH_TLS -> SshTlsEngine(config as VpnProfileConfig.SshTls, SOCKS_TLS,
+            isCancelled = { !isConnectOperationActive(connectGeneration) })
         VpnProfileProtocol.VLESS -> XrayVlessEngine(
             context = this,
             config = config as VpnProfileConfig.Vless,
@@ -846,6 +850,7 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun socksPort(protocol: VpnProfileProtocol): Int = when (protocol) {
+        VpnProfileProtocol.SSH_TLS -> SOCKS_TLS
         VpnProfileProtocol.VLESS -> SOCKS_VLESS
         VpnProfileProtocol.SLOWDNS -> SOCKS_SLOWDNS
         VpnProfileProtocol.UDP -> SOCKS_UDP
@@ -1060,6 +1065,7 @@ class BarkaVpnService : VpnService() {
         private const val SOCKS_VLESS = 10808
         private const val SOCKS_SLOWDNS = 10809
         private const val SOCKS_UDP = 10810
+        private const val SOCKS_TLS = 10811
         private const val LOCAL_PROXY_READY_TIMEOUT_MS = 4_000L
         private const val LOCAL_PROXY_RELEASE_TIMEOUT_MS = 4_000L
         private const val MAX_CONNECTION_ATTEMPTS = 1

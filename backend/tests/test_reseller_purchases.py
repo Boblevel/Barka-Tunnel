@@ -48,12 +48,15 @@ def test_purchase_paid_idempotent_and_private(env,provider,months):
         assert c.post(route+'account',json=bad).json()['account'] is None
 
 
-def test_renew_expired_preserves_account_codes_and_dates(env,provider):
+def test_paid_renewal_preserves_identity_and_frozen_time(env,provider,monkeypatch):
     db,svc,rs,_,_,main,a=env;body=buyer(2)
+    clock=svc.now_ts()
+    for module in (svc,rs):monkeypatch.setattr(module,"now_ts",lambda:clock)
     code=rs.generate_reseller_subscription(a['id'],'24h')
     assert svc.redeem_activation_code('code-buyer-device-123',code)[0]
     with db.connect() as cx:before=dict(cx.execute('SELECT * FROM activation_codes WHERE redeemed_device_id=?',('code-buyer-device-123',)).fetchone())
-    with db.transaction() as cx:cx.execute('UPDATE reseller_accounts SET expires_at=? WHERE id=?',(svc.now_ts()-50,a['id']))
+    with db.transaction() as cx:cx.execute('UPDATE reseller_accounts SET expires_at=? WHERE id=?',(clock+60,a['id']))
+    clock+=60+7200
     assert not svc.access_state('code-buyer-device-123')['allowed']
     with client_for(main) as c:
         route='/v1/reseller-purchases/'
@@ -62,7 +65,12 @@ def test_renew_expired_preserves_account_codes_and_dates(env,provider):
         result=c.post(route+'status',json={**body,'payment_reference':ref}).json()['account']
         assert result['id']==a['id'] and result['password']==a['password'] and result['status']=='active'
         assert svc.access_state('code-buyer-device-123')['allowed']
-        with db.connect() as cx:assert dict(cx.execute('SELECT * FROM activation_codes WHERE id=?',(before['id'],)).fetchone())==before
+        with db.connect() as cx:after=dict(cx.execute('SELECT * FROM activation_codes WHERE id=?',(before['id'],)).fetchone())
+        assert after['applied_until']==before['applied_until']+7200
+        assert {k:v for k,v in after.items() if k!='applied_until'}=={k:v for k,v in before.items() if k!='applied_until'}
+        assert svc.access_state('code-buyer-device-123')['remaining_seconds']==86400-60
+        c.post(route+'status',json={**body,'payment_reference':ref})
+        assert svc.access_state('code-buyer-device-123')['remaining_seconds']==86400-60
 
 
 def test_failed_and_pending_never_deliver_account(env,provider,monkeypatch):

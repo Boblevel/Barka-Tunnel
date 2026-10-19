@@ -24,7 +24,8 @@ class SshSocksProxy(
     private val password: String,
     private val localPort: Int,
     private val connectTimeoutMs: Int = 12_000,
-    private val isCancelled: () -> Boolean = { false }
+    private val isCancelled: () -> Boolean = { false },
+    private val socketFactory: com.jcraft.jsch.SocketFactory? = null
 ) {
     @Volatile private var session: Session? = null
     @Volatile private var serverSocket: ServerSocket? = null
@@ -38,6 +39,7 @@ class SshSocksProxy(
         try {
             checkCancelled()
             val ssh = JSch().getSession(username, sshHost, sshPort).apply {
+                socketFactory?.let { setSocketFactory(it) }
                 setPassword(password)
                 setConfig("StrictHostKeyChecking", "no")
                 setConfig("PreferredAuthentications", "password,keyboard-interactive")

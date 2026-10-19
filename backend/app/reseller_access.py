@@ -11,26 +11,47 @@ def code_suspended(cx, reseller_id: int | None, now: int) -> bool:
     return row is None or row["deleted_at"] is not None or int(row["expires_at"]) <= now
 
 
-def subscription_expiry(cx, device_id: str, stored_expiry: int | None, now: int) -> int | None:
-    """Clip only credit intervals supplied by expired resellers, without extending dates."""
-    if stored_expiry is None or int(stored_expiry) <= now:
-        return stored_expiry
-    expiry = int(stored_expiry)
-    rows = cx.execute(
-        """SELECT a.applied_from, a.applied_until, a.redeemed_at,
-                  r.expires_at, r.deleted_at, r.id AS reseller_id
-           FROM activation_codes a
-           LEFT JOIN reseller_accounts r ON r.id=a.created_by_reseller_id
-           WHERE a.redeemed_device_id=? AND a.created_by_reseller_id IS NOT NULL
-             AND a.status='redeemed' AND a.deleted_at IS NULL AND a.applied_until>?""",
-        (device_id, now),
-    ).fetchall()
-    for row in rows:
-        start = int(row["applied_from"] or row["redeemed_at"] or now)
-        end = int(row["applied_until"])
-        blocked_from = start if row["reseller_id"] is None or row["deleted_at"] is not None else max(start, int(row["expires_at"]))
-        if blocked_from < end:
-            if blocked_from <= now:
-                return now
-            expiry = min(expiry, blocked_from)
-    return expiry
+def _blocked_from(cx, device_id, now):
+    return cx.execute("""SELECT MIN(MAX(COALESCE(a.applied_from,a.redeemed_at),r.expires_at))
+        FROM activation_codes a JOIN reseller_accounts r ON r.id=a.created_by_reseller_id
+        WHERE a.redeemed_device_id=? AND a.status='redeemed' AND a.deleted_at IS NULL
+          AND r.deleted_at IS NULL AND r.expires_at<=?
+          AND a.applied_until>MAX(COALESCE(a.applied_from,a.redeemed_at),r.expires_at)""", (device_id,now)).fetchone()[0]
+
+
+def settle_device_pause(cx, device_id, now):
+    start = _blocked_from(cx, device_id, now)
+    if start is None or start > now:
+        return
+    device = cx.execute("SELECT pause_accounted_until FROM devices WHERE device_id=?", (device_id,)).fetchone()
+    start = max(int(start), int(device[0] or 0))
+    delta = now - start
+    if delta <= 0:
+        return
+    cx.execute("""UPDATE activation_codes SET
+        applied_from=CASE WHEN applied_from>=? THEN applied_from+? ELSE applied_from END,
+        applied_until=applied_until+?
+        WHERE redeemed_device_id=? AND status='redeemed' AND deleted_at IS NULL AND applied_until>?""", (start,delta,delta,device_id,start))
+    cx.execute("""UPDATE redeem_usages SET
+        applied_from=CASE WHEN applied_from>=? THEN applied_from+? ELSE applied_from END,
+        applied_until=applied_until+? WHERE device_id=? AND applied_until>?
+        AND redeem_code_id IN (SELECT id FROM redeem_codes WHERE status='active' AND deleted_at IS NULL)""", (start,delta,delta,device_id,start))
+    cx.execute("UPDATE weekly_trial_claims SET applied_until=applied_until+? WHERE device_id=? AND applied_until>?", (delta,device_id,start))
+    cx.execute("""UPDATE devices SET pause_accounted_until=?,
+        subscription_expires_at=CASE WHEN subscription_expires_at>? THEN subscription_expires_at+? ELSE subscription_expires_at END
+        WHERE device_id=?""", (now,start,delta,device_id))
+
+
+def settle_reseller_pauses(cx, reseller_id, now):
+    query = "SELECT DISTINCT redeemed_device_id FROM activation_codes WHERE status='redeemed' AND deleted_at IS NULL AND created_by_reseller_id IS NOT NULL AND redeemed_device_id IS NOT NULL"
+    params = ()
+    if reseller_id is not None:
+        query += " AND created_by_reseller_id=?"
+        params = (reseller_id,)
+    for row in cx.execute(query,params).fetchall():
+        settle_device_pause(cx,row[0],now)
+
+
+def subscription_expiry(cx, device_id, stored_expiry, now):
+    start = _blocked_from(cx,device_id,now)
+    return now if start is not None and start <= now else stored_expiry

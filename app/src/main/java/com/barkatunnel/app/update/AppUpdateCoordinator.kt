@@ -92,7 +92,7 @@ class AppUpdateCoordinator(
     fun showBlockingIfNeeded(): Boolean {
         if (!AppUpdateGate.isBlocked()) return false
         showDialog(
-            BackendAppUpdate(
+            AppUpdateGate.requiredUpdate() ?: BackendAppUpdate(
                 enabled = true,
                 updateAvailable = true,
                 forceUpdate = true,
@@ -123,7 +123,7 @@ class AppUpdateCoordinator(
         }
 
         if (update.forceUpdate) {
-            AppUpdateGate.setRequired(update.apkUrl, update.message)
+            AppUpdateGate.setRequired(update)
         } else {
             AppUpdateGate.clear()
         }
@@ -156,7 +156,7 @@ class AppUpdateCoordinator(
             .setTitle(title)
             .setMessage(update.message + versionSuffix)
             .setPositiveButton(R.string.update_now) { _, _ ->
-                openApk(update.apkUrl)
+                if (update.downloadInApp) ApkDownloadActivity.open(activity, update) else openApk(update.apkUrl)
             }
 
         if (!update.forceUpdate) {

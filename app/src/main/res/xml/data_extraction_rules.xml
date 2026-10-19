@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <exclude domain="file" path="apk-updates/" />
         <exclude domain="sharedpref" path="barka_journal.xml" />
     </cloud-backup>
     <device-transfer>
+        <exclude domain="file" path="apk-updates/" />
         <exclude domain="sharedpref" path="barka_journal.xml" />
     </device-transfer>
 </data-extraction-rules>

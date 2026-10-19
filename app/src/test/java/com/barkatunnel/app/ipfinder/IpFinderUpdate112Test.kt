@@ -49,7 +49,7 @@ class IpFinderUpdate112Test {
     @Test fun savedPatternsAreMigratedWithoutRemovingSimilarPrefixesOrCustomRules() {
         preferences.edit().putString("search_pattern", "10.46;^10.46;=10.46;10.148,10.146\n^10.75;=192.168.1.2").commit()
         assertFalse(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
-        assertEquals("10.146;^10.75;=192.168.1.2;10.193;10.194", preferences.getString("search_pattern", ""))
+        assertEquals("10.146;^10.75;=192.168.1.2", preferences.getString("search_pattern", ""))
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.146.1.2"))
         assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.2"))
         assertFalse(IpFinderActivity.isIpCompatible(context, "192.168.1.3"))
@@ -61,10 +61,10 @@ class IpFinderUpdate112Test {
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.161.1.2"))
     }
 
-    @Test fun addsNewPrefixesOnceWithoutDuplicatesAndPreservesLaterUserEdits() {
-        preferences.edit().putString("search_pattern", "10.193;10.165").commit()
-        assertTrue(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
-        assertEquals("10.193;10.165;10.194",preferences.getString("search_pattern", ""))
+    @Test fun removesRetiredPrefixesAndPreservesLaterUserEdits() {
+        preferences.edit().putString("search_pattern", "10.193;10.194;10.80;10.165").commit()
+        assertFalse(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
+        assertEquals("10.165",preferences.getString("search_pattern", ""))
         preferences.edit().putString("search_pattern", "=192.168.1.1").commit()
         assertFalse(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
         assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.1"))
@@ -97,5 +97,46 @@ class IpFinderUpdate112Test {
     @Test fun alreadySelectedAssistantCanStillOpenSettings() {
         AssistantRoles.held = true
         launchSelection(Settings.ACTION_VOICE_INPUT_SETTINGS)
+    }
+    @Test fun detectsColorsAndHidesSearchAsSoonAsMobileIpMatches() {
+        val cm=context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val manager=shadowOf(cm)
+        manager.clearAllNetworks()
+        val network=org.robolectric.shadows.ShadowNetwork.newInstance(42)
+        manager.addNetwork(network,org.robolectric.shadows.ShadowNetworkInfo.newInstance(
+            android.net.NetworkInfo.DetailedState.CONNECTED,android.net.ConnectivityManager.TYPE_MOBILE,0,true,true))
+        val capabilities=org.robolectric.shadows.ShadowNetworkCapabilities.newInstance()
+        shadowOf(capabilities).addTransportType(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)
+        manager.setNetworkCapabilities(network,capabilities)
+        fun link(ip:String)=android.net.LinkProperties().apply {
+            val address=org.robolectric.util.ReflectionHelpers.callConstructor(
+                android.net.LinkAddress::class.java,
+                org.robolectric.util.ReflectionHelpers.ClassParameter.from(java.net.InetAddress::class.java,java.net.InetAddress.getByName(ip)),
+                org.robolectric.util.ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType,24))
+            org.robolectric.util.ReflectionHelpers.callInstanceMethod<Boolean>(this,"addLinkAddress",
+                org.robolectric.util.ReflectionHelpers.ClassParameter.from(android.net.LinkAddress::class.java,address))
+        }
+        manager.setLinkProperties(network,link("10.161.1.2"))
+        val controller=Robolectric.buildActivity(IpFinderActivity::class.java).setup()
+        try {
+            val activity=controller.get()
+            val result=activity.findViewById<android.widget.TextView>(R.id.scanResult)
+            val button=activity.findViewById<View>(R.id.scanButton)
+            assertEquals("10.161.1.2",result.text.toString())
+            assertEquals(View.GONE,button.visibility)
+            assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_green),result.currentTextColor)
+            val bad=link("10.193.1.2");manager.setLinkProperties(network,bad)
+            manager.networkCallbacks.forEach {it.onLinkPropertiesChanged(network,bad)}
+            shadowOf(android.os.Looper.getMainLooper()).idle()
+            assertEquals(View.VISIBLE,button.visibility);assertTrue(button.isEnabled)
+            assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_red),result.currentTextColor)
+            val searching=IpFinderActivity::class.java.getDeclaredField("searching").apply {isAccessible=true}
+            searching.setBoolean(activity,true)
+            val good=link("10.161.2.3");manager.setLinkProperties(network,good)
+            manager.networkCallbacks.forEach {it.onLinkPropertiesChanged(network,good)}
+            shadowOf(android.os.Looper.getMainLooper()).idle()
+            assertEquals(View.GONE,button.visibility);assertFalse(searching.getBoolean(activity))
+            assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_green),result.currentTextColor)
+        } finally {controller.pause().stop().destroy()}
     }
 }

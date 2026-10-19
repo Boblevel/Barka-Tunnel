@@ -12,7 +12,7 @@ def expire(db, a, timestamp):
 
 
 @pytest.mark.parametrize('renewal', ['month', 'date'])
-def test_expiry_renewal_keeps_original_code_dates(env, monkeypatch, renewal):
+def test_expiry_renewal_preserves_remaining_duration(env, monkeypatch, renewal):
     db, svc, rs, ops, _, main, a = env
     clock = svc.now_ts()
     for module in (svc, rs, ops): monkeypatch.setattr(module, 'now_ts', lambda: clock)
@@ -23,7 +23,7 @@ def test_expiry_renewal_keeps_original_code_dates(env, monkeypatch, renewal):
     original_end = svc.access_state(device)['expires_at']
     token = rs.login_reseller(a['username'], a['password'])['token']
     expire(db, a, clock+60)
-    assert svc.access_state(device)['remaining_seconds'] == 60
+    assert svc.access_state(device)['remaining_seconds'] == 86400
     clock += 60
     assert not svc.access_state(device)['allowed']
     assert not svc.redeem_activation_code(device, used)[0]
@@ -39,7 +39,7 @@ def test_expiry_renewal_keeps_original_code_dates(env, monkeypatch, renewal):
     if renewal == 'month': rs.renew_reseller_month(a['id'])
     else: rs.update_reseller_expiry(a['id'], datetime.fromtimestamp(clock+86400,timezone.utc))
     access = svc.access_state(device)
-    assert access['allowed'] and access['expires_at']==original_end and access['remaining_seconds']==86400-3660
+    assert access['allowed'] and access['expires_at']!=original_end and access['remaining_seconds']==86400-60
     assert svc.redeem_activation_code('device-unused-12345', unused)[0]
     assert rs.login_reseller(a['username'],a['password'])['token'] and rs.generate_reseller_test(a['id'])
     with pytest.raises(Exception): rs.require_reseller('Bearer '+token)
@@ -68,9 +68,12 @@ def test_other_sources_and_credit_intervals_are_preserved(env, monkeypatch):
     device='device-mixed-grants-12345'
     for code in codes: assert svc.redeem_activation_code(device,code)[0]
     expire(db,a,clock)
-    assert svc.access_state(device)['remaining_seconds']==86400
+    assert svc.access_state(device)['remaining_seconds']==86400+7200+86400
     clock+=86400; assert not svc.access_state(device)['allowed']
-    clock+=7200; assert svc.access_state(device)['allowed'] and svc.access_state(device)['remaining_seconds']==86400
+    clock+=7200; assert not svc.access_state(device)['allowed']
+    monkeypatch.setattr(rs,'now_ts',lambda:clock)
+    rs.renew_reseller_month(a['id'])
+    assert svc.access_state(device)['remaining_seconds']==7200+86400
     for source in ['MANUAL:OTHER','PAYMENT:OTHER']:
         code=svc.issue_activation_code(source,'24h')
         assert svc.redeem_activation_code('device-'+source.replace(':','-'),code)[2]['allowed']
@@ -111,11 +114,14 @@ def test_invalid_url_does_not_change_publication(env,url):
 def test_upload_returns_actual_download_url(env):
     *_,main,account=env
     with client_for(main) as c:
-        payload=b'PK\x03\x04test-upload'
+        import io,zipfile,hashlib
+        buf=io.BytesIO()
+        with zipfile.ZipFile(buf,'w') as z:z.writestr('AndroidManifest.xml',b'test')
+        payload=buf.getvalue()
         assert c.put('/v1/admin/app-update/apk',content=payload,headers={'X-Admin-Token':'wrong'}).status_code==401
         result=c.put('/v1/admin/app-update/apk',content=payload)
-        assert result.json()['apk_url']==main.settings.public_base_url+'/downloads/BarkaTunnel.apk'
-        assert c.get('/downloads/BarkaTunnel.apk').content==payload
+        assert result.json()['apk_url']==main.settings.public_base_url+'/downloads/apk/'+hashlib.sha256(payload).hexdigest()+'.apk'
+        assert c.get(result.json()['apk_url']).content==payload
 
 
 def test_deploy_guard_rejects_unknown_live_changes_and_payment_changes(tmp_path):

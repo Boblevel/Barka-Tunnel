@@ -8,7 +8,7 @@ from .config import settings
 from .db import connect, transaction
 from .plans import get_plan
 from .security import activation_code_for_source, code_hash
-from .reseller_access import code_suspended, subscription_expiry
+from .reseller_access import code_suspended, subscription_expiry, settle_device_pause
 
 
 def now_ts() -> int:
@@ -37,6 +37,7 @@ def ensure_device(device_id: str) -> None:
             """,
             (device_id, now, now),
         )
+        settle_device_pause(cx, device_id, now)
 
 
 def mark_connection_attempt(device_id: str) -> None:

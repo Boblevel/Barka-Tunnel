@@ -12,6 +12,7 @@ from .models import DeviceRequest
 from .db import connect, transaction
 from . import services, saspay, resellers
 from .reseller_audit import record_event
+from .reseller_access import settle_reseller_pauses
 from .pricing import get_catalog, check_expected_amount
 
 router = APIRouter(prefix='/v1/reseller-purchases')
@@ -58,6 +59,7 @@ def fulfill(cx, payment):
             # Preserve the paid receipt for support; never recreate an admin-deleted panel.
             cx.execute("UPDATE reseller_purchases SET fulfillment_error='Sous-panel supprimé. Contactez le support avec la référence du paiement.' WHERE reference=?", (payment['reference'],))
             return
+        settle_reseller_pauses(cx, target, now)
         expiry = add_months(max(now, account['expires_at']), order['months'])
         cx.execute('UPDATE reseller_accounts SET expires_at=?, updated_at=? WHERE id=?', (expiry, now, target))
         resellers._revoke_sessions(cx, target, now)

@@ -11,7 +11,7 @@ from .db import transaction
 from .models import AdminVpnProfileUpsert
 from .security import require_admin
 from .services import iso, now_ts
-from .vpn_profiles import EXPECTED_PROTOCOL, _decode_config, _row_to_public
+from .vpn_profiles import EXPECTED_PROTOCOL, _decode_config, _row_to_public, validate_tls_config
 
 router = APIRouter(prefix="/v1/admin/vpn", dependencies=[Depends(require_admin)])
 KEY = "vpn_profile_drafts"
@@ -54,8 +54,8 @@ def _check_revision(actual, expected):
 
 def _validate(profile):
     payload = AdminVpnProfileUpsert.model_validate(profile).model_dump()
-    if EXPECTED_PROTOCOL.get(payload["network_id"]) != payload["protocol"]:
-        raise HTTPException(400, "Le protocole ne correspond pas à cet opérateur.")
+    if payload["network_id"] not in EXPECTED_PROTOCOL:
+        raise HTTPException(400, "Réseau inconnu.")
     config = payload["config"]
     if payload["enabled"] and not config:
         raise HTTPException(400, "Impossible d'activer un service sans configuration.")
@@ -64,6 +64,9 @@ def _validate(profile):
         ns = config.get("nameserver") or config.get("name_server") or config.get("ns")
         if not pub or not ns:
             raise HTTPException(400, "SlowDNS incomplet : renseignez le Name Server et la DNS Public Key.")
+    if payload["protocol"] == "SSH_TLS" and config:
+        try: validate_tls_config(config)
+        except ValueError as error: raise HTTPException(400, str(error)) from error
     return payload
 
 

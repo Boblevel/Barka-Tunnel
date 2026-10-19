@@ -7,6 +7,7 @@ data class OperatorNetwork(
     companion object {
         val ALL = listOf(
             OperatorNetwork("moov_bf", "MOOV-AFRICA BF"),
+            OperatorNetwork("moov_tiktok", "MOOV FORFAIT TIKTOK"),
             OperatorNetwork("orange_bf", "ORANGE BF"),
             OperatorNetwork("telecel_bf", "TELECEL BF")
         )

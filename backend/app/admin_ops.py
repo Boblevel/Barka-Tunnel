@@ -6,9 +6,12 @@ from .db import connect, transaction
 from .security import activation_code_for_source, code_hash
 from .services import iso, now_ts
 from .reseller_audit import record_event
+from .reseller_access import settle_device_pause, settle_reseller_pauses
 
 
 def list_activation_codes(limit: int | None = 100, reseller_id: int | None = None, *, connection=None, offset: int = 0, own_only: bool = False) -> list[dict]:
+    with (nullcontext(connection) if connection is not None else transaction()) as settle_cx:
+        settle_reseller_pauses(settle_cx, reseller_id, now_ts())
     safe_limit = -1 if limit is None else max(1, min(int(limit), 200))
     cx = connection if connection is not None else connect()
     try:
@@ -24,7 +27,7 @@ def list_activation_codes(limit: int | None = 100, reseller_id: int | None = Non
             f"""
             SELECT a.source_ref, a.plan_id, a.duration_seconds, a.status,
                    a.created_at, a.redeemed_at, a.redeemed_device_id,
-                   a.applied_until, a.created_by_reseller_id,
+                   a.applied_from, a.applied_until, a.created_by_reseller_id,
                    r.username AS reseller_username, r.expires_at AS reseller_expires_at
             FROM activation_codes a
             LEFT JOIN reseller_accounts r ON r.id=a.created_by_reseller_id
@@ -77,7 +80,7 @@ def list_activation_codes(limit: int | None = 100, reseller_id: int | None = Non
                 "reseller_username": reseller_username,
                 "code_type": "test" if str(row["plan_id"]) == "test_2h" else "subscription",
                 "remaining_seconds": (
-                    max(0, int(applied_until) - now)
+                    max(0, int(applied_until) - max(now, int(row["applied_from"] or now)))
                     if applied_until is not None
                     else int(row["duration_seconds"])
                 ),
@@ -163,6 +166,9 @@ def delete_activation_code(
         if not row:
             return False, "Code introuvable."
 
+        if row["redeemed_device_id"]:
+            settle_device_pause(cx, row["redeemed_device_id"], now)
+            row = cx.execute("SELECT * FROM activation_codes WHERE id=?", (row["id"],)).fetchone()
         if row["created_by_reseller_id"] is not None:
             record_event(cx, int(row["created_by_reseller_id"]), "code_deleted",
                          detail="revendeur" if reseller_id is not None else "administrateur")
@@ -177,6 +183,15 @@ def delete_activation_code(
             applied_until = int(row["applied_until"] or (applied_from + int(row["duration_seconds"])))
             remaining_from_code = max(0, applied_until - max(now, applied_from))
             if current_exp > now and remaining_from_code > 0:
+                gap_start = max(now, applied_from)
+                def compact(value):
+                    return None if value is None else value - max(0, min(value, applied_until) - gap_start)
+                for table, owner in (("activation_codes", "redeemed_device_id"), ("redeem_usages", "device_id")):
+                    grants = cx.execute(f"SELECT id,applied_from,applied_until FROM {table} WHERE {owner}=? AND applied_until>?", (device_id, now)).fetchall()
+                    for grant in grants:
+                        cx.execute(f"UPDATE {table} SET applied_from=?,applied_until=? WHERE id=?", (compact(grant["applied_from"]), compact(grant["applied_until"]), grant["id"]))
+                for claim in cx.execute("SELECT week_start,applied_until FROM weekly_trial_claims WHERE device_id=? AND applied_until>?", (device_id, now)).fetchall():
+                    cx.execute("UPDATE weekly_trial_claims SET applied_until=? WHERE device_id=? AND week_start=?", (compact(claim["applied_until"]), device_id, claim["week_start"]))
                 new_exp = max(now, current_exp - remaining_from_code)
                 cx.execute(
                     """
@@ -211,6 +226,8 @@ def delete_activation_code(
 
 
 def list_redeem_codes(limit: int | None = 100, *, connection=None, offset: int = 0) -> list[dict]:
+    with (nullcontext(connection) if connection is not None else transaction()) as settle_cx:
+        settle_reseller_pauses(settle_cx, None, now_ts())
     safe_limit = -1 if limit is None else max(1, min(int(limit), 200))
     now = now_ts()
     cx = connection if connection is not None else connect()

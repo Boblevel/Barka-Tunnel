@@ -114,8 +114,8 @@ class PlanResponse(BaseModel):
     duration_seconds: int
 
 
-VpnNetworkId = Literal["moov_bf", "orange_bf", "telecel_bf"]
-VpnProtocol = Literal["SLOWDNS", "VLESS", "UDP"]
+VpnNetworkId = Literal["moov_bf", "moov_tiktok", "orange_bf", "telecel_bf"]
+VpnProtocol = Literal["SLOWDNS", "VLESS", "UDP", "SSH_TLS"]
 
 
 class VpnProfileRequest(DeviceRequest):
@@ -217,6 +217,7 @@ class AdminStatsResetRequest(BaseModel):
 
 
 class AppUpdateAdminUpsert(BaseModel):
+    download_in_app: bool = False
     enabled: bool = False
     latest_version_code: int = Field(default=1, ge=1, le=2_000_000_000)
     latest_version_name: str = Field(default="1.0.0", min_length=1, max_length=50)
@@ -230,6 +231,7 @@ class AppUpdateAdminResponse(AppUpdateAdminUpsert):
 
 
 class AppUpdateResponse(BaseModel):
+    download_in_app: bool = False
     enabled: bool
     update_available: bool
     force_update: bool

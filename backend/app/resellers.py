@@ -19,7 +19,7 @@ from .security import activation_code_for_source, code_hash
 from .services import now_ts, iso
 from .reseller_audit import record_event
 from .reseller_deletion import remove_reseller_access
-from .reseller_access import RENEWAL_MESSAGE, code_suspended
+from .reseller_access import RENEWAL_MESSAGE, code_suspended, settle_reseller_pauses
 
 
 PASSWORD_ITERATIONS = 600_000
@@ -111,6 +111,7 @@ def renew_reseller_month(reseller_id: int) -> dict:
         year, month = (start.year + 1, 1) if start.month == 12 else (start.year, start.month + 1)
         end = start.replace(year=year, month=month, day=min(start.day, calendar.monthrange(year, month)[1]))
         expiry = _expiry_timestamp(end)
+        settle_reseller_pauses(cx, reseller_id, now)
         cx.execute("UPDATE reseller_accounts SET expires_at=?, updated_at=? WHERE id=?", (expiry, now, reseller_id))
         _revoke_sessions(cx, reseller_id, now)
         record_event(cx, reseller_id, "renewed", detail=iso(expiry))
@@ -275,6 +276,7 @@ def update_reseller_expiry(reseller_id: int, expires_at: datetime) -> dict:
         ).fetchone()
         if not row:
             raise ValueError("Sous-panel introuvable.")
+        settle_reseller_pauses(cx, reseller_id, now)
         cx.execute(
             "UPDATE reseller_accounts SET expires_at=?, updated_at=? WHERE id=?",
             (expiry, now, reseller_id),
@@ -296,6 +298,7 @@ def delete_reseller(reseller_id: int) -> None:
         ).fetchone()
         if not row:
             raise ValueError("Sous-panel introuvable.")
+        settle_reseller_pauses(cx, reseller_id, now)
         cx.execute(
             """
             UPDATE reseller_accounts

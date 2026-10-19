@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <exclude domain="sharedpref" path="barka_journal.xml" />
+    <exclude domain="file" path="apk-updates/" />
+        <exclude domain="sharedpref" path="barka_journal.xml" />
 </full-backup-content>

@@ -140,6 +140,8 @@ app.include_router(reseller_purchase_router)
 app.include_router(pricing_router)
 from .vpn_drafts import router as vpn_drafts_router
 app.include_router(vpn_drafts_router)
+from .apk_release import router as apk_release_router
+app.include_router(apk_release_router)
 
 
 @app.get("/health")
@@ -737,48 +739,6 @@ def admin_app_update_set(body: AppUpdateAdminUpsert):
 )
 def admin_app_update_remove():
     return remove_app_update()
-
-
-@app.put(
-    "/v1/admin/app-update/apk",
-    dependencies=[Depends(require_admin)],
-)
-async def admin_app_update_apk(request: Request):
-    target = release_apk_path()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    temp = target.with_suffix(".apk.tmp")
-    max_bytes = 100 * 1024 * 1024
-    total = 0
-    digest = hashlib.sha256()
-    first = b""
-
-    try:
-        with temp.open("wb") as output:
-            async for chunk in request.stream():
-                if not chunk:
-                    continue
-                if len(first) < 4:
-                    first += chunk[: 4 - len(first)]
-                total += len(chunk)
-                if total > max_bytes:
-                    raise HTTPException(status_code=413, detail="APK trop volumineux (100 Mo max).")
-                digest.update(chunk)
-                output.write(chunk)
-
-        if total < 4 or not first.startswith(b"PK"):
-            raise HTTPException(status_code=400, detail="Fichier APK invalide.")
-
-        os.replace(temp, target)
-    except Exception:
-        temp.unlink(missing_ok=True)
-        raise
-
-    return {
-        "success": True,
-        "apk_url": release_apk_url(),
-        "size_bytes": total,
-        "sha256": digest.hexdigest(),
-    }
 
 
 @app.get("/downloads/BarkaTunnel.apk", include_in_schema=False)

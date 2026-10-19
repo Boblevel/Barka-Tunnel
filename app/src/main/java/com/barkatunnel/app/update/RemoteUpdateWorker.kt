@@ -43,7 +43,7 @@ class RemoteUpdateWorker(
             val appUpdate = backend.checkAppUpdate(BuildConfig.VERSION_CODE.toLong())
             if (appUpdate.enabled && appUpdate.updateAvailable && appUpdate.forceUpdate &&
                 appUpdate.latestVersionCode > BuildConfig.VERSION_CODE) {
-                AppUpdateGate.setRequired(appUpdate.apkUrl, appUpdate.message)
+                AppUpdateGate.setRequired(appUpdate)
             } else {
                 AppUpdateGate.clear()
             }
@@ -66,7 +66,7 @@ class RemoteUpdateWorker(
                     appUpdate.message.ifBlank {
                         applicationContext.getString(R.string.update_available)
                     },
-                    appUpdate.apkUrl
+                    if (appUpdate.downloadInApp) "" else appUpdate.apkUrl
                 )
                 if (notificationShown) {
                     AppLogStore.add(applicationContext, "Mise à jour disponible.")

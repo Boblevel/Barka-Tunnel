@@ -846,6 +846,8 @@ class MainActivity : AppCompatActivity() {
                 ?: selectedNetwork?.id
                 ?: NetworkOption.ALL.firstOrNull()?.id
 
+        val checkTiktok = dialog.findViewById<TextView>(R.id.optionTiktokCheck)
+        val nameTiktok = dialog.findViewById<TextView>(R.id.optionTiktokName)
         val checkMoov = dialog.findViewById<TextView>(R.id.optionMoovCheck)
         val checkOrange = dialog.findViewById<TextView>(R.id.optionOrangeCheck)
         val checkTelecel = dialog.findViewById<TextView>(R.id.optionTelecelCheck)
@@ -860,10 +862,12 @@ class MainActivity : AppCompatActivity() {
                 label
             }
         }
+        showAvailability(nameTiktok, "moov_tiktok", "MOOV FORFAIT TIKTOK")
         showAvailability(nameMoov, "moov_bf", "MOOV-AFRICA BF")
         showAvailability(nameOrange, "orange_bf", "ORANGE BF")
         showAvailability(nameTelecel, "telecel_bf", "TELECEL BF")
 
+        checkTiktok.text = if (selectedId == "moov_tiktok") "✓" else "○"
         checkMoov.text = if (selectedId == "moov_bf") "✓" else "○"
         checkOrange.text = if (selectedId == "orange_bf") "✓" else "○"
         checkTelecel.text = if (selectedId == "telecel_bf") "✓" else "○"
@@ -900,6 +904,9 @@ class MainActivity : AppCompatActivity() {
 
         dialog.findViewById<android.view.View>(R.id.networkDialogClose)
             .setOnClickListener { dialog.dismiss() }
+
+        dialog.findViewById<android.view.View>(R.id.optionTiktok)
+            .setOnClickListener { select("moov_tiktok") }
 
         dialog.findViewById<android.view.View>(R.id.optionMoov)
             .setOnClickListener { select("moov_bf") }

@@ -26,6 +26,7 @@ def valid_download_url(value: str) -> bool:
 
 def _row_to_admin(row) -> dict:
     return {
+        "download_in_app": bool(row["download_in_app"]),
         "enabled": bool(row["enabled"]),
         "latest_version_code": int(row["latest_version_code"]),
         "latest_version_name": str(row["latest_version_name"]),
@@ -52,6 +53,7 @@ def get_app_update_for_client(current_version_code: int) -> dict:
     available = bool(item["enabled"]) and int(item["latest_version_code"]) > int(current_version_code)
     return {
         # Older installed clients also use enabled to decide notifications.
+        "download_in_app": item["download_in_app"],
         "enabled": available,
         "update_available": available,
         "force_update": available and bool(item["mandatory"]),
@@ -81,11 +83,12 @@ def upsert_app_update(payload: dict) -> dict:
     with transaction() as cx:
         cx.execute(
             """UPDATE app_update
-               SET enabled=?, latest_version_code=?, latest_version_name=?,
+               SET download_in_app=?, enabled=?, latest_version_code=?, latest_version_name=?,
                    apk_url=?, message=?, mandatory=?,
                    updated_at=MAX(updated_at + 1, ?)
                WHERE id=1""",
             (
+                int(bool(payload.get("download_in_app"))),
                 1 if enabled else 0,
                 version_code,
                 version_name,

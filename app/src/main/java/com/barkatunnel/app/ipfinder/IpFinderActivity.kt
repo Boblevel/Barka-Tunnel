@@ -5,6 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkRequest
+import android.net.LinkProperties
+import androidx.core.widget.doAfterTextChanged
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
@@ -37,6 +41,14 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     @Volatile private var searching = false
+    private var networkRegistered = false
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        private fun refresh() { handler.post { if (!isDestroyed) refreshNetworkState() } }
+        override fun onAvailable(network: Network) = refresh()
+        override fun onLost(network: Network) = refresh()
+        override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) = refresh()
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = refresh()
+    }
     private var receiverRegistered = false
     private var attempts = 0
     private var cycleRequestRetries = 0
@@ -92,6 +104,9 @@ class IpFinderActivity : AppCompatActivity() {
         wifiWarning = findViewById(R.id.wifiWarning)
 
         ipInput.setText(loadSearchPattern(this))
+        ipInput.doAfterTextChanged { if (!searching) refreshNetworkState() }
+        connectivityManager.registerNetworkCallback(NetworkRequest.Builder().build(),networkCallback)
+        networkRegistered = true
 
         findViewById<android.view.View>(R.id.backButton).setOnClickListener {
             finish()
@@ -140,6 +155,8 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (networkRegistered) connectivityManager.unregisterNetworkCallback(networkCallback)
+        networkRegistered = false
         searching = false
         handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)
@@ -233,17 +250,26 @@ class IpFinderActivity : AppCompatActivity() {
             )
         )
 
+        val currentIp = currentCellularIpv4()
+        if (!searching) searchPatterns = parsePatterns(ipInput.text.toString())
+        val compatible = currentIp != null && matchesSearchPattern(currentIp)
+        resultText.text = currentIp ?: "..."
+        resultText.setTextColor(ContextCompat.getColor(this, if (compatible) R.color.barka_green else R.color.barka_red))
+        scanButton.visibility = if (compatible) View.GONE else View.VISIBLE
+        scanButton.isEnabled = !searching && !wifiActive && currentIp != null
+        if (searching && compatible) { completeSearch(currentIp!!); return }
         if (!searching) {
-            val currentIp = currentCellularIpv4()
             statusText.setText(R.string.ip_finder_idle)
             statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_blue))
             progressText.setText(R.string.ip_finder_current_cellular_ip)
-            resultText.text = currentIp ?: getString(R.string.ip_finder_no_cellular_ip)
-            resultText.setTextColor(ContextCompat.getColor(this, R.color.barka_text))
+
         }
     }
 
     private fun startSearch() {
+        searchPatterns = parsePatterns(ipInput.text.toString())
+        val current = currentCellularIpv4()
+        if (current != null && matchesSearchPattern(current)) { refreshNetworkState(); return }
         if (isWifiActive()) {
             Toast.makeText(
                 this,
@@ -280,7 +306,7 @@ class IpFinderActivity : AppCompatActivity() {
         statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_orange))
         progressText.setText(R.string.ip_finder_waiting_for_network)
         resultText.text = previousIp ?: getString(R.string.ip_finder_no_cellular_ip)
-        resultText.setTextColor(ContextCompat.getColor(this, R.color.barka_text))
+        resultText.setTextColor(ContextCompat.getColor(this, R.color.barka_red))
         AppLogStore.add(this, getString(R.string.ip_finder_log_started))
 
         disconnectActiveTunnel()
@@ -352,6 +378,7 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     private fun completeSearch(ip: String) {
+        scanButton.visibility = View.GONE
         searching = false
         vibrateOnce()
         handler.removeCallbacksAndMessages(null)
@@ -379,6 +406,7 @@ class IpFinderActivity : AppCompatActivity() {
         BarkaAssistantService.cancelAirplaneCycle(this)
         scanButton.isEnabled = true
         stopButton.visibility = View.INVISIBLE
+        refreshNetworkState()
         statusText.text = message
         statusText.setTextColor(ContextCompat.getColor(this, colorRes))
         AppLogStore.add(this, "IP Finder • $message")
@@ -523,10 +551,10 @@ class IpFinderActivity : AppCompatActivity() {
         const val PREFERENCES_NAME = "barka_ipfinder"
         private const val KEY_SEARCH_PATTERN = "search_pattern"
         const val KEY_LAST_FOUND_IP = "last_found_ip"
-        private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.75;10.102;10.193;10.194;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
+        private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.75;10.102;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
         private const val LEGACY_IP_SEQUENCE = "10.208;10.210"
         private const val UPDATED_IP_SEQUENCE = "10.208;10.209;10.210"
-        private val RETIRED_IP_PREFIXES = setOf("10.148", "10.46")
+        private val RETIRED_IP_PREFIXES = setOf("10.148", "10.46", "10.193", "10.194", "10.80", "10.10194")
         private const val IP_FINDER_VIBRATION_MS = 70L
         private const val MAX_NETWORK_POLLS = 15
         private const val MAX_SERVICE_READY_RETRIES = 20
@@ -556,17 +584,6 @@ class IpFinderActivity : AppCompatActivity() {
                 }
                 .joinToString(";")
                 .ifBlank { if (patterns.isNotEmpty()) DEFAULT_SEARCH_PATTERN.replace(',', ';') else "" }
-
-            // Add new supported prefixes once; preserve later edits by the user.
-            val newPrefixesKey = "prefixes_193_194_added"
-            if (!preferences.getBoolean(newPrefixesKey, false)) {
-                val existing = migratedPattern.split(';').filter { it.isNotBlank() }
-                val additions = listOf("10.193", "10.194").filterNot { prefix ->
-                    existing.any { it.removePrefix("^").trim() == prefix }
-                }
-                migratedPattern = (existing + additions).joinToString(";")
-                preferences.edit().putBoolean(newPrefixesKey, true).apply()
-            }
 
             if (migratedPattern != savedPattern) {
                 preferences.edit()

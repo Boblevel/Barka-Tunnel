@@ -6,6 +6,8 @@ import java.net.URI
 import java.net.URLDecoder
 
 sealed interface VpnProfileConfig {
+    data class SshTls(val host: String, val port: Int, val sni: String, val username: String, val password: String, val udpGwHost: String, val udpGwPort: Int) : VpnProfileConfig
+
     data class SlowDns(
         val host: String,
         val sshDomain: String,
@@ -60,6 +62,14 @@ object VpnProfileConfigParser {
         }
 
         return when (protocol) {
+            VpnProfileProtocol.SSH_TLS -> {
+                if (json.optBoolean("allow_insecure", false)) throw BarkaBackendException("Le certificat TLS doit être vérifié.")
+                if (!json.has("port")) json.put("port",443)
+                if (!json.has("udpgw_port")) json.put("udpgw_port",7300)
+                VpnProfileConfig.SshTls(requiredString(json,"host"),requiredPort(json,"port"),requiredString(json,"sni"),
+                    requiredString(json,"username"),requiredString(json,"password"),
+                    json.optString("udpgw_host","127.0.0.1").ifBlank { "127.0.0.1" },requiredPort(json,"udpgw_port"))
+            }
             VpnProfileProtocol.SLOWDNS -> parseSlowDns(json)
             VpnProfileProtocol.VLESS -> parseVless(json)
             VpnProfileProtocol.UDP -> parseUdp(json)

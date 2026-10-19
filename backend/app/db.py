@@ -216,11 +216,17 @@ def init_db() -> None:
             if "maintenance" not in columns:
                 cx.execute("ALTER TABLE vpn_profiles ADD COLUMN maintenance INTEGER NOT NULL DEFAULT 0")
 
+            update_columns = {row["name"] for row in cx.execute("PRAGMA table_info(app_update)").fetchall()}
+            if "download_in_app" not in update_columns:
+                cx.execute("ALTER TABLE app_update ADD COLUMN download_in_app INTEGER NOT NULL DEFAULT 0")
+
             reseller_columns = {row["name"] for row in cx.execute("PRAGMA table_info(reseller_accounts)").fetchall()}
             if "password_nonce" not in reseller_columns:
                 cx.execute("ALTER TABLE reseller_accounts ADD COLUMN password_nonce TEXT")
 
             device_columns = {row["name"] for row in cx.execute("PRAGMA table_info(devices)").fetchall()}
+            if "pause_accounted_until" not in device_columns:
+                cx.execute("ALTER TABLE devices ADD COLUMN pause_accounted_until INTEGER NOT NULL DEFAULT 0")
             if "access_revision" not in device_columns:
                 cx.execute("ALTER TABLE devices ADD COLUMN access_revision INTEGER NOT NULL DEFAULT 0")
             if "access_disabled" not in device_columns:
@@ -271,6 +277,7 @@ def init_db() -> None:
             now = int(__import__("time").time())
             defaults = (
                 ("moov_bf", "MOOV-AFRICA BF", "SLOWDNS"),
+                ("moov_tiktok", "MOOV FORFAIT TIKTOK", "SSH_TLS"),
                 ("orange_bf", "ORANGE BF", "VLESS"),
                 ("telecel_bf", "TELECEL BF", "UDP"),
             )

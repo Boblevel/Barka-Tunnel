@@ -181,6 +181,7 @@ class BarkaBackendClient(context: Context) {
                     "Une nouvelle version de Barka Tunnel est disponible."
                 )
             ),
+            downloadInApp = body.optBoolean("download_in_app", false),
             updatedAt = body.optString("updated_at", "").trim()
         )
     }
@@ -364,7 +365,8 @@ data class BackendAppUpdate(
     val latestVersionName: String,
     val apkUrl: String,
     val message: String,
-    val updatedAt: String = ""
+    val updatedAt: String = "",
+    val downloadInApp: Boolean = false
 )
 
 data class BackendAccessState(

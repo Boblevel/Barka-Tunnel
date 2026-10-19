@@ -40,4 +40,17 @@ class AppUpdateLinkTest {
             controller.pause().stop().destroy()
         }
     }
+    @Test fun mandatoryInternalUpdateRetainsVersionAndOpensDownloader() {
+        val controller=Robolectric.buildActivity(AppCompatActivity::class.java)
+        val activity=controller.get();activity.setTheme(R.style.Theme_BarkaTunnel);controller.setup().visible()
+        try {
+            AppUpdateGate.setRequired(BackendAppUpdate(true,true,true,999,"test","https://example.org/app.apk","Update",downloadInApp=true))
+            AppUpdateCoordinator(activity).showBlockingIfNeeded()
+            ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            shadowOf(android.os.Looper.getMainLooper()).idle()
+            val intent=shadowOf(activity).nextStartedActivity
+            assertEquals(ApkDownloadActivity::class.java.name,intent.component?.className)
+            assertEquals(999L,intent.getLongExtra("version",0))
+        } finally {AppUpdateGate.clear();controller.pause().stop().destroy()}
+    }
 }

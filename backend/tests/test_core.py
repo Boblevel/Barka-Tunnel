@@ -98,8 +98,8 @@ def test_vpn_profiles_are_seeded_and_secrets_require_access(tmp_path):
     importlib.reload(vpn_profiles)
 
     catalog = vpn_profiles.list_catalog()
-    assert [item["network_id"] for item in catalog] == ["moov_bf", "orange_bf", "telecel_bf"]
-    assert [item["protocol"] for item in catalog] == ["SLOWDNS", "VLESS", "UDP"]
+    assert [item["network_id"] for item in catalog] == ["moov_bf", "moov_tiktok", "orange_bf", "telecel_bf"]
+    assert [item["protocol"] for item in catalog] == ["SLOWDNS", "SSH_TLS", "VLESS", "UDP"]
     assert all(item["enabled"] is False for item in catalog)
 
     device = "device-vpnprofile-abcdef"
@@ -146,23 +146,20 @@ def test_vpn_profiles_are_seeded_and_secrets_require_access(tmp_path):
         assert "maintenance" in str(exc).lower()
 
 
-def test_vpn_profile_protocol_is_locked_to_operator(tmp_path):
+def test_vpn_profile_protocol_can_be_reassigned(tmp_path):
     load_modules(tmp_path)
     import app.vpn_profiles as vpn_profiles
     importlib.reload(vpn_profiles)
 
-    try:
-        vpn_profiles.upsert_admin_profile({
-            "network_id": "moov_bf",
-            "display_name": "MOOV-AFRICA BF",
-            "protocol": "VLESS",
-            "enabled": False,
-            "priority": 100,
-            "config": {},
-        })
-        assert False, "MOOV ne doit pas accepter VLESS dans cette architecture"
-    except ValueError as exc:
-        assert "SLOWDNS" in str(exc)
+    result = vpn_profiles.upsert_admin_profile({
+        "network_id": "moov_bf",
+        "display_name": "MOOV-AFRICA BF",
+        "protocol": "VLESS",
+        "enabled": False,
+        "priority": 100,
+        "config": {},
+    })
+    assert result["protocol"] == "VLESS"
 
 
 def test_admin_can_revoke_unused_code(tmp_path):

@@ -7,6 +7,7 @@ from .services import access_state, iso, now_ts
 
 EXPECTED_PROTOCOL = {
     "moov_bf": "SLOWDNS",
+    "moov_tiktok": "SSH_TLS",
     "orange_bf": "VLESS",
     "telecel_bf": "UDP",
 }
@@ -95,8 +96,8 @@ def upsert_admin_profile(payload: dict) -> dict:
     expected = EXPECTED_PROTOCOL.get(network_id)
     if expected is None:
         raise ValueError("Réseau inconnu.")
-    if protocol != expected:
-        raise ValueError(f"{network_id} doit utiliser le protocole {expected}.")
+    if protocol not in set(EXPECTED_PROTOCOL.values()):
+        raise ValueError("Protocole inconnu.")
 
     config = payload.get("config") or {}
     if not isinstance(config, dict):
@@ -104,6 +105,8 @@ def upsert_admin_profile(payload: dict) -> dict:
     if payload.get("enabled") and not config:
         raise ValueError("Impossible d'activer un service sans configuration.")
 
+    if protocol == "SSH_TLS" and config:
+        validate_tls_config(config)
     now = now_ts()
     encoded = json.dumps(config, ensure_ascii=False, separators=(",", ":"))
 
@@ -143,3 +146,15 @@ def upsert_admin_profile(payload: dict) -> dict:
         )
 
     return next(item for item in list_admin_profiles() if item["network_id"] == network_id)
+
+
+def validate_tls_config(config):
+    for key in ('host','sni','username','password'):
+        if not isinstance(config.get(key),str) or not config[key].strip():
+            raise ValueError('Champ TLS manquant : '+key)
+    for key,default in (('port',443),('udpgw_port',7300)):
+        value=config.get(key,default)
+        if isinstance(value,bool) or not isinstance(value,int) or not 1<=value<=65535:
+            raise ValueError('Port TLS/UDPGW invalide : '+key)
+    if config.get('allow_insecure'):
+        raise ValueError('Le certificat TLS doit être vérifié.')
