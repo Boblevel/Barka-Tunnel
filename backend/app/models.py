@@ -114,7 +114,7 @@ class PlanResponse(BaseModel):
     duration_seconds: int
 
 
-VpnNetworkId = Literal["moov_bf", "moov_tiktok", "orange_bf", "telecel_bf"]
+VpnNetworkId = Literal["moov_bf", "moov_tiktok", "orange_bf", "telecel_bf", "global_world"]
 VpnProtocol = Literal["SLOWDNS", "VLESS", "UDP", "SSH_TLS"]
 
 

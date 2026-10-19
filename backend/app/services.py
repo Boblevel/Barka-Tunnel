@@ -571,7 +571,11 @@ def mark_payment_paid(reference: str) -> str:
         else:
             source_ref = payment["activation_source_ref"] or f"PAYMENT:{reference}"
 
-    return issue_activation_code(source_ref, payment["plan_id"], reference)
+    code = issue_activation_code(source_ref, payment["plan_id"], reference)
+    # La confirmation SasPay appartient déjà à cet appareil : l'abonnement
+    # démarre aussitôt, même si l'application est momentanément fermée.
+    redeem_activation_code(payment["device_id"], code)
+    return code
 
 
 def mark_payment_failed(reference: str) -> None:

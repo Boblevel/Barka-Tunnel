@@ -118,7 +118,7 @@ def test_old_priority_is_editor_default_only_custom_value_preserved(env):
     with client_for(main) as c:
         state=c.get(ROOT+'/drafts').json()
         priorities={p['network_id']:p['priority'] for p in state['profiles']}
-        assert priorities=={'moov_bf':1,'moov_tiktok':1,'orange_bf':1,'telecel_bf':7}
+        assert priorities=={'moov_bf':1,'moov_tiktok':1,'orange_bf':1,'telecel_bf':7,'global_world':5}
         assert next(p for p in c.get(ROOT+'/profiles').json() if p['network_id']=='orange_bf')['priority']==100
         state=save(c,state)
         assert c.post(ROOT+'/apply',json={'revision':state['revision']}).status_code==200

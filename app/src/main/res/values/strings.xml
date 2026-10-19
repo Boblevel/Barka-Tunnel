@@ -89,6 +89,7 @@
     <string name="ip_finder_disconnect_notice">La recherche d’une nouvelle IP déconnectera toute connexion sécurisée active.</string>
     <string name="ip_finder_idle">Prêt</string>
     <string name="ip_finder_current_cellular_ip">IP mobile actuelle</string>
+    <string name="ip_finder_current_ip">IP actuelle du réseau</string>
     <string name="ip_finder_no_cellular_ip">...</string>
     <string name="ip_finder_find">TROUVER UNE IP</string>
     <string name="ip_finder_stop">ARRÊTER</string>
@@ -103,7 +104,8 @@
     <string name="ip_finder_select_assistant">Sélectionnez Barka Tunnel comme assistant numérique pour autoriser le changement d’IP.</string>
     <string name="ip_finder_assistant_unavailable">L’assistant numérique n’est pas disponible sur cet appareil.</string>
     <string name="ip_finder_assistant_settings_hint">Dans Applications par défaut, ouvrez Assistant numérique puis choisissez Barka Tunnel.</string>
-    <string name="ip_finder_cycle_failed">Android n’a pas autorisé le changement d’IP. Vérifiez que Barka Tunnel est l’assistant numérique.</string>
+    <string name="ip_finder_cycle_failed">Ce téléphone bloque le changement automatique d’IP malgré l’assistant sélectionné. Changez le mode avion manuellement puis réessayez.</string>
+    <string name="ip_finder_manual_airplane">OUVRIR LE MODE AVION MANUEL</string>
     <string name="ip_finder_cellular_unavailable">Le réseau mobile n’est pas disponible. Activez la SIM et les données mobiles.</string>
     <string name="ip_finder_log_started">IP Finder • recherche démarrée.</string>
     <string name="ip_finder_log_found_format">IP Finder • IP compatible trouvée : %1$s.</string>
@@ -132,6 +134,11 @@
     <string name="settings_check_update">Vérifier la mise à jour</string>
     <string name="settings_share_app">Partager l’application</string>
     <string name="settings_telegram_channel">Canal Telegram officiel</string>
+    <string name="settings_shop">Boutique Mr RHAFF SERVICE</string>
+    <string name="menu_all_services">Tous les services</string>
+    <string name="menu_section_access">ACCÈS</string>
+    <string name="menu_section_tools">OUTILS</string>
+    <string name="menu_section_community">COMMUNAUTÉ</string>
     <string name="channel_invite_title">Rejoignez Team Barka Tunnel</string>
     <string name="channel_invite_message">Actualités, nouveautés et informations officielles de Barka Tunnel sur notre canal public.</string>
     <string name="channel_invite_join">REJOINDRE LE CANAL</string>

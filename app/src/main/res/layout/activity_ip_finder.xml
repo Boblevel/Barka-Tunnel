@@ -230,6 +230,17 @@
                 app:iconTint="@color/white" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/manualAirplaneButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/ip_finder_manual_airplane"
+                android:textColor="@color/barka_blue"
+                android:visibility="gone"
+                app:backgroundTint="@color/barka_blue_light"
+                app:cornerRadius="14dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/stopButton"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"

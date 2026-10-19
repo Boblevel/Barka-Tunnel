@@ -30,6 +30,7 @@ class SubscriptionActivity : AppCompatActivity() {
     private lateinit var payButton: MaterialButton
     private val paymentHandler = Handler(Looper.getMainLooper())
     @Volatile private var checkingPayment = false
+    @Volatile private var activatingPayment = false
     private var paymentPollAttempts = 0
     private var confirmationDialog: AlertDialog? = null
     @Volatile private var paymentPageResumed = false
@@ -84,7 +85,7 @@ class SubscriptionActivity : AppCompatActivity() {
     }
 
     private fun startPayment() {
-        PendingPaymentStore.confirmedCode(this)?.let { showActivationCode(it); return }
+        PendingPaymentStore.confirmedCode(this)?.let { activatePaidCode(it); return }
         if (PendingPaymentStore.reference(this) != null) {
             checkPendingPayment()
             PendingPaymentStore.checkoutUrl(this)?.let { url ->
@@ -116,7 +117,7 @@ class SubscriptionActivity : AppCompatActivity() {
                     runOnUiThread {
                         payButton.isEnabled = true
                         val previous = PendingPaymentStore.confirmedCode(this)
-                        if (previous != null) showActivationCode(previous)
+                        if (previous != null) activatePaidCode(previous)
                         else Toast.makeText(this, R.string.payment_action_retry, Toast.LENGTH_LONG).show()
                     }
                     return@Thread
@@ -154,7 +155,7 @@ class SubscriptionActivity : AppCompatActivity() {
 
     private fun checkPendingPayment() {
         if (!paymentPageResumed || isFinishing || isDestroyed) return
-        PendingPaymentStore.confirmedCode(this)?.let { showActivationCode(it); return }
+        PendingPaymentStore.confirmedCode(this)?.let { activatePaidCode(it); return }
         val reference = PendingPaymentStore.reference(this) ?: return
         if (checkingPayment) return
         checkingPayment = true
@@ -177,7 +178,7 @@ class SubscriptionActivity : AppCompatActivity() {
                                 schedulePaymentCheck()
                             } else {
                                 val saved = PendingPaymentStore.saveConfirmedCode(this, reference, code)
-                                if (saved && paymentPageResumed && !isFinishing && !isDestroyed) showActivationCode(code)
+                                if (saved && paymentPageResumed && !isFinishing && !isDestroyed) activatePaidCode(code)
                             }
                         }
 
@@ -207,6 +208,35 @@ class SubscriptionActivity : AppCompatActivity() {
             { checkPendingPayment() },
             if (paymentPollAttempts <= MAX_PAYMENT_POLL_ATTEMPTS) PAYMENT_POLL_DELAY_MS else 10_000L
         )
+    }
+
+    private fun activatePaidCode(code: String) {
+        if (activatingPayment || isFinishing || isDestroyed) return
+        val reference = PendingPaymentStore.reference(this) ?: return
+        activatingPayment = true
+        Thread {
+            try {
+                val result = BarkaBackendClient(this).redeemActivationCode(code)
+                runOnUiThread {
+                    activatingPayment = false
+                    if (PendingPaymentStore.reference(this) != reference || isDestroyed) return@runOnUiThread
+                    if (result.success) {
+                        PendingPaymentStore.clear(this)
+                        syncPendingPlan()
+                        AppLogStore.add(this, "Paiement • Abonnement activé automatiquement.")
+                        Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                    } else {
+                        AppLogStore.add(this, "Paiement • Activation automatique refusée : ${result.message}")
+                        showActivationCode(code)
+                    }
+                }
+            } catch (_: Exception) {
+                activatingPayment = false
+                runOnUiThread { if (!isDestroyed && PendingPaymentStore.reference(this) == reference) {
+                    schedulePaymentCheck()
+                } }
+            }
+        }.start()
     }
 
     private fun showActivationCode(code: String) {

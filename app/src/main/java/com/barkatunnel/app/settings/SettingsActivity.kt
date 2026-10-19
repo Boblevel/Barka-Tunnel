@@ -139,6 +139,14 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/barkaTunnel")))
         }
 
+        findViewById<MaterialButton>(R.id.shopButton).setOnClickListener {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://rhaffservice.com/")))
+            } catch (_: android.content.ActivityNotFoundException) {
+                android.widget.Toast.makeText(this, R.string.browser_unavailable, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+
     }
 
     private fun rateApplication() {

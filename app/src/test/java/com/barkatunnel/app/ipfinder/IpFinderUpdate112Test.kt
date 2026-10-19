@@ -139,4 +139,41 @@ class IpFinderUpdate112Test {
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_green),result.currentTextColor)
         } finally {controller.pause().stop().destroy()}
     }
+
+    @Test fun wifiAddressIsDisplayedLiveWithRedGreenAndSearchAction() {
+        val cm=context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val manager=shadowOf(cm);manager.clearAllNetworks()
+        val network=org.robolectric.shadows.ShadowNetwork.newInstance(43)
+        manager.addNetwork(network,org.robolectric.shadows.ShadowNetworkInfo.newInstance(
+            android.net.NetworkInfo.DetailedState.CONNECTED,android.net.ConnectivityManager.TYPE_WIFI,0,true,true))
+        val capabilities=org.robolectric.shadows.ShadowNetworkCapabilities.newInstance()
+        shadowOf(capabilities).addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+        manager.setNetworkCapabilities(network,capabilities)
+        fun link(ip:String)=android.net.LinkProperties().apply {
+            val address=org.robolectric.util.ReflectionHelpers.callConstructor(
+                android.net.LinkAddress::class.java,
+                org.robolectric.util.ReflectionHelpers.ClassParameter.from(java.net.InetAddress::class.java,java.net.InetAddress.getByName(ip)),
+                org.robolectric.util.ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType,24))
+            org.robolectric.util.ReflectionHelpers.callInstanceMethod<Boolean>(this,"addLinkAddress",
+                org.robolectric.util.ReflectionHelpers.ClassParameter.from(android.net.LinkAddress::class.java,address))
+        }
+        manager.setLinkProperties(network,link("192.168.1.50"))
+        val controller=Robolectric.buildActivity(IpFinderActivity::class.java).setup()
+        try {
+            val activity=controller.get()
+            val result=activity.findViewById<android.widget.TextView>(R.id.scanResult)
+            val button=activity.findViewById<View>(R.id.scanButton)
+            assertEquals("192.168.1.50",result.text.toString())
+            assertEquals(View.VISIBLE,button.visibility);assertTrue(button.isEnabled)
+            activity.findViewById<android.widget.EditText>(R.id.ipInput).setText("=192.168.1.50")
+            assertEquals(View.GONE,button.visibility)
+            assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_green),result.currentTextColor)
+            val changed=link("192.168.1.51");manager.setLinkProperties(network,changed)
+            manager.networkCallbacks.forEach { it.onLinkPropertiesChanged(network,changed) }
+            shadowOf(android.os.Looper.getMainLooper()).idle()
+            assertEquals("192.168.1.51",result.text.toString())
+            assertEquals(View.VISIBLE,button.visibility)
+            assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_red),result.currentTextColor)
+        } finally {controller.pause().stop().destroy()}
+    }
 }

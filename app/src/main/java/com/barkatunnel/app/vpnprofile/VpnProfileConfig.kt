@@ -31,7 +31,10 @@ sealed interface VpnProfileConfig {
         val host: String,
         val sni: String,
         val fingerprint: String?,
-        val allowInsecure: Boolean
+        val allowInsecure: Boolean,
+        val proxyHost: String? = null,
+        val proxyPort: Int? = null,
+        val proxyHeaders: Map<String, String> = emptyMap()
     ) : VpnProfileConfig
 
     data class UdpCustom(
@@ -114,6 +117,9 @@ object VpnProfileConfigParser {
         if (security !in setOf("tls", "none")) {
             throw BarkaBackendException("Sécurité VLESS invalide.")
         }
+        if (json.has("proxy_host") && security != "tls") {
+            throw BarkaBackendException("Le proxy GLOBAL MONDIAL exige TLS.")
+        }
 
         return VpnProfileConfig.Vless(
             address = requiredString(json, "address"),
@@ -127,8 +133,24 @@ object VpnProfileConfigParser {
             host = requiredString(json, "host"),
             sni = requiredString(json, "sni"),
             fingerprint = json.optString("fingerprint").trim().ifBlank { null },
-            allowInsecure = json.optBoolean("allow_insecure", false)
+            allowInsecure = json.optBoolean("allow_insecure", false),
+            proxyHost = optionalStringAny(json, "proxy_host"),
+            proxyPort = if (json.has("proxy_host")) requiredPort(json, "proxy_port") else null,
+            proxyHeaders = parseProxyHeaders(json)
         )
+    }
+
+    private fun parseProxyHeaders(json: JSONObject): Map<String, String> {
+        val headers = json.optJSONObject("proxy_headers") ?: return emptyMap()
+        if (headers.length() > 12) throw BarkaBackendException("Trop d’en-têtes proxy.")
+        return headers.keys().asSequence().associateWith { key ->
+            val value = headers.optString(key)
+            if (!Regex("[A-Za-z0-9-]{1,40}").matches(key) ||
+                value.length > 200 || value.any { it == '\r' || it == '\n' }) {
+                throw BarkaBackendException("En-tête proxy invalide.")
+            }
+            value
+        }
     }
 
     private fun parseVlessUri(raw: String, json: JSONObject): VpnProfileConfig.Vless {
@@ -175,7 +197,10 @@ object VpnProfileConfigParser {
             host = host,
             sni = sni,
             fingerprint = (query["fp"] ?: query["fingerprint"])?.trim()?.ifBlank { null },
-            allowInsecure = booleanQuery(query["allowInsecure"] ?: query["insecure"])
+            allowInsecure = booleanQuery(query["allowInsecure"] ?: query["insecure"]),
+            proxyHost = optionalStringAny(json, "proxy_host"),
+            proxyPort = if (json.has("proxy_host")) requiredPort(json, "proxy_port") else null,
+            proxyHeaders = parseProxyHeaders(json)
         )
     }
 

@@ -66,7 +66,11 @@ def test_subscription_uses_saved_price_and_delivers_original_duration(env,provid
         assert len(provider)==1
         row=svc.get_payment_for_device(ref,body['device_id']);assert row['amount']==1700
         code=svc.mark_payment_paid(ref)
+        access=svc.access_state(body['device_id'])
+        assert access['access_type']=='SUBSCRIPTION'
+        expiration=access['expires_at']
         assert code==svc.mark_payment_paid(ref)
+        assert svc.access_state(body['device_id'])['expires_at']==expiration
         with db.connect() as cx:
             stored=cx.execute('SELECT * FROM activation_codes WHERE payment_reference=?',(ref,)).fetchone()
             assert stored['plan_id']==plan

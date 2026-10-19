@@ -131,6 +131,9 @@ class XrayVlessEngine(
             .put("network", config.network)
             .put("security", config.security)
             .put("wsSettings", wsSettings)
+        if (!config.proxyHost.isNullOrBlank()) {
+            stream.put("sockopt", JSONObject().put("dialerProxy", "front-proxy"))
+        }
 
         if (config.security == "tls") {
             val tlsSettings = JSONObject()
@@ -154,10 +157,18 @@ class XrayVlessEngine(
             .put("settings", JSONObject().put("vnext", JSONArray().put(vnext)))
             .put("streamSettings", stream)
 
+        val outbounds = JSONArray().put(outbound)
+        if (!config.proxyHost.isNullOrBlank()) {
+            val headers = JSONObject()
+            config.proxyHeaders.forEach { (key, value) -> headers.put(key, value) }
+            outbounds.put(JSONObject().put("tag", "front-proxy").put("protocol", "http")
+                .put("settings", JSONObject().put("address", config.proxyHost)
+                    .put("port", config.proxyPort).put("headers", headers)))
+        }
         return JSONObject()
             .put("log", JSONObject().put("loglevel", "warning"))
             .put("inbounds", JSONArray().put(inbound))
-            .put("outbounds", JSONArray().put(outbound))
+            .put("outbounds", outbounds)
     }
 
     companion object {

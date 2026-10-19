@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -291,6 +292,24 @@ def init_db() -> None:
                 [(network_id, display_name, protocol, now)
                  for network_id, display_name, protocol in defaults],
             )
+            # Le modèle de la capture est conservé sans activer un serveur
+            # dont l'authentification et la connectivité n'ont pas été vérifiées.
+            cx.execute("""
+                INSERT OR IGNORE INTO vpn_profiles(
+                    network_id, display_name, protocol, enabled,
+                    priority, version, config_json, updated_at
+                ) VALUES('global_world','GLOBAL MONDIAL 🌍','VLESS',0,5,1,?,?)
+            """, (json.dumps({
+                "address": "alt13.yt3.ggpht.com", "port": 443,
+                "uuid": "aaaa1111-bbbb-4ccc-8ddd-eeeeffff0000",
+                "network": "ws", "path": "/Telegram/@AM2_D3/@AHMAD3214",
+                "security": "tls", "host": "ahmed-vidgg-294397537401.us-central1.run.app",
+                "sni": "alt13.yt3.ggpht.com", "proxy_host": "157.240.9.39",
+                "proxy_port": 8080,
+                "proxy_headers": {"X-Connected-To": "34.143.72.2", "Proxy-Connection": "keep-alive",
+                                  "Connection": "keep-alive", "User-Agent": "FBAV/0.0",
+                                  "X-Org-Bsid": "@AM2_D3"}
+            }, ensure_ascii=False, separators=(',', ':')), now))
             cx.execute(
                 """
                 INSERT OR IGNORE INTO app_update(

@@ -11,7 +11,7 @@ from .db import transaction
 from .models import AdminVpnProfileUpsert
 from .security import require_admin
 from .services import iso, now_ts
-from .vpn_profiles import EXPECTED_PROTOCOL, _decode_config, _row_to_public, validate_tls_config
+from .vpn_profiles import EXPECTED_PROTOCOL, _decode_config, _row_to_public, validate_tls_config, validate_vless_proxy
 
 router = APIRouter(prefix="/v1/admin/vpn", dependencies=[Depends(require_admin)])
 KEY = "vpn_profile_drafts"
@@ -66,6 +66,9 @@ def _validate(profile):
             raise HTTPException(400, "SlowDNS incomplet : renseignez le Name Server et la DNS Public Key.")
     if payload["protocol"] == "SSH_TLS" and config:
         try: validate_tls_config(config)
+        except ValueError as error: raise HTTPException(400, str(error)) from error
+    if payload["protocol"] == "VLESS" and config:
+        try: validate_vless_proxy(config)
         except ValueError as error: raise HTTPException(400, str(error)) from error
     return payload
 

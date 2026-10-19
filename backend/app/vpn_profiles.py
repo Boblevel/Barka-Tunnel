@@ -10,6 +10,7 @@ EXPECTED_PROTOCOL = {
     "moov_tiktok": "SSH_TLS",
     "orange_bf": "VLESS",
     "telecel_bf": "UDP",
+    "global_world": "VLESS",
 }
 
 
@@ -107,6 +108,8 @@ def upsert_admin_profile(payload: dict) -> dict:
 
     if protocol == "SSH_TLS" and config:
         validate_tls_config(config)
+    if protocol == "VLESS" and config:
+        validate_vless_proxy(config)
     now = now_ts()
     encoded = json.dumps(config, ensure_ascii=False, separators=(",", ":"))
 
@@ -156,5 +159,28 @@ def validate_tls_config(config):
         value=config.get(key,default)
         if isinstance(value,bool) or not isinstance(value,int) or not 1<=value<=65535:
             raise ValueError('Port TLS/UDPGW invalide : '+key)
+    if config.get('allow_insecure'):
+        raise ValueError('Le certificat TLS doit être vérifié.')
+
+
+def validate_vless_proxy(config):
+    proxy_host = config.get('proxy_host')
+    if proxy_host is None:
+        return
+    if not isinstance(proxy_host, str) or not proxy_host.strip() or len(proxy_host) > 253:
+        raise ValueError('Adresse du proxy invalide.')
+    if config.get('security') != 'tls' or config.get('network') != 'ws':
+        raise ValueError('Le proxy VLESS exige WebSocket et TLS.')
+    port = config.get('proxy_port')
+    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+        raise ValueError('Port du proxy invalide.')
+    headers = config.get('proxy_headers', {})
+    if not isinstance(headers, dict) or len(headers) > 12:
+        raise ValueError('En-têtes du proxy invalides.')
+    import re
+    for key, value in headers.items():
+        if not isinstance(key, str) or not re.fullmatch(r'[A-Za-z0-9-]{1,40}', key) or \
+           not isinstance(value, str) or len(value) > 200 or '\r' in value or '\n' in value:
+            raise ValueError('En-tête du proxy invalide.')
     if config.get('allow_insecure'):
         raise ValueError('Le certificat TLS doit être vérifié.')

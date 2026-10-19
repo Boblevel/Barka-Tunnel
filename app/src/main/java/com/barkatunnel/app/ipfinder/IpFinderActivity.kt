@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import com.barkatunnel.app.R
 import com.barkatunnel.app.ipfinder.assistant.BarkaAssistantService
 import com.barkatunnel.app.journal.AppLogStore
+import com.barkatunnel.app.networkinfo.NetworkIpProvider
 import com.barkatunnel.app.ui.SystemBars
 import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.google.android.material.button.MaterialButton
@@ -52,10 +53,12 @@ class IpFinderActivity : AppCompatActivity() {
     private var receiverRegistered = false
     private var attempts = 0
     private var cycleRequestRetries = 0
+    private var failedCycles = 0
     private var previousIp: String? = null
     private var searchPatterns: List<String> = emptyList()
 
     private lateinit var scanButton: MaterialButton
+    private lateinit var manualAirplaneButton: MaterialButton
     private lateinit var stopButton: MaterialButton
     private lateinit var setAssistantButton: MaterialButton
     private lateinit var statusText: TextView
@@ -79,7 +82,11 @@ class IpFinderActivity : AppCompatActivity() {
             if (succeeded) {
                 waitForCellularIp(0)
             } else if (BarkaAssistantService.isSelected(this@IpFinderActivity)) {
-                handler.postDelayed({ requestNextCycle() }, NEXT_CYCLE_DELAY_MS)
+                if (++failedCycles >= MAX_FAILED_CYCLES) {
+                    stopSearch(getString(R.string.ip_finder_cycle_failed), R.color.barka_red)
+                } else {
+                    handler.postDelayed({ requestNextCycle() }, NEXT_CYCLE_DELAY_MS)
+                }
             } else {
                 stopSearch(
                     getString(R.string.ip_finder_cycle_failed),
@@ -96,6 +103,7 @@ class IpFinderActivity : AppCompatActivity() {
 
         ipInput = findViewById(R.id.ipInput)
         scanButton = findViewById(R.id.scanButton)
+        manualAirplaneButton = findViewById(R.id.manualAirplaneButton)
         stopButton = findViewById(R.id.stopButton)
         setAssistantButton = findViewById(R.id.setAssistantButton)
         statusText = findViewById(R.id.scanStatus)
@@ -128,6 +136,10 @@ class IpFinderActivity : AppCompatActivity() {
             } else {
                 startSearch()
             }
+        }
+        manualAirplaneButton.setOnClickListener {
+            runCatching { startActivity(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) }
+                .onFailure { startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS)) }
         }
 
         setAssistantButton.setOnClickListener {
@@ -250,25 +262,26 @@ class IpFinderActivity : AppCompatActivity() {
             )
         )
 
-        val currentIp = currentCellularIpv4()
+        val currentIp = currentVisibleIpv4()
         if (!searching) searchPatterns = parsePatterns(ipInput.text.toString())
         val compatible = currentIp != null && matchesSearchPattern(currentIp)
         resultText.text = currentIp ?: "..."
         resultText.setTextColor(ContextCompat.getColor(this, if (compatible) R.color.barka_green else R.color.barka_red))
         scanButton.visibility = if (compatible) View.GONE else View.VISIBLE
-        scanButton.isEnabled = !searching && !wifiActive && currentIp != null
+        if (compatible) manualAirplaneButton.visibility = View.GONE
+        scanButton.isEnabled = !searching && currentIp != null
         if (searching && compatible) { completeSearch(currentIp!!); return }
         if (!searching) {
             statusText.setText(R.string.ip_finder_idle)
             statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_blue))
-            progressText.setText(R.string.ip_finder_current_cellular_ip)
+            progressText.setText(R.string.ip_finder_current_ip)
 
         }
     }
 
     private fun startSearch() {
         searchPatterns = parsePatterns(ipInput.text.toString())
-        val current = currentCellularIpv4()
+        val current = currentVisibleIpv4()
         if (current != null && matchesSearchPattern(current)) { refreshNetworkState(); return }
         if (isWifiActive()) {
             Toast.makeText(
@@ -298,6 +311,8 @@ class IpFinderActivity : AppCompatActivity() {
         searchPatterns = parsePatterns(rawPattern)
         previousIp = currentCellularIpv4()
         attempts = 0
+        failedCycles = 0
+        manualAirplaneButton.visibility = View.GONE
         searching = true
         vibrateOnce()
         scanButton.isEnabled = false
@@ -384,6 +399,7 @@ class IpFinderActivity : AppCompatActivity() {
         handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)
         scanButton.isEnabled = true
+        manualAirplaneButton.visibility = View.GONE
         stopButton.visibility = View.INVISIBLE
         statusText.setText(R.string.ip_finder_found)
         statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_green))
@@ -407,6 +423,8 @@ class IpFinderActivity : AppCompatActivity() {
         scanButton.isEnabled = true
         stopButton.visibility = View.INVISIBLE
         refreshNetworkState()
+        manualAirplaneButton.visibility = if (colorRes == R.color.barka_red &&
+            BarkaAssistantService.isSelected(this)) View.VISIBLE else View.GONE
         statusText.text = message
         statusText.setTextColor(ContextCompat.getColor(this, colorRes))
         AppLogStore.add(this, "IP Finder • $message")
@@ -489,6 +507,17 @@ class IpFinderActivity : AppCompatActivity() {
             }
             .firstOrNull()
 
+    private fun currentVisibleIpv4(): String? {
+        val wifi = if (isWifiActive()) connectivityManager.allNetworks.asSequence()
+            .filter { connectivityManager.getNetworkCapabilities(it)
+                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true }
+            .mapNotNull { network -> connectivityManager.getLinkProperties(network)?.linkAddresses
+                ?.asSequence()?.map { it.address }?.filterIsInstance<Inet4Address>()
+                ?.firstOrNull { !it.isLoopbackAddress && !it.isLinkLocalAddress }?.hostAddress }
+            .firstOrNull() else null
+        return wifi ?: NetworkIpProvider.getCellularIpv4(this, includeVpn = false)
+    }
+
     private fun isWifiActive(): Boolean =
         connectivityManager.allNetworks.any { network ->
             connectivityManager.getNetworkCapabilities(network)
@@ -558,6 +587,7 @@ class IpFinderActivity : AppCompatActivity() {
         private const val IP_FINDER_VIBRATION_MS = 70L
         private const val MAX_NETWORK_POLLS = 15
         private const val MAX_SERVICE_READY_RETRIES = 20
+        private const val MAX_FAILED_CYCLES = 2
         private const val DISCONNECT_SETTLE_DELAY_MS = 900L
         private const val SERVICE_READY_RETRY_DELAY_MS = 500L
         private const val NETWORK_POLL_DELAY_MS = 1_000L

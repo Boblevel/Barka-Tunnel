@@ -847,6 +847,8 @@ class MainActivity : AppCompatActivity() {
                 ?: NetworkOption.ALL.firstOrNull()?.id
 
         val checkTiktok = dialog.findViewById<TextView>(R.id.optionTiktokCheck)
+        val checkGlobal = dialog.findViewById<TextView>(R.id.optionGlobalCheck)
+        val nameGlobal = dialog.findViewById<TextView>(R.id.optionGlobalName)
         val nameTiktok = dialog.findViewById<TextView>(R.id.optionTiktokName)
         val checkMoov = dialog.findViewById<TextView>(R.id.optionMoovCheck)
         val checkOrange = dialog.findViewById<TextView>(R.id.optionOrangeCheck)
@@ -866,11 +868,13 @@ class MainActivity : AppCompatActivity() {
         showAvailability(nameMoov, "moov_bf", "MOOV-AFRICA BF")
         showAvailability(nameOrange, "orange_bf", "ORANGE BF")
         showAvailability(nameTelecel, "telecel_bf", "TELECEL BF")
+        showAvailability(nameGlobal, "global_world", "GLOBAL MONDIAL 🌍")
 
         checkTiktok.text = if (selectedId == "moov_tiktok") "✓" else "○"
         checkMoov.text = if (selectedId == "moov_bf") "✓" else "○"
         checkOrange.text = if (selectedId == "orange_bf") "✓" else "○"
         checkTelecel.text = if (selectedId == "telecel_bf") "✓" else "○"
+        checkGlobal.text = if (selectedId == "global_world") "✓" else "○"
 
         fun select(networkId: String) {
             if (!allowNetworkSelection()) { dialog.dismiss(); return }
@@ -916,6 +920,8 @@ class MainActivity : AppCompatActivity() {
 
         dialog.findViewById<android.view.View>(R.id.optionTelecel)
             .setOnClickListener { select("telecel_bf") }
+        dialog.findViewById<android.view.View>(R.id.optionGlobal)
+            .setOnClickListener { select("global_world") }
 
         dialog.show()
         dialog.window?.decorView?.let(PressFeedback::applyToTree)
@@ -1393,7 +1399,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundDrawable(
                 ColorDrawable(Color.TRANSPARENT)
             )
-            setGravity(Gravity.END)
+            setGravity(Gravity.START)
             setLayout(
                 (resources.displayMetrics.widthPixels * 0.82).toInt(),
                 WindowManager.LayoutParams.MATCH_PARENT
@@ -1404,6 +1410,8 @@ class MainActivity : AppCompatActivity() {
             .setOnClickListener {
                 dialog.dismiss()
             }
+        dialog.findViewById<android.view.View>(R.id.menuClose)
+            .setOnClickListener { dialog.dismiss() }
 
         dialog.findViewById<android.view.View>(R.id.menuGuide)
             .setOnClickListener {
@@ -1852,6 +1860,7 @@ class MainActivity : AppCompatActivity() {
         val drawable = when (network?.id) {
             "orange_bf" -> R.drawable.ic_operator_orange
             "telecel_bf" -> R.drawable.ic_operator_telecel
+            "global_world" -> R.drawable.ic_global_world
             else -> R.drawable.moov_africa_official
         }
 
