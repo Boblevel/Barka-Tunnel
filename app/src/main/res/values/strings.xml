@@ -277,4 +277,15 @@
     <string name="remote_profile_update_title">Configuration Barka Tunnel mise à jour</string>
     <string name="remote_profile_update_message">Une nouvelle configuration serveur a été récupérée et synchronisée.</string>
     <string name="remote_apk_update_title">Nouvelle version Barka Tunnel</string>
+    <string name="suggestions_title">Suggestions</string>
+    <string name="suggestions_intro">Partagez vos idées pour améliorer Barka Tunnel.</string>
+    <string name="suggestions_hint">Votre suggestion (3 à 2 000 caractères)</string>
+    <string name="suggestions_send">Envoyer ma suggestion</string>
+    <string name="suggestions_checking">Vérification des envois…</string>
+    <string name="suggestions_open">Les suggestions sont ouvertes.</string>
+    <string name="suggestions_closed">Les suggestions sont temporairement fermées par l’administration.</string>
+    <string name="suggestions_sending">Envoi en cours…</string>
+    <string name="suggestions_sent">Merci ! Votre suggestion a été envoyée.</string>
+    <string name="suggestions_invalid">Écrivez entre 3 et 2 000 caractères.</string>
+    <string name="suggestions_retry">Actualiser</string>
 </resources>

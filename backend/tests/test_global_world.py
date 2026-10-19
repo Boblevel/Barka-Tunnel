@@ -18,6 +18,7 @@ def test_global_profile_is_seeded_private_and_never_overwritten(tmp_path):
     assert cfg['proxy_host'] == '157.240.9.39'
     assert cfg['proxy_port'] == 8080
     assert cfg['proxy_headers']['X-Connected-To'] == '34.143.72.2'
+    assert cfg['proxy_headers']['X-Iorg-Bsid'] == '@AM2_D3'
     services.start_trial('global-device-12345678')
     with pytest.raises(LookupError):
         vpn_profiles.get_profile_for_device('global-device-12345678', 'global_world')
@@ -32,7 +33,7 @@ def test_proxy_rejects_crlf_and_invalid_port_before_publication(tmp_path):
     load_modules(tmp_path)
     from app.vpn_profiles import validate_vless_proxy
     safe = {'security': 'tls', 'network': 'ws', 'proxy_host': '157.240.9.39', 'proxy_port': 8080,
-            'proxy_headers': {'X-Org-Bsid': '@AM2_D3'}}
+            'proxy_headers': {'X-Iorg-Bsid': '@AM2_D3'}}
     validate_vless_proxy(safe)
     for bad in [dict(safe, proxy_port=70000), dict(safe, security='none'),
                 dict(safe, proxy_headers={'X-Test': 'safe\r\nInjected: yes'})]:

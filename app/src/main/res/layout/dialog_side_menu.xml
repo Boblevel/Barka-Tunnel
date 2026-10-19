@@ -114,6 +114,13 @@
                 android:drawableTint="@color/barka_red"
                 android:text="@string/menu_support" />
 
+            <TextView
+                android:id="@+id/menuSuggestions"
+                style="@style/BarkaMenuItem"
+                android:drawableStart="@drawable/ic_menu_suggestions"
+                android:drawableTint="@color/barka_blue"
+                android:text="@string/suggestions_title" />
+
             <View
                 android:id="@+id/menuJournal"
                 android:layout_width="1dp"

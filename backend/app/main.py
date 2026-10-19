@@ -142,6 +142,8 @@ from .vpn_drafts import router as vpn_drafts_router
 app.include_router(vpn_drafts_router)
 from .apk_release import router as apk_release_router
 app.include_router(apk_release_router)
+from .suggestions import router as suggestions_router
+app.include_router(suggestions_router)
 
 
 @app.get("/health")

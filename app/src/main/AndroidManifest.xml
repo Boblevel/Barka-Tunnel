@@ -52,6 +52,8 @@
             android:name=".support.SupportActivity"
             android:exported="false" />
 
+        <activity android:name=".suggestions.SuggestionsActivity" android:exported="false" />
+
         <activity android:name=".consumption.ConsumptionActivity" android:exported="false" />
 
         <activity

@@ -1462,6 +1462,11 @@ class MainActivity : AppCompatActivity() {
                 startActivity(Intent(this, com.barkatunnel.app.reseller.ResellerPurchaseActivity::class.java))
             }
 
+        dialog.findViewById<android.view.View>(R.id.menuSuggestions).setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, com.barkatunnel.app.suggestions.SuggestionsActivity::class.java))
+        }
+
         dialog.findViewById<android.view.View>(R.id.menuSupport)
             .setOnClickListener {
                 dialog.dismiss()

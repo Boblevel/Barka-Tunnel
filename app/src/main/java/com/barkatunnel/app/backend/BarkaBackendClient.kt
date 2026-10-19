@@ -62,6 +62,19 @@ class BarkaBackendClient(context: Context) {
         }
     }
 
+    fun suggestionsEnabled(): Boolean {
+        val body = getObject("/v1/suggestions/config", BarkaVpnService.connectedSocksPort())
+        if (body.opt("enabled") !is Boolean) throw BarkaBackendException("Réponse serveur invalide.")
+        return body.getBoolean("enabled")
+    }
+
+    fun sendSuggestion(message: String, requestId: String) {
+        val body = post("/v1/suggestions", JSONObject()
+            .put("device_id", deviceId).put("message", message).put("request_id", requestId),
+            BarkaVpnService.connectedSocksPort())
+        if (!body.optBoolean("success", false)) throw BarkaBackendException("Envoi non confirmé. Réessayez.")
+    }
+
     fun getPricing(): JSONObject = getObject("/v1/pricing", BarkaVpnService.connectedSocksPort())
 
     fun startPayment(planId: String, expectedAmount: Int? = null): BackendPaymentStart {

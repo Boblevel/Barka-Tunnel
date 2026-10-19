@@ -181,6 +181,9 @@ object VpnProfileConfigParser {
         if (security !in setOf("tls", "none")) {
             throw BarkaBackendException("Sécurité VLESS invalide.")
         }
+        if (json.has("proxy_host") && security != "tls") {
+            throw BarkaBackendException("Le profil proxy attend TLS.")
+        }
         val host = query["host"].orEmpty().ifBlank { address }
         val sni = query["sni"].orEmpty().ifBlank { host }
         val rawPath = query["path"].orEmpty().ifBlank { "/" }

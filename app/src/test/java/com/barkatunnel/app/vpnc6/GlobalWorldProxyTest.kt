@@ -20,7 +20,7 @@ class GlobalWorldProxyTest {
       "path":"/Telegram/@AM2_D3/@AHMAD3214","security":"tls",
       "host":"ahmed-vidgg-294397537401.us-central1.run.app","sni":"alt13.yt3.ggpht.com",
       "proxy_host":"157.240.9.39","proxy_port":8080,
-      "proxy_headers":{"X-Connected-To":"34.143.72.2","X-Org-Bsid":"@AM2_D3"}}"""
+      "proxy_headers":{"X-Connected-To":"34.143.72.2","X-Iorg-Bsid":"@AM2_D3"}}"""
 
     @Test fun vlessUsesHttpConnectProxyForItsUnderlyingWebSocket() {
         val profile = VpnProfileConfigParser.parse(VpnProfileProtocol.VLESS, config) as VpnProfileConfig.Vless
@@ -37,6 +37,13 @@ class GlobalWorldProxyTest {
         assertEquals("http", proxy.getString("protocol"))
         assertEquals("157.240.9.39", proxy.getJSONObject("settings").getString("address"))
         assertEquals("34.143.72.2", proxy.getJSONObject("settings").getJSONObject("headers").getString("X-Connected-To"))
+    }
+
+    @Test(expected = com.barkatunnel.app.backend.BarkaBackendException::class)
+    fun proxyUriCannotRemoveTls() {
+        val json = JSONObject(config).put("uri",
+            "vless://aaaa1111-bbbb-4ccc-8ddd-eeeeffff0000@alt13.yt3.ggpht.com:443?type=ws&security=none")
+        VpnProfileConfigParser.parse(VpnProfileProtocol.VLESS, json.toString())
     }
 
     @Test(expected = com.barkatunnel.app.backend.BarkaBackendException::class)

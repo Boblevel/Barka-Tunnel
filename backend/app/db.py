@@ -123,6 +123,17 @@ def init_db() -> None:
                     received_at INTEGER NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS suggestions(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id TEXT NOT NULL,
+                    request_id TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    UNIQUE(device_id, request_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_suggestions_device_time
+                ON suggestions(device_id, created_at DESC);
+
                 CREATE TABLE IF NOT EXISTS admin_state(
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL,
@@ -308,7 +319,7 @@ def init_db() -> None:
                 "proxy_port": 8080,
                 "proxy_headers": {"X-Connected-To": "34.143.72.2", "Proxy-Connection": "keep-alive",
                                   "Connection": "keep-alive", "User-Agent": "FBAV/0.0",
-                                  "X-Org-Bsid": "@AM2_D3"}
+                                  "X-Iorg-Bsid": "@AM2_D3"}
             }, ensure_ascii=False, separators=(',', ':')), now))
             cx.execute(
                 """
