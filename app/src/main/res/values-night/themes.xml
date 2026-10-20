@@ -2,6 +2,7 @@
 <resources>
     <style name="Theme.BarkaTunnel" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
+        <item name="android:windowAnimationStyle">@style/BarkaPageAnimation</item>
         <item name="android:statusBarColor">@color/barka_background</item>
         <item name="android:navigationBarColor">@color/barka_background</item>
         <item name="android:windowLightStatusBar">false</item>

@@ -91,15 +91,9 @@
             android:contentDescription="@string/togo"
             android:src="@drawable/ic_flag_tg" />
 
-        <TextView
-            android:id="@+id/optionMoovCheck"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:gravity="center"
-            android:text="✓"
-            android:textColor="@color/barka_blue"
-            android:textSize="25sp"
-            android:textStyle="bold" />
+        <ImageView android:id="@+id/optionMoovCheck"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
 
     <LinearLayout
@@ -138,14 +132,9 @@
             android:contentDescription="@string/burkina_faso"
             android:src="@drawable/ic_flag_bf" />
 
-        <TextView
-            android:id="@+id/optionTiktokCheck"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:gravity="center"
-            android:text="○"
-            android:textColor="@color/barka_text_secondary"
-            android:textSize="25sp" />
+        <ImageView android:id="@+id/optionTiktokCheck"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
 
     <LinearLayout
@@ -183,14 +172,9 @@
             android:contentDescription="@string/burkina_faso"
             android:src="@drawable/ic_flag_bf" />
 
-        <TextView
-            android:id="@+id/optionOrangeCheck"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:gravity="center"
-            android:text="○"
-            android:textColor="@color/barka_text_secondary"
-            android:textSize="25sp" />
+        <ImageView android:id="@+id/optionOrangeCheck"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
 
     <LinearLayout
@@ -228,14 +212,9 @@
             android:contentDescription="@string/burkina_faso"
             android:src="@drawable/ic_flag_bf" />
 
-        <TextView
-            android:id="@+id/optionTelecelCheck"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:gravity="center"
-            android:text="○"
-            android:textColor="@color/barka_text_secondary"
-            android:textSize="25sp" />
+        <ImageView android:id="@+id/optionTelecelCheck"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
     <LinearLayout
         android:id="@+id/optionGlobal"
@@ -247,25 +226,19 @@
         android:orientation="horizontal"
         android:paddingHorizontal="16dp">
         <ImageView android:layout_width="56dp" android:layout_height="56dp"
-            android:contentDescription="GLOBAL MONDIAL" android:padding="14dp" android:scaleType="fitCenter" android:src="@drawable/ic_global_world" />
+            android:contentDescription="GLOBAL MONDIAL" android:padding="14dp" android:scaleType="fitCenter" android:src="@drawable/global_africa_red" />
         <TextView android:id="@+id/optionGlobalName"
             android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_marginStart="12dp" android:layout_weight="1"
             android:text="GLOBAL MONDIAL" android:textColor="@color/barka_text"
             android:textSize="16sp" android:textStyle="bold" />
-        <ImageView android:layout_width="18dp" android:layout_height="13dp"
-            android:layout_marginEnd="3dp" android:contentDescription="@string/burkina_faso"
-            android:src="@drawable/ic_flag_bf" />
-        <ImageView android:layout_width="18dp" android:layout_height="13dp"
-            android:layout_marginEnd="3dp" android:contentDescription="@string/niger"
-            android:src="@drawable/ic_flag_ne" />
-        <ImageView android:layout_width="18dp" android:layout_height="13dp"
-            android:layout_marginEnd="3dp" android:contentDescription="@string/togo"
-            android:src="@drawable/ic_flag_tg" />
-        <TextView android:id="@+id/optionGlobalCheck"
-            android:layout_width="38dp" android:layout_height="38dp"
-            android:gravity="center" android:text="○"
-            android:textColor="@color/barka_text_secondary" android:textSize="25sp" />
+        <ImageView android:layout_width="28dp" android:layout_height="28dp"
+            android:layout_marginEnd="6dp" android:padding="3dp"
+            android:contentDescription="@string/global_coverage"
+            android:src="@drawable/ic_global_world" />
+        <ImageView android:id="@+id/optionGlobalCheck"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
 </LinearLayout>
 </ScrollView>

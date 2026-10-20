@@ -51,7 +51,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:background="@drawable/bg_settings_header"
+            android:background="@drawable/bg_menu_active"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:padding="18dp">
@@ -73,7 +73,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/app_name"
-                    android:textColor="@color/white"
+                    android:textColor="@color/barka_text"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
@@ -83,7 +83,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="@string/version_format"
-                    android:textColor="#D8E8FF"
+                    android:textColor="@color/barka_text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
@@ -119,7 +119,8 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/themeButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="8dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
@@ -129,19 +130,21 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
-                app:cornerRadius="14dp"
+                app:cornerRadius="20dp"
 
-                app:icon="@drawable/ic_theme_barka"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:iconTint="@color/barka_blue"
+                app:icon="@drawable/tile_ic_theme_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="16dp"
+                app:iconTint="@null"
                 app:strokeColor="@color/barka_border"
-                app:strokeWidth="1dp" />
+                app:strokeWidth="0dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/languageButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
@@ -151,14 +154,15 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
-                app:cornerRadius="14dp"
+                app:cornerRadius="20dp"
 
-                app:icon="@drawable/ic_language_barka"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:iconTint="@color/barka_blue"
+                app:icon="@drawable/tile_ic_language_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="16dp"
+                app:iconTint="@null"
                 app:strokeColor="@color/barka_border"
-                app:strokeWidth="1dp" />
+                app:strokeWidth="0dp" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -171,7 +175,8 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="70dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:gravity="center_vertical"
@@ -217,7 +222,8 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/vpnSettingsButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
@@ -227,14 +233,15 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
-                app:cornerRadius="14dp"
+                app:cornerRadius="20dp"
 
-                app:icon="@drawable/ic_consumption_barka"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:iconTint="@color/barka_blue"
+                app:icon="@drawable/tile_ic_consumption_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="16dp"
+                app:iconTint="@null"
                 app:strokeColor="@color/barka_border"
-                app:strokeWidth="1dp" />
+                app:strokeWidth="0dp" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -248,7 +255,8 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/checkUpdateButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="8dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
@@ -258,19 +266,21 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
-                app:cornerRadius="14dp"
+                app:cornerRadius="20dp"
 
-                app:icon="@drawable/ic_refresh_barka"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:iconTint="@color/barka_blue"
+                app:icon="@drawable/tile_ic_refresh_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="16dp"
+                app:iconTint="@null"
                 app:strokeColor="@color/barka_border"
-                app:strokeWidth="1dp" />
+                app:strokeWidth="0dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/shareAppButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
@@ -280,18 +290,20 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
-                app:cornerRadius="14dp"
-                app:icon="@drawable/ic_share_barka"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:iconTint="@color/barka_blue"
+                app:cornerRadius="20dp"
+                app:icon="@drawable/tile_ic_share_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="16dp"
+                app:iconTint="@null"
                 app:strokeColor="@color/barka_border"
-                app:strokeWidth="1dp" />
+                app:strokeWidth="0dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/rateAppButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
@@ -301,18 +313,20 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
-                app:cornerRadius="14dp"
-                app:icon="@drawable/ic_rate_barka"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:iconTint="@color/barka_blue"
+                app:cornerRadius="20dp"
+                app:icon="@drawable/tile_ic_rate_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="16dp"
+                app:iconTint="@null"
                 app:strokeColor="@color/barka_border"
-                app:strokeWidth="1dp" />
+                app:strokeWidth="0dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/telegramChannelButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
@@ -322,19 +336,21 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
-                app:cornerRadius="14dp"
+                app:cornerRadius="20dp"
 
-                app:icon="@drawable/ic_telegram_barka"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:iconTint="@color/barka_blue"
+                app:icon="@drawable/tile_ic_telegram_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="16dp"
+                app:iconTint="@null"
                 app:strokeColor="@color/barka_border"
-                app:strokeWidth="1dp" />
+                app:strokeWidth="0dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/shopButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
                 android:layout_marginTop="12dp"
                 android:gravity="start|center_vertical"
                 android:paddingHorizontal="18dp"
@@ -344,13 +360,14 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:backgroundTint="@color/barka_card"
-                app:cornerRadius="14dp"
-                app:icon="@drawable/ic_menu_card_line"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:iconTint="@color/barka_blue"
+                app:cornerRadius="20dp"
+                app:icon="@drawable/tile_ic_shop_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="16dp"
+                app:iconTint="@null"
                 app:strokeColor="@color/barka_border"
-                app:strokeWidth="1dp" />
+                app:strokeWidth="0dp" />
 
             <TextView
                 android:layout_width="match_parent"

@@ -16,7 +16,13 @@ internal object TunnelControlTransport {
     private val clients = ConcurrentHashMap<Int, OkHttpClient>()
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
-    fun request(url: String, payload: JSONObject?, socksPort: Int): JSONObject {
+    fun request(url: String, payload: JSONObject?, socksPort: Int): JSONObject =
+        JSONObject(requestText(url, payload, socksPort))
+
+    fun requestArray(url: String, socksPort: Int): org.json.JSONArray =
+        org.json.JSONArray(requestText(url, null, socksPort))
+
+    private fun requestText(url: String, payload: JSONObject?, socksPort: Int): String {
         require(socksPort in 1..65535)
         val request = Request.Builder().url(url)
             .header("Accept", "application/json")
@@ -40,11 +46,12 @@ internal object TunnelControlTransport {
                 val body = response.body ?: throw IOException("Réponse serveur vide")
                 val source = body.source()
                 if (source.request(65_537L)) throw IOException("Réponse serveur trop volumineuse")
-                val data = JSONObject(source.readUtf8())
+                val text = source.readUtf8()
                 if (!response.isSuccessful) throw BarkaBackendException(
-                    data.optString("detail", "Erreur serveur HTTP ${response.code}")
+                    runCatching { JSONObject(text).optString("detail", "Erreur serveur HTTP ${response.code}") }
+                        .getOrDefault("Erreur serveur HTTP ${response.code}")
                         .replace(Regex("(?i)saspay"), "service de paiement"))
-                return data
+                return text
             }
         } catch (error: BarkaBackendException) {
             throw error

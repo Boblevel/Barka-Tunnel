@@ -45,7 +45,8 @@ class BarkaBackendClient(context: Context) {
     fun startTrial(): BackendTrialState {
         val body = post(
             path = "/v1/trial/start",
-            payload = JSONObject().put("device_id", deviceId)
+            payload = JSONObject().put("device_id", deviceId),
+            socksPort = BarkaVpnService.connectedSocksPort()
         )
         return BackendTrialState(
             access = parseAccess(body),
@@ -137,7 +138,8 @@ class BarkaBackendClient(context: Context) {
             path = "/v1/vpn/profile",
             payload = JSONObject()
                 .put("device_id", deviceId)
-                .put("network_id", networkId)
+                .put("network_id", networkId),
+            socksPort = BarkaVpnService.connectedSocksPort()
         )
 
         val meta = parseVpnProfileMeta(body)
@@ -277,6 +279,9 @@ class BarkaBackendClient(context: Context) {
     }
 
     private fun getArray(path: String): org.json.JSONArray {
+        BarkaVpnService.connectedSocksPort()?.let {
+            return TunnelControlTransport.requestArray(BASE_URL + path, it)
+        }
         val connection = (URL(BASE_URL + path).openConnection() as HttpURLConnection)
         try {
             connection.requestMethod = "GET"

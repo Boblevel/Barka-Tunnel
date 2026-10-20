@@ -65,7 +65,10 @@ class VpnProfileRepository(
             enabledProfiles.forEach { meta ->
                 try {
                     val before = secureStore.cachedVersion(meta.networkId)
-                    fetchAndCache(meta.networkId)
+                    val cached = memoryProfiles[meta.networkId] ?: secureStore.load(meta.networkId)
+                    if (cached == null || cached.version != meta.version || !isUsable(meta.networkId, cached)) {
+                        fetchAndCache(meta.networkId)
+                    }
                     downloadedCount += 1
                     if (meta.version > before) updatedCount += 1
                 } catch (error: Exception) {

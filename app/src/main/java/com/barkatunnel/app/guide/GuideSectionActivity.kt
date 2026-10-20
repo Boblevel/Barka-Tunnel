@@ -28,14 +28,14 @@ class GuideSectionActivity : AppCompatActivity() {
     }
 
     private fun contentFor(section: Int): SectionContent = when (section) {
-        1 -> SectionContent(R.string.guide_1_title, R.string.guide_1_text, R.drawable.ic_guide_barka)
-        2 -> SectionContent(R.string.guide_2_title, R.string.guide_2_text, R.drawable.ic_mobile_barka)
-        3 -> SectionContent(R.string.guide_3_title, R.string.guide_3_text, R.drawable.ic_menu_ip_finder)
-        4 -> SectionContent(R.string.guide_4_title, R.string.guide_4_text, R.drawable.ic_menu_card_line)
-        5 -> SectionContent(R.string.guide_5_title, R.string.guide_5_text, R.drawable.ic_menu_key_line)
-        6 -> SectionContent(R.string.guide_6_title, R.string.guide_6_text, R.drawable.ic_guide_connection)
-        7 -> SectionContent(R.string.guide_7_title, R.string.guide_7_text, R.drawable.ic_nav_journal)
-        else -> SectionContent(R.string.guide_8_title, R.string.guide_8_text, R.drawable.ic_menu_settings_line)
+        1 -> SectionContent(R.string.guide_1_title, R.string.guide_1_text, R.drawable.tile_ic_guide_barka)
+        2 -> SectionContent(R.string.guide_2_title, R.string.guide_2_text, R.drawable.tile_ic_mobile_barka)
+        3 -> SectionContent(R.string.guide_3_title, R.string.guide_3_text, R.drawable.tile_ic_menu_ip_finder)
+        4 -> SectionContent(R.string.guide_4_title, R.string.guide_4_text, R.drawable.tile_ic_menu_card_line)
+        5 -> SectionContent(R.string.guide_5_title, R.string.guide_5_text, R.drawable.tile_ic_menu_key_line)
+        6 -> SectionContent(R.string.guide_6_title, R.string.guide_6_text, R.drawable.tile_ic_guide_connection)
+        7 -> SectionContent(R.string.guide_7_title, R.string.guide_7_text, R.drawable.tile_ic_nav_journal)
+        else -> SectionContent(R.string.guide_8_title, R.string.guide_8_text, R.drawable.tile_ic_menu_settings_line)
     }
 
     private data class SectionContent(

@@ -24,6 +24,7 @@ class DraftSave(BaseModel):
 
 class DraftApply(BaseModel):
     revision: str = Field(min_length=64, max_length=64)
+    network_ids: list[str] | None = Field(default=None, min_length=1, max_length=5)
 
 
 def _snapshot(cx):
@@ -56,6 +57,8 @@ def _validate(profile):
     payload = AdminVpnProfileUpsert.model_validate(profile).model_dump()
     if payload["network_id"] not in EXPECTED_PROTOCOL:
         raise HTTPException(400, "Réseau inconnu.")
+    if payload["network_id"] == "global_world" and payload["display_name"] == "GLOBAL MONDIAL 🌍":
+        payload["display_name"] = "GLOBAL MONDIAL"
     config = payload["config"]
     if payload["enabled"] and not config:
         raise HTTPException(400, "Impossible d'activer un service sans configuration.")
@@ -64,7 +67,7 @@ def _validate(profile):
         ns = config.get("nameserver") or config.get("name_server") or config.get("ns")
         if not pub or not ns:
             raise HTTPException(400, "SlowDNS incomplet : renseignez le Name Server et la DNS Public Key.")
-    if payload["protocol"] == "SSH_TLS" and config:
+    if payload["protocol"] == "SSH_TLS" and config and payload["enabled"]:
         try: validate_tls_config(config)
         except ValueError as error: raise HTTPException(400, str(error)) from error
     if payload["protocol"] == "VLESS" and config:
@@ -104,8 +107,13 @@ def apply_drafts(body: DraftApply, response: Response):
         rows, drafts, state = _snapshot(cx)
         _check_revision(state["revision"], body.revision)
         versions = {r["network_id"]: r["version"] for r in rows}
+        selected = set(body.network_ids) if body.network_ids is not None else set(drafts)
+        if selected - set(drafts):
+            raise HTTPException(409, "Enregistrez les profils sélectionnés avant de les publier.")
         validated = []
         for network_id, draft in drafts.items():
+            if network_id not in selected:
+                continue
             if versions.get(network_id) != draft["base_version"]:
                 raise HTTPException(409, "Un profil publié a changé. Enregistrez à nouveau son brouillon avant de valider.")
             validated.append(_validate(draft["profile"]))
@@ -117,7 +125,12 @@ def apply_drafts(body: DraftApply, response: Response):
                        (p["display_name"].strip(), p["protocol"], int(p["enabled"]),
                         int(p["maintenance"]), p["priority"],
                         json.dumps(p["config"], ensure_ascii=False, separators=(",", ":")), now, p["network_id"]))
-        cx.execute("DELETE FROM admin_state WHERE key=?", (KEY,))
+        remaining = {key: value for key, value in drafts.items() if key not in selected}
+        if remaining:
+            cx.execute("UPDATE admin_state SET value=?,updated_at=? WHERE key=?",
+                       (json.dumps(remaining, ensure_ascii=False), now, KEY))
+        else:
+            cx.execute("DELETE FROM admin_state WHERE key=?", (KEY,))
         result = _snapshot(cx)[2]
         result.update(applied_count=len(validated), applied_at=iso(now))
         return result

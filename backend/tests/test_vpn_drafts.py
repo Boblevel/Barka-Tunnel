@@ -123,3 +123,44 @@ def test_old_priority_is_editor_default_only_custom_value_preserved(env):
         state=save(c,state)
         assert c.post(ROOT+'/apply',json={'revision':state['revision']}).status_code==200
         assert next(p for p in c.get(ROOT+'/profiles').json() if p['network_id']=='orange_bf')['priority']==1
+
+
+def test_selected_publish_keeps_other_draft_and_increments_only_selected(env):
+    *_, main, _ = env
+    with client_for(main) as c:
+        before = {p['network_id']: p for p in c.get(ROOT+'/profiles').json()}
+        state = save(c, c.get(ROOT+'/drafts').json(), config={'uri':'vless://first'})
+        state = save(c, state, 'telecel_bf', config={'username':'draft-only'})
+        response = c.post(ROOT+'/apply', json={'revision':state['revision'], 'network_ids':['orange_bf']})
+        assert response.status_code == 200
+        result = response.json()
+        assert result['applied_count'] == 1 and result['pending_count'] == 1
+        after = {p['network_id']: p for p in c.get(ROOT+'/profiles').json()}
+        assert after['telecel_bf'] == before['telecel_bf']
+        assert after['orange_bf']['version'] == before['orange_bf']['version'] + 1
+        assert next(p for p in result['profiles'] if p['network_id']=='telecel_bf')['pending']
+        assert c.post(ROOT+'/apply', json={'revision':result['revision'], 'network_ids':['moov_bf']}).status_code == 409
+        assert c.post(ROOT+'/apply', json={'revision':result['revision'], 'network_ids':[]}).status_code == 422
+        assert c.get(ROOT+'/drafts').json()['revision'] == result['revision']
+        published=c.post(ROOT+'/apply',json={'revision':result['revision'],'network_ids':['telecel_bf']}).json()
+        assert published['applied_count']==1 and published['pending_count']==0
+
+
+def test_tls_template_can_be_saved_disabled_but_not_activated_incomplete(env):
+    db, _, _, _, _, main, _ = env
+    with client_for(main) as c:
+        state = c.get(ROOT+'/drafts').json()
+        p = next(p for p in state['profiles'] if p['network_id']=='moov_tiktok')
+        assert p['config']['port']==443 and p['config']['udpgw_port']==7300
+        assert p['config']['host']=='' and not p['enabled']
+        state=save(c,state,'moov_tiktok',config={**p['config'],'username':'saved-user'})
+        assert c.post(ROOT+'/apply',json={'revision':state['revision'],'network_ids':['moov_tiktok']}).status_code==200
+        state=c.get(ROOT+'/drafts').json()
+        incomplete=next(p for p in state['profiles'] if p['network_id']=='moov_tiktok')
+        assert c.put(ROOT+'/drafts',json={'revision':state['revision'],'profile':{**incomplete,'enabled':True}}).status_code==400
+        config={**incomplete['config'],'host':'vpn.example.com','sni':'vpn.example.com','password':'test-only'}
+        state=save(c,state,'moov_tiktok',config=config,enabled=True)
+        assert c.post(ROOT+'/apply',json={'revision':state['revision'],'network_ids':['moov_tiktok']}).status_code==200
+        db.init_db()
+        published=next(p for p in c.get(ROOT+'/profiles').json() if p['network_id']=='moov_tiktok')
+        assert published['config']==config and published['enabled']

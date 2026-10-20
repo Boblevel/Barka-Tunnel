@@ -134,7 +134,7 @@
     <string name="settings_check_update">Vérifier la mise à jour</string>
     <string name="settings_share_app">Partager l’application</string>
     <string name="settings_telegram_channel">Canal Telegram officiel</string>
-    <string name="settings_shop">Boutique Mr RHAFF SERVICE</string>
+    <string name="settings_shop">VISITEZ NOTRE BOUTIQUE 🌟🌟🌟</string>
     <string name="menu_all_services">Tous les services</string>
     <string name="menu_section_access">ACCÈS</string>
     <string name="menu_section_tools">OUTILS</string>
@@ -289,4 +289,5 @@
     <string name="suggestions_invalid">Écrivez entre 3 et 2 000 caractères.</string>
     <string name="suggestions_retry">Actualiser</string>
     <string name="ip_finder_last_known_ip">Dernière IP : %1$s — réseau en cours de reconnexion</string>
+<string name="global_coverage">Couverture mondiale</string>
 </resources>

@@ -18,7 +18,8 @@ class ConnectedApiRoutingTest {
     }
     @Test fun connectedApiUsesSocksWithoutDirectRetry() {
         val backend = BarkaBackendClient(RuntimeEnvironment.getApplication())
-        val calls: List<() -> Unit> = listOf({ backend.startPayment("24h") },
+        val calls: List<() -> Unit> = listOf({ backend.startTrial() }, { backend.getVpnCatalog() },
+            { backend.getVpnProfile("moov_tiktok") }, { backend.startPayment("24h") },
             { backend.checkPaymentStatus("test-reference") }, { backend.redeemActivationCode("BARKA-TEST") },
             { backend.checkAppUpdate(110) }, { backend.getPricing() }, { backend.checkAccess() },
             { backend.resellerPurchase("account", org.json.JSONObject().put("owner_key", "test")) },

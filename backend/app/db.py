@@ -307,13 +307,22 @@ def init_db() -> None:
                 [(network_id, display_name, protocol, now)
                  for network_id, display_name, protocol in defaults],
             )
+            cx.execute("""UPDATE vpn_profiles SET display_name='GLOBAL MONDIAL',
+                          version=version+1, updated_at=?
+                          WHERE network_id='global_world' AND display_name='GLOBAL MONDIAL 🌍'""", (now,))
+            # Empty, disabled TLS profiles get an editable template, never live credentials.
+            cx.execute("""UPDATE vpn_profiles SET config_json=?, version=version+1, updated_at=?
+                          WHERE network_id='moov_tiktok' AND protocol='SSH_TLS'
+                          AND enabled=0 AND config_json='{}'""",
+                       (json.dumps({'host':'','port':443,'sni':'','username':'','password':'',
+                                    'udpgw_host':'127.0.0.1','udpgw_port':7300}), now))
             # Le modèle de la capture est conservé sans activer un serveur
             # dont l'authentification et la connectivité n'ont pas été vérifiées.
             cx.execute("""
                 INSERT OR IGNORE INTO vpn_profiles(
                     network_id, display_name, protocol, enabled,
                     priority, version, config_json, updated_at
-                ) VALUES('global_world','GLOBAL MONDIAL 🌍','VLESS',0,5,1,?,?)
+                ) VALUES('global_world','GLOBAL MONDIAL','VLESS',0,5,1,?,?)
             """, (json.dumps({
                 "address": "alt13.yt3.ggpht.com", "port": 443,
                 "uuid": "aaaa1111-bbbb-4ccc-8ddd-eeeeffff0000",

@@ -643,6 +643,7 @@ class MainActivity : AppCompatActivity() {
 
     private val foregroundUpdatePoll = object : Runnable {
         override fun run() {
+            if (homePageResumed && isInitialRemoteSyncComplete()) refreshVpnServices(force = true)
             if (::updateCoordinator.isInitialized) {
                 val generation = entryUpdateGeneration
                 updateCoordinator.check(showNoUpdate = false, force = true) { update ->
@@ -836,9 +837,13 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
+    private var networkChoiceDialog: Dialog? = null
+
     private fun showNetworkDialog() {
-        if (!allowNetworkSelection()) return
+        if (!allowNetworkSelection() || networkChoiceDialog?.isShowing == true) return
         val dialog = Dialog(this)
+        networkChoiceDialog = dialog
+        dialog.setOnDismissListener { networkChoiceDialog = null }
         dialog.setContentView(R.layout.dialog_network_selection)
 
         val selectedId =
@@ -846,13 +851,13 @@ class MainActivity : AppCompatActivity() {
                 ?: selectedNetwork?.id
                 ?: NetworkOption.ALL.firstOrNull()?.id
 
-        val checkTiktok = dialog.findViewById<TextView>(R.id.optionTiktokCheck)
-        val checkGlobal = dialog.findViewById<TextView>(R.id.optionGlobalCheck)
+        val checkTiktok = dialog.findViewById<android.widget.ImageView>(R.id.optionTiktokCheck)
+        val checkGlobal = dialog.findViewById<android.widget.ImageView>(R.id.optionGlobalCheck)
         val nameGlobal = dialog.findViewById<TextView>(R.id.optionGlobalName)
         val nameTiktok = dialog.findViewById<TextView>(R.id.optionTiktokName)
-        val checkMoov = dialog.findViewById<TextView>(R.id.optionMoovCheck)
-        val checkOrange = dialog.findViewById<TextView>(R.id.optionOrangeCheck)
-        val checkTelecel = dialog.findViewById<TextView>(R.id.optionTelecelCheck)
+        val checkMoov = dialog.findViewById<android.widget.ImageView>(R.id.optionMoovCheck)
+        val checkOrange = dialog.findViewById<android.widget.ImageView>(R.id.optionOrangeCheck)
+        val checkTelecel = dialog.findViewById<android.widget.ImageView>(R.id.optionTelecelCheck)
         val nameMoov = dialog.findViewById<TextView>(R.id.optionMoovName)
         val nameOrange = dialog.findViewById<TextView>(R.id.optionOrangeName)
         val nameTelecel = dialog.findViewById<TextView>(R.id.optionTelecelName)
@@ -870,11 +875,11 @@ class MainActivity : AppCompatActivity() {
         showAvailability(nameTelecel, "telecel_bf", "TELECEL BF")
         showAvailability(nameGlobal, "global_world", "GLOBAL MONDIAL")
 
-        checkTiktok.text = if (selectedId == "moov_tiktok") "✓" else "○"
-        checkMoov.text = if (selectedId == "moov_bf") "✓" else "○"
-        checkOrange.text = if (selectedId == "orange_bf") "✓" else "○"
-        checkTelecel.text = if (selectedId == "telecel_bf") "✓" else "○"
-        checkGlobal.text = if (selectedId == "global_world") "✓" else "○"
+        checkTiktok.setImageResource(if (selectedId == "moov_tiktok") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+        checkMoov.setImageResource(if (selectedId == "moov_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+        checkOrange.setImageResource(if (selectedId == "orange_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+        checkTelecel.setImageResource(if (selectedId == "telecel_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+        checkGlobal.setImageResource(if (selectedId == "global_world") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
 
         fun select(networkId: String) {
             if (!allowNetworkSelection()) { dialog.dismiss(); return }
@@ -1391,8 +1396,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var sideMenuDialog: Dialog? = null
+
     private fun showSideMenu() {
+        if (sideMenuDialog?.isShowing == true) return
         val dialog = Dialog(this)
+        sideMenuDialog = dialog
+        dialog.setOnDismissListener { sideMenuDialog = null }
         dialog.setContentView(R.layout.dialog_side_menu)
 
         dialog.window?.apply {
@@ -1401,7 +1411,8 @@ class MainActivity : AppCompatActivity() {
             )
             setGravity(Gravity.RIGHT)
             setLayout(
-                (resources.displayMetrics.widthPixels * 0.82).toInt(),
+                minOf((resources.displayMetrics.widthPixels * 0.9).toInt(),
+                    (360 * resources.displayMetrics.density).toInt()),
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }
@@ -1479,7 +1490,8 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.apply {
             navigationBarColor = ContextCompat.getColor(this@MainActivity, R.color.barka_card)
             setLayout(
-                (resources.displayMetrics.widthPixels * 0.82).toInt(),
+                minOf((resources.displayMetrics.widthPixels * 0.9).toInt(),
+                    (360 * resources.displayMetrics.density).toInt()),
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }
@@ -1710,7 +1722,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (
-            !vpnProfileRepository.hasValidatedInternet() ||
+            (!vpnProfileRepository.hasValidatedInternet() && BarkaVpnService.connectedSocksPort() == null) ||
             !vpnProfileRepository.shouldRefresh(PROFILE_SYNC_INTERVAL_MS)
         ) {
             return
@@ -1720,7 +1732,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshVpnServices(force: Boolean) {
         if (
-            !vpnProfileRepository.hasValidatedInternet() ||
+            (!vpnProfileRepository.hasValidatedInternet() && BarkaVpnService.connectedSocksPort() == null) ||
             (!force && !vpnProfileRepository.shouldRefresh(PROFILE_SYNC_INTERVAL_MS))
         ) {
             return
@@ -1865,7 +1877,7 @@ class MainActivity : AppCompatActivity() {
         val drawable = when (network?.id) {
             "orange_bf" -> R.drawable.ic_operator_orange
             "telecel_bf" -> R.drawable.ic_operator_telecel
-            "global_world" -> R.drawable.ic_global_world
+            "global_world" -> R.drawable.global_africa_red
             else -> R.drawable.moov_africa_official
         }
 
