@@ -92,7 +92,7 @@
             android:src="@drawable/ic_flag_tg" />
 
         <ImageView android:id="@+id/optionMoovCheck"
-            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="3dp"
             android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
 
@@ -133,7 +133,7 @@
             android:src="@drawable/ic_flag_bf" />
 
         <ImageView android:id="@+id/optionTiktokCheck"
-            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="3dp"
             android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
 
@@ -173,7 +173,7 @@
             android:src="@drawable/ic_flag_bf" />
 
         <ImageView android:id="@+id/optionOrangeCheck"
-            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="3dp"
             android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
 
@@ -213,7 +213,7 @@
             android:src="@drawable/ic_flag_bf" />
 
         <ImageView android:id="@+id/optionTelecelCheck"
-            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="3dp"
             android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
     <LinearLayout
@@ -237,7 +237,7 @@
             android:contentDescription="@string/global_coverage"
             android:src="@drawable/ic_global_world" />
         <ImageView android:id="@+id/optionGlobalCheck"
-            android:layout_width="38dp" android:layout_height="38dp" android:padding="7dp"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="3dp"
             android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>
 </LinearLayout>

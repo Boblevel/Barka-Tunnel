@@ -288,6 +288,6 @@
     <string name="suggestions_sent">Merci ! Votre suggestion a été envoyée.</string>
     <string name="suggestions_invalid">Écrivez entre 3 et 2 000 caractères.</string>
     <string name="suggestions_retry">Actualiser</string>
-    <string name="ip_finder_last_known_ip">Dernière IP : %1$s — réseau en cours de reconnexion</string>
+    <string name="ip_finder_orange_patterns">Orange BF : seuls les préfixes de cette liste sont acceptés. Liste fixe.</string>
 <string name="global_coverage">Couverture mondiale</string>
 </resources>

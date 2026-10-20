@@ -48,10 +48,26 @@ class NavigationViewportTest {
         activity.setTheme(R.style.Theme_BarkaTunnel)
         try {
             for (width in listOf(320, 390, 600)) {
-                for (layout in listOf(R.layout.activity_settings, R.layout.activity_guide, R.layout.dialog_network_selection)) {
+                for (layout in listOf(R.layout.activity_settings, R.layout.activity_guide, R.layout.activity_suggestions, R.layout.dialog_network_selection)) {
                     val root = activity.layoutInflater.inflate(layout, null)
                     root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(640, View.MeasureSpec.EXACTLY))
                     root.layout(0, 0, width, 640)
+                    if (layout == R.layout.activity_settings || layout == R.layout.activity_suggestions) {
+                        val container = root as ViewGroup
+                        val header = container.getChildAt(0) as ViewGroup
+                        val scroll = container.getChildAt(1) as ScrollView
+                        val top = header.top
+                        scroll.scrollTo(0, 10000)
+                        assertEquals(top, header.top)
+                        assertEquals(0, container.scrollY)
+                        assertTrue(scroll.height > 0)
+                        assertFalse(scroll.isVerticalScrollBarEnabled)
+                        if (layout == R.layout.activity_settings) assertEquals(1, header.childCount)
+                        else {
+                            assertNotNull(root.findViewById<View>(R.id.suggestionMessage))
+                            assertFalse(root.findViewById<View>(R.id.suggestionSend).isEnabled)
+                        }
+                    }
                     if (layout == R.layout.activity_settings) {
                         val shop = root.findViewById<TextView>(R.id.shopButton)
                         assertEquals("VISITEZ NOTRE BOUTIQUE 🌟🌟🌟", shop.text.toString())

@@ -43,7 +43,6 @@ class IpFinderActivity : AppCompatActivity() {
 
     @Volatile private var searching = false
     private var networkRegistered = false
-    private var lastVisibleIp: String? = null
     private var lastCurrentIp: String? = null
     private var displayInitialized = false
     private val displayHandler = Handler(Looper.getMainLooper())
@@ -123,6 +122,11 @@ class IpFinderActivity : AppCompatActivity() {
         wifiWarning = findViewById(R.id.wifiWarning)
 
         ipInput.setText(loadSearchPattern(this))
+        if (usesOrangeRules(this)) {
+            ipInput.keyListener = null
+            ipInput.setTextIsSelectable(true)
+            findViewById<TextView>(R.id.ipPatternHelp).setText(R.string.ip_finder_orange_patterns)
+        }
         ipInput.doAfterTextChanged { if (!searching) refreshNetworkState() }
         connectivityManager.registerNetworkCallback(NetworkRequest.Builder().build(),networkCallback)
         networkRegistered = true
@@ -287,10 +291,7 @@ class IpFinderActivity : AppCompatActivity() {
         lastCurrentIp = currentIp
         if (!searching) searchPatterns = parsePatterns(ipInput.text.toString())
         val compatible = currentIp != null && matchesSearchPattern(currentIp)
-        if (currentIp != null) lastVisibleIp = currentIp
-        resultText.text = currentIp ?: lastVisibleIp?.let {
-            getString(R.string.ip_finder_last_known_ip, it)
-        } ?: getString(R.string.ip_finder_waiting_for_network)
+        resultText.text = currentIp ?: "—"
         resultText.setTextColor(ContextCompat.getColor(this, when {
             currentIp == null -> R.color.barka_text_secondary
             compatible -> R.color.barka_green
@@ -332,10 +333,12 @@ class IpFinderActivity : AppCompatActivity() {
         }
 
         val rawPattern = ipInput.text.toString().trim()
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_SEARCH_PATTERN, rawPattern)
-            .apply()
+        if (!usesOrangeRules(this)) {
+            getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_SEARCH_PATTERN, rawPattern)
+                .apply()
+        }
 
         searchPatterns = parsePatterns(rawPattern)
         previousIp = currentCellularIpv4()
@@ -496,6 +499,7 @@ class IpFinderActivity : AppCompatActivity() {
         .distinct()
 
     private fun matchesSearchPattern(ip: String): Boolean {
+        if (usesOrangeRules(this)) return OrangeIpPolicy.matches(ip)
         if (searchPatterns.isEmpty()) return true
         return searchPatterns.any { pattern ->
             when {
@@ -575,6 +579,7 @@ class IpFinderActivity : AppCompatActivity() {
     companion object {
         fun isIpCompatible(context: Context, ip: String?): Boolean {
             if (ip.isNullOrBlank()) return false
+            if (usesOrangeRules(context)) return OrangeIpPolicy.matches(ip)
 
             val rawPattern = loadSearchPattern(context)
 
@@ -611,7 +616,7 @@ class IpFinderActivity : AppCompatActivity() {
         const val PREFERENCES_NAME = "barka_ipfinder"
         private const val KEY_SEARCH_PATTERN = "search_pattern"
         const val KEY_LAST_FOUND_IP = "last_found_ip"
-        private const val DEFAULT_SEARCH_PATTERN = "10.161;10.76;10.74;10.102;10.75;10.102;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210,10.212,10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165"
+        private const val DEFAULT_SEARCH_PATTERN = OrangeIpPolicy.PATTERNS
         private const val LEGACY_IP_SEQUENCE = "10.208;10.210"
         private const val UPDATED_IP_SEQUENCE = "10.208;10.209;10.210"
         private val RETIRED_IP_PREFIXES = setOf("10.148", "10.46", "10.193", "10.194", "10.80", "10.10194")
@@ -624,7 +629,12 @@ class IpFinderActivity : AppCompatActivity() {
         private const val NETWORK_POLL_DELAY_MS = 1_000L
         private const val NEXT_CYCLE_DELAY_MS = 900L
 
+        private fun usesOrangeRules(context: Context): Boolean =
+            context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE)
+                .getString("selected_network_id", null) == "orange_bf"
+
         private fun loadSearchPattern(context: Context): String {
+            if (usesOrangeRules(context)) return OrangeIpPolicy.PATTERNS
             val preferences = context.getSharedPreferences(
                 PREFERENCES_NAME,
                 Context.MODE_PRIVATE

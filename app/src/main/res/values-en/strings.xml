@@ -279,6 +279,6 @@
     <string name="suggestions_sent">Thank you! Your suggestion has been sent.</string>
     <string name="suggestions_invalid">Please enter between 3 and 2,000 characters.</string>
     <string name="suggestions_retry">Refresh</string>
-    <string name="ip_finder_last_known_ip">Last IP: %1$s — reconnecting to the network</string>
+    <string name="ip_finder_orange_patterns">Orange BF: only the prefixes in this list are accepted. Fixed list.</string>
 <string name="global_coverage">Worldwide coverage</string>
 </resources>

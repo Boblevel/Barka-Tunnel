@@ -843,6 +843,7 @@ class MainActivity : AppCompatActivity() {
         if (!allowNetworkSelection() || networkChoiceDialog?.isShowing == true) return
         val dialog = Dialog(this)
         networkChoiceDialog = dialog
+        dialog.setCanceledOnTouchOutside(false)
         dialog.setOnDismissListener { networkChoiceDialog = null }
         dialog.setContentView(R.layout.dialog_network_selection)
 
@@ -875,11 +876,19 @@ class MainActivity : AppCompatActivity() {
         showAvailability(nameTelecel, "telecel_bf", "TELECEL BF")
         showAvailability(nameGlobal, "global_world", "GLOBAL MONDIAL")
 
-        checkTiktok.setImageResource(if (selectedId == "moov_tiktok") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
-        checkMoov.setImageResource(if (selectedId == "moov_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
-        checkOrange.setImageResource(if (selectedId == "orange_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
-        checkTelecel.setImageResource(if (selectedId == "telecel_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
-        checkGlobal.setImageResource(if (selectedId == "global_world") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+        fun updateSelection(id: String?) {
+            checkTiktok.setImageResource(if (id == "moov_tiktok") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+            checkMoov.setImageResource(if (id == "moov_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+            checkOrange.setImageResource(if (id == "orange_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+            checkTelecel.setImageResource(if (id == "telecel_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+            checkGlobal.setImageResource(if (id == "global_world") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+            listOf(R.id.optionMoov to "moov_bf", R.id.optionTiktok to "moov_tiktok",
+                R.id.optionOrange to "orange_bf", R.id.optionTelecel to "telecel_bf",
+                R.id.optionGlobal to "global_world").forEach { (viewId, networkId) ->
+                dialog.findViewById<View>(viewId).isSelected = id == networkId
+            }
+        }
+        updateSelection(selectedId)
 
         fun select(networkId: String) {
             if (!allowNetworkSelection()) { dialog.dismiss(); return }
@@ -908,7 +917,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             refreshNetworkIp()
-            dialog.dismiss()
+            updateSelection(networkId)
         }
 
         dialog.findViewById<android.view.View>(R.id.networkDialogClose)

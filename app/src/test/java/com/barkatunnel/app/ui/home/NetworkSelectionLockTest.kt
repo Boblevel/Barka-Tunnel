@@ -60,4 +60,30 @@ class NetworkSelectionLockTest {
         assertFalse(dialog.isShowing)
         assertNull(a.getSharedPreferences("barka_home_preferences",0).getString("selected_network_id",null))
     }
+    @Test fun selectingSeveralNetworksKeepsDialogOpenUntilBack() {
+        val a=Robolectric.buildActivity(MainActivity::class.java).get()
+        a.setTheme(R.style.Theme_BarkaTunnel)
+        runtime(BarkaVpnService.RuntimeConnectionState.DISCONNECTED)
+        fun field(name:String,value:Any) = MainActivity::class.java.getDeclaredField(name).apply {isAccessible=true}.set(a,value)
+        fun text()=android.widget.TextView(a)
+        field("uiBinder",HomeUiBinder(text(),text(),text(),text(),text(),text(),com.google.android.material.button.MaterialButton(a)))
+        for(name in listOf("networkLogo","networkFlagNiger","networkFlagTogo")) field(name,android.widget.ImageView(a))
+        for(name in listOf("networkIpValue","networkIpStatus")) field(name,text())
+        field("networkIpCard",View(a))
+        call(a,"showNetworkDialog")
+        val dialog=ShadowDialog.getLatestDialog()
+        try {
+            for((viewId,id) in listOf(R.id.optionGlobal to "global_world",R.id.optionTelecel to "telecel_bf",R.id.optionMoov to "moov_bf")) {
+                dialog.findViewById<View>(viewId).performClick()
+                assertTrue(dialog.isShowing)
+                assertEquals(id,a.getSharedPreferences("barka_home_preferences",0).getString("selected_network_id",null))
+                for(row in listOf(R.id.optionGlobal,R.id.optionTelecel,R.id.optionMoov,R.id.optionOrange,R.id.optionTiktok)) {
+                    assertEquals(row==viewId,dialog.findViewById<View>(row).isSelected)
+                }
+            }
+            dialog.findViewById<View>(R.id.networkDialogClose).performClick()
+            assertFalse(dialog.isShowing)
+        } finally {dialog.dismiss();a.getSharedPreferences("barka_home_preferences",0).edit().clear().commit()}
+    }
+
 }

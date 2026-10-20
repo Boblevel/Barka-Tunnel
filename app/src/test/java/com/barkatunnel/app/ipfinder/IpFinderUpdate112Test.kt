@@ -36,6 +36,7 @@ class IpFinderUpdate112Test {
     @Before fun reset() {
         shadowOf(context).grantPermissions("com.barkatunnel.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
         preferences.edit().clear().commit()
+        context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE).edit().clear().commit()
         AssistantRoles.available = true
         AssistantRoles.held = false
     }
@@ -70,6 +71,24 @@ class IpFinderUpdate112Test {
         assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.1"))
     }
 
+    @Test fun orangeRulesOverrideSavedWildcardsWithoutChangingOtherNetworks() {
+        context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE).edit()
+            .putString("selected_network_id", "orange_bf").commit()
+        for (filter in listOf("", "10", "=10.155.127.179", "^10", "10.155;10.161")) {
+            preferences.edit().putString("search_pattern", filter).commit()
+            assertFalse(IpFinderActivity.isIpCompatible(context, "10.155.127.179"))
+            assertFalse(IpFinderActivity.isIpCompatible(context, "10.155.10.161"))
+            assertTrue(IpFinderActivity.isIpCompatible(context, "10.161.1.2"))
+            assertEquals(filter, preferences.getString("search_pattern", null))
+        }
+        val controller = Robolectric.buildActivity(IpFinderActivity::class.java).setup()
+        try {
+            val input = controller.get().findViewById<android.widget.EditText>(R.id.ipInput)
+            assertEquals(OrangeIpPolicy.PATTERNS, input.text.toString())
+            assertNull(input.keyListener)
+        } finally { controller.pause().stop().destroy() }
+    }
+
     private fun launchSelection(expectedAction: String) {
         val controller = Robolectric.buildActivity(IpFinderActivity::class.java).setup()
         try {
@@ -99,6 +118,8 @@ class IpFinderUpdate112Test {
         launchSelection(Settings.ACTION_VOICE_INPUT_SETTINGS)
     }
     @Test fun detectsColorsAndHidesSearchAsSoonAsMobileIpMatches() {
+        context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE).edit()
+            .putString("selected_network_id", "orange_bf").commit()
         val cm=context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val manager=shadowOf(cm)
         manager.clearAllNetworks()
@@ -125,17 +146,17 @@ class IpFinderUpdate112Test {
             assertEquals("10.161.1.2",result.text.toString())
             assertEquals(View.GONE,button.visibility)
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_green),result.currentTextColor)
-            val bad=link("10.193.1.2");manager.setLinkProperties(network,bad)
+            val bad=link("10.155.10.161");manager.setLinkProperties(network,bad)
             manager.networkCallbacks.forEach {it.onLinkPropertiesChanged(network,bad)}
             shadowOf(android.os.Looper.getMainLooper()).idle()
             assertEquals(View.VISIBLE,button.visibility);assertTrue(button.isEnabled)
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_red),result.currentTextColor)
             val searching=IpFinderActivity::class.java.getDeclaredField("searching").apply {isAccessible=true}
             searching.setBoolean(activity,true)
-            // During a network cut the last address remains labelled, never green.
+            // During a network cut no stale address or reconnection sentence is shown.
             manager.setLinkProperties(network, android.net.LinkProperties())
             shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(1))
-            assertTrue(result.text.toString().contains("10.193.1.2"))
+            assertEquals("—", result.text.toString())
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_text_secondary),result.currentTextColor)
             // Some ROMs omit the link callback. Polling must recover without leaving the page.
             val good=link("10.161.2.3");manager.setLinkProperties(network,good)

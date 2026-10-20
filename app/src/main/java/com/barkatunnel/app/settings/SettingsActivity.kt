@@ -38,8 +38,6 @@ class SettingsActivity : AppCompatActivity() {
             .remove("default_port")
             .apply()
 
-        findViewById<TextView>(R.id.settingsVersionValue).text =
-            getString(R.string.version_format, BuildConfig.VERSION_NAME)
         findViewById<TextView>(R.id.aboutValue).text =
             getString(R.string.settings_about_format, BuildConfig.VERSION_NAME)
 
