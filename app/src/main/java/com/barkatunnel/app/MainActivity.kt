@@ -868,7 +868,7 @@ class MainActivity : AppCompatActivity() {
         showAvailability(nameMoov, "moov_bf", "MOOV-AFRICA BF")
         showAvailability(nameOrange, "orange_bf", "ORANGE BF")
         showAvailability(nameTelecel, "telecel_bf", "TELECEL BF")
-        showAvailability(nameGlobal, "global_world", "GLOBAL MONDIAL 🌍")
+        showAvailability(nameGlobal, "global_world", "GLOBAL MONDIAL")
 
         checkTiktok.text = if (selectedId == "moov_tiktok") "✓" else "○"
         checkMoov.text = if (selectedId == "moov_bf") "✓" else "○"
@@ -1399,7 +1399,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundDrawable(
                 ColorDrawable(Color.TRANSPARENT)
             )
-            setGravity(Gravity.START)
+            setGravity(Gravity.RIGHT)
             setLayout(
                 (resources.displayMetrics.widthPixels * 0.82).toInt(),
                 WindowManager.LayoutParams.MATCH_PARENT

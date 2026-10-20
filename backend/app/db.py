@@ -224,6 +224,10 @@ def init_db() -> None:
                 """
             )
 
+            suggestion_columns = {row["name"] for row in cx.execute("PRAGMA table_info(suggestions)")}
+            if "read_at" not in suggestion_columns:
+                cx.execute("ALTER TABLE suggestions ADD COLUMN read_at INTEGER")
+
             columns = {row["name"] for row in cx.execute("PRAGMA table_info(vpn_profiles)").fetchall()}
             if "maintenance" not in columns:
                 cx.execute("ALTER TABLE vpn_profiles ADD COLUMN maintenance INTEGER NOT NULL DEFAULT 0")

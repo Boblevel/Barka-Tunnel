@@ -43,6 +43,17 @@ class IpFinderActivity : AppCompatActivity() {
 
     @Volatile private var searching = false
     private var networkRegistered = false
+    private var lastVisibleIp: String? = null
+    private var lastCurrentIp: String? = null
+    private var displayInitialized = false
+    private val displayHandler = Handler(Looper.getMainLooper())
+    private val displayPoll = object : Runnable {
+        override fun run() {
+            if (isDestroyed || isFinishing) return
+            refreshNetworkState()
+            displayHandler.postDelayed(this, NETWORK_POLL_DELAY_MS)
+        }
+    }
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         private fun refresh() { handler.post { if (!isDestroyed) refreshNetworkState() } }
         override fun onAvailable(network: Network) = refresh()
@@ -164,12 +175,20 @@ class IpFinderActivity : AppCompatActivity() {
         }
         refreshAssistantState()
         refreshNetworkState()
+        displayHandler.removeCallbacks(displayPoll)
+        displayHandler.postDelayed(displayPoll, NETWORK_POLL_DELAY_MS)
+    }
+
+    override fun onPause() {
+        displayHandler.removeCallbacks(displayPoll)
+        super.onPause()
     }
 
     override fun onDestroy() {
         if (networkRegistered) connectivityManager.unregisterNetworkCallback(networkCallback)
         networkRegistered = false
         searching = false
+        displayHandler.removeCallbacksAndMessages(null)
         handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)
         if (receiverRegistered) {
@@ -263,15 +282,25 @@ class IpFinderActivity : AppCompatActivity() {
         )
 
         val currentIp = currentVisibleIpv4()
+        val networkChanged = !displayInitialized || currentIp != lastCurrentIp
+        displayInitialized = true
+        lastCurrentIp = currentIp
         if (!searching) searchPatterns = parsePatterns(ipInput.text.toString())
         val compatible = currentIp != null && matchesSearchPattern(currentIp)
-        resultText.text = currentIp ?: "..."
-        resultText.setTextColor(ContextCompat.getColor(this, if (compatible) R.color.barka_green else R.color.barka_red))
+        if (currentIp != null) lastVisibleIp = currentIp
+        resultText.text = currentIp ?: lastVisibleIp?.let {
+            getString(R.string.ip_finder_last_known_ip, it)
+        } ?: getString(R.string.ip_finder_waiting_for_network)
+        resultText.setTextColor(ContextCompat.getColor(this, when {
+            currentIp == null -> R.color.barka_text_secondary
+            compatible -> R.color.barka_green
+            else -> R.color.barka_red
+        }))
         scanButton.visibility = if (compatible) View.GONE else View.VISIBLE
         if (compatible) manualAirplaneButton.visibility = View.GONE
         scanButton.isEnabled = !searching && currentIp != null
         if (searching && compatible) { completeSearch(currentIp!!); return }
-        if (!searching) {
+        if (!searching && networkChanged) {
             statusText.setText(R.string.ip_finder_idle)
             statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_blue))
             progressText.setText(R.string.ip_finder_current_ip)
@@ -370,6 +399,8 @@ class IpFinderActivity : AppCompatActivity() {
     private fun waitForCellularIp(poll: Int) {
         if (!searching) return
         statusText.setText(R.string.ip_finder_waiting_for_network)
+        refreshNetworkState()
+        if (!searching) return
         val candidate = currentCellularIpv4()
         if (candidate != null && candidate != previousIp) {
             previousIp = candidate

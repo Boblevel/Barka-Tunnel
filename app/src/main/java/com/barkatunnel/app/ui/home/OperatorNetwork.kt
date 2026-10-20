@@ -10,7 +10,7 @@ data class OperatorNetwork(
             OperatorNetwork("moov_tiktok", "MOOV FORFAIT TIKTOK"),
             OperatorNetwork("orange_bf", "ORANGE BF"),
             OperatorNetwork("telecel_bf", "TELECEL BF"),
-            OperatorNetwork("global_world", "GLOBAL MONDIAL 🌍")
+            OperatorNetwork("global_world", "GLOBAL MONDIAL")
         )
     }
 }

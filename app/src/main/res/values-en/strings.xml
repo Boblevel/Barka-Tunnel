@@ -249,8 +249,8 @@
     <string name="update_check_failed">Unable to check for updates.</string>
     <string name="update_invalid_link">Invalid update link.</string>
     <string name="update_open_failed">Unable to open the update.</string>
-    <string name="notification_connecting">Attempting to connect to VPN…</string>
-    <string name="notification_disconnecting">Disconnecting VPN…</string>
+    <string name="notification_connecting">Connecting…</string>
+    <string name="notification_disconnecting">Disconnecting…</string>
     <string name="notification_connected">VPN connected</string>
     <string name="notification_waiting">Connecting • checking the network…</string>
     <string name="notification_channel_name">Barka Tunnel connection status</string>
@@ -279,4 +279,5 @@
     <string name="suggestions_sent">Thank you! Your suggestion has been sent.</string>
     <string name="suggestions_invalid">Please enter between 3 and 2,000 characters.</string>
     <string name="suggestions_retry">Refresh</string>
+    <string name="ip_finder_last_known_ip">Last IP: %1$s — reconnecting to the network</string>
 </resources>

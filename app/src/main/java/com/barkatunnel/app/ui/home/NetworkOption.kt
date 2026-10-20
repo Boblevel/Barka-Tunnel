@@ -10,7 +10,7 @@ data class NetworkOption(
             NetworkOption("moov_tiktok", "MOOV FORFAIT TIKTOK"),
             NetworkOption("orange_bf", "ORANGE BF"),
             NetworkOption("telecel_bf", "TELECEL BF"),
-            NetworkOption("global_world", "GLOBAL MONDIAL 🌍")
+            NetworkOption("global_world", "GLOBAL MONDIAL")
         )
     }
 }

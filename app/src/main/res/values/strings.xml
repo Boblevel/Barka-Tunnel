@@ -258,8 +258,8 @@
     <string name="update_check_failed">Impossible de vérifier les mises à jour.</string>
     <string name="update_invalid_link">Lien de mise à jour invalide.</string>
     <string name="update_open_failed">Impossible d’ouvrir la mise à jour.</string>
-    <string name="notification_connecting">Tentative de connexion au VPN…</string>
-    <string name="notification_disconnecting">Déconnexion du VPN…</string>
+    <string name="notification_connecting">Connexion…</string>
+    <string name="notification_disconnecting">Déconnexion…</string>
     <string name="notification_connected">VPN connecté</string>
     <string name="notification_waiting">Connexion en cours • vérification du réseau…</string>
     <string name="notification_channel_name">État de la connexion Barka Tunnel</string>
@@ -288,4 +288,5 @@
     <string name="suggestions_sent">Merci ! Votre suggestion a été envoyée.</string>
     <string name="suggestions_invalid">Écrivez entre 3 et 2 000 caractères.</string>
     <string name="suggestions_retry">Actualiser</string>
+    <string name="ip_finder_last_known_ip">Dernière IP : %1$s — réseau en cours de reconnexion</string>
 </resources>

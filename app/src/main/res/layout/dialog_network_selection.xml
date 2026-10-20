@@ -116,8 +116,9 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:contentDescription="Moov TikTok"
+            android:padding="14dp"
             android:scaleType="fitCenter"
-            android:src="@drawable/moov_africa_official" />
+            android:src="@drawable/ic_tiktok_official" />
 
         <TextView
             android:id="@+id/optionTiktokName"
@@ -246,12 +247,21 @@
         android:orientation="horizontal"
         android:paddingHorizontal="16dp">
         <ImageView android:layout_width="56dp" android:layout_height="56dp"
-            android:contentDescription="GLOBAL MONDIAL" android:src="@drawable/ic_global_world" />
+            android:contentDescription="GLOBAL MONDIAL" android:padding="14dp" android:scaleType="fitCenter" android:src="@drawable/ic_global_world" />
         <TextView android:id="@+id/optionGlobalName"
             android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_marginStart="12dp" android:layout_weight="1"
-            android:text="GLOBAL MONDIAL 🌍" android:textColor="@color/barka_text"
+            android:text="GLOBAL MONDIAL" android:textColor="@color/barka_text"
             android:textSize="16sp" android:textStyle="bold" />
+        <ImageView android:layout_width="18dp" android:layout_height="13dp"
+            android:layout_marginEnd="3dp" android:contentDescription="@string/burkina_faso"
+            android:src="@drawable/ic_flag_bf" />
+        <ImageView android:layout_width="18dp" android:layout_height="13dp"
+            android:layout_marginEnd="3dp" android:contentDescription="@string/niger"
+            android:src="@drawable/ic_flag_ne" />
+        <ImageView android:layout_width="18dp" android:layout_height="13dp"
+            android:layout_marginEnd="3dp" android:contentDescription="@string/togo"
+            android:src="@drawable/ic_flag_tg" />
         <TextView android:id="@+id/optionGlobalCheck"
             android:layout_width="38dp" android:layout_height="38dp"
             android:gravity="center" android:text="○"

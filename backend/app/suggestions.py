@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 import time
 from uuid import UUID
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field, StrictBool, field_validator
@@ -67,7 +68,7 @@ def submit(body: SuggestionRequest):
 def list_suggestions(response: Response, offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
     response.headers['Cache-Control'] = 'no-store'
     with transaction() as cx:
-        rows = cx.execute('SELECT id,device_id,message,created_at FROM suggestions ORDER BY id DESC LIMIT ? OFFSET ?',
+        rows = cx.execute('SELECT id,device_id,message,created_at,read_at FROM suggestions ORDER BY id DESC LIMIT ? OFFSET ?',
                           (limit, offset)).fetchall()
         return {'enabled': enabled_in(cx), 'total': cx.execute('SELECT COUNT(*) FROM suggestions').fetchone()[0],
                 'items': [dict(row, created_at=stamp(row['created_at'])) for row in rows]}
@@ -80,3 +81,39 @@ def set_config(body: SuggestionSwitch):
                    "ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
                    ('1' if body.enabled else '0', int(time.time())))
     return {'enabled': body.enabled}
+
+
+class SuggestionRead(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=100)
+
+
+class SuggestionReset(BaseModel):
+    confirmation: Literal['SUPPRIMER']
+
+
+def unread_count(cx):
+    return cx.execute('SELECT COUNT(*) FROM suggestions WHERE read_at IS NULL').fetchone()[0]
+
+
+@router.get('/v1/admin/suggestions/unread', dependencies=[Depends(require_admin)])
+def unread(response: Response):
+    response.headers['Cache-Control'] = 'no-store'
+    with transaction() as cx:
+        return {'unread': unread_count(cx)}
+
+
+@router.post('/v1/admin/suggestions/read', dependencies=[Depends(require_admin)])
+def mark_read(body: SuggestionRead):
+    with transaction() as cx:
+        placeholders = ','.join('?' for _ in body.ids)
+        cx.execute(f'UPDATE suggestions SET read_at=? WHERE read_at IS NULL AND id IN ({placeholders})',
+                   (int(time.time()), *body.ids))
+        return {'unread': unread_count(cx)}
+
+
+@router.post('/v1/admin/suggestions/reset', dependencies=[Depends(require_admin)])
+def reset(body: SuggestionReset):
+    with transaction() as cx:
+        deleted = cx.execute('DELETE FROM suggestions').rowcount
+        # Keep AUTOINCREMENT: stale read requests must never mark future messages read.
+        return {'deleted': deleted, 'unread': 0}

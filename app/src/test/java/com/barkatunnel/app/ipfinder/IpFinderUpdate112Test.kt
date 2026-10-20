@@ -132,8 +132,14 @@ class IpFinderUpdate112Test {
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_red),result.currentTextColor)
             val searching=IpFinderActivity::class.java.getDeclaredField("searching").apply {isAccessible=true}
             searching.setBoolean(activity,true)
+            // During a network cut the last address remains labelled, never green.
+            manager.setLinkProperties(network, android.net.LinkProperties())
+            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(1))
+            assertTrue(result.text.toString().contains("10.193.1.2"))
+            assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_text_secondary),result.currentTextColor)
+            // Some ROMs omit the link callback. Polling must recover without leaving the page.
             val good=link("10.161.2.3");manager.setLinkProperties(network,good)
-            manager.networkCallbacks.forEach {it.onLinkPropertiesChanged(network,good)}
+            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(1))
             shadowOf(android.os.Looper.getMainLooper()).idle()
             assertEquals(View.GONE,button.visibility);assertFalse(searching.getBoolean(activity))
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_green),result.currentTextColor)

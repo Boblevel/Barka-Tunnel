@@ -49,3 +49,31 @@ def test_retry_is_idempotent_throttle_and_validation(client):
     assert c.get('/v1/admin/suggestions?offset=-1', headers=ADMIN).status_code == 422
     assert c.get('/v1/admin/suggestions?offset=1', headers=ADMIN).json()['items'] == []
     assert c.get('/v1/admin/suggestions', headers=ADMIN).json()['total'] == 1
+
+
+def test_read_badge_reset_and_new_message_identity(client):
+    c, db = client
+    first = c.post('/v1/suggestions', json=body()).json()['id']
+    other = body(); other['device_id'] = 'another-device-12345'
+    second = c.post('/v1/suggestions', json=other).json()['id']
+    def count():
+        return c.get('/v1/admin/suggestions/unread', headers=ADMIN).json()['unread']
+    assert count() == 2
+    # Listing does not mark unread items; only the displayed IDs are acknowledged.
+    c.get('/v1/admin/suggestions?limit=1', headers=ADMIN)
+    assert count() == 2
+    assert c.post('/v1/admin/suggestions/read', headers=ADMIN, json={'ids':[first]}).json()['unread'] == 1
+    db.init_db()
+    assert count() == 1
+    assert c.post('/v1/admin/suggestions/reset', json={'confirmation':'SUPPRIMER'}).status_code == 401
+    assert c.post('/v1/admin/suggestions/read', json={'ids':[second]}).status_code == 401
+    assert c.get('/v1/admin/suggestions/unread').status_code == 401
+    assert c.post('/v1/admin/suggestions/reset', headers=ADMIN, json={'confirmation':'non'}).status_code == 422
+    c.put('/v1/admin/suggestions/config', headers=ADMIN, json={'enabled':False})
+    assert c.post('/v1/admin/suggestions/reset', headers=ADMIN, json={'confirmation':'SUPPRIMER'}).json() == {'deleted':2,'unread':0}
+    assert c.get('/v1/suggestions/config').json()['enabled'] is False
+    c.put('/v1/admin/suggestions/config', headers=ADMIN, json={'enabled':True})
+    third = c.post('/v1/suggestions', json=body()).json()['id']
+    assert third > second
+    c.post('/v1/admin/suggestions/read', headers=ADMIN, json={'ids':[first,second]})
+    assert count() == 1
