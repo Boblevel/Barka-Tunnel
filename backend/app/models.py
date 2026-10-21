@@ -37,7 +37,7 @@ class TrialStartResponse(AccessResponse):
 
 class PaymentStartRequest(DeviceRequest):
     expected_amount: int | None = Field(default=None, strict=True, ge=1, le=10_000_000)
-    plan_id: Literal["24h", "1w", "2w", "1m"]
+    plan_id: Literal["24h", "1w", "2w", "1m", "3m"]
     customer_name: str | None = Field(default=None, max_length=100)
     customer_email: str | None = Field(default=None, max_length=200)
 
@@ -74,7 +74,7 @@ class ActivationResponse(BaseModel):
 
 
 class AdminCodeRequest(BaseModel):
-    plan_id: Literal["24h", "1w", "2w", "1m", "unlimited"]
+    plan_id: Literal["24h", "1w", "2w", "1m", "3m", "unlimited"]
     count: int = Field(default=1, ge=1, le=100)
 
 

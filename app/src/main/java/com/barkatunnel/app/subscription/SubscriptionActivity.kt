@@ -53,6 +53,7 @@ class SubscriptionActivity : AppCompatActivity() {
                 R.id.plan1w -> select("1w", displayedPrices.getValue("1w"))
                 R.id.plan2w -> select("2w", displayedPrices.getValue("2w"))
                 R.id.plan1m -> select("1m", displayedPrices.getValue("1m"))
+                R.id.plan3m -> select("3m", displayedPrices.getValue("3m"))
             }
         }
 
@@ -246,6 +247,7 @@ class SubscriptionActivity : AppCompatActivity() {
             "1w" -> R.string.subscription_week
             "2w" -> R.string.subscription_two_weeks
             "1m" -> R.string.subscription_month
+            "3m" -> R.string.subscription_three_months
             else -> R.string.payment_purchased_subscription
         }
         val planId = PendingPaymentStore.planId(this)
@@ -279,6 +281,7 @@ class SubscriptionActivity : AppCompatActivity() {
                 "1w" -> R.id.plan1w
                 "2w" -> R.id.plan2w
                 "1m" -> R.id.plan1m
+                "3m" -> R.id.plan3m
                 else -> plans.checkedRadioButtonId
             }
             plans.check(selected)
@@ -297,7 +300,7 @@ class SubscriptionActivity : AppCompatActivity() {
             }
         }
         for ((key, id) in listOf("24h" to R.id.plan24h, "1w" to R.id.plan1w,
-            "2w" to R.id.plan2w, "1m" to R.id.plan1m)) {
+            "2w" to R.id.plan2w, "1m" to R.id.plan1m, "3m" to R.id.plan3m)) {
             findViewById<android.widget.TextView>(id).text = PricingLabels.offer(this, key, displayedPrices.getValue(key))
         }
         selectedAmount = displayedPrices.getValue(selectedPlanId)

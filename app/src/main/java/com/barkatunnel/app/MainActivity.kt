@@ -1420,8 +1420,9 @@ class MainActivity : AppCompatActivity() {
             )
             setGravity(Gravity.RIGHT)
             setLayout(
-                minOf((resources.displayMetrics.widthPixels * 0.9).toInt(),
-                    (360 * resources.displayMetrics.density).toInt()),
+                minOf((resources.displayMetrics.widthPixels * 0.85).toInt(),
+                    maxOf((resources.displayMetrics.widthPixels * 0.52).toInt(),
+                        (220 * resources.displayMetrics.density).toInt())),
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }
@@ -1499,8 +1500,9 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.apply {
             navigationBarColor = ContextCompat.getColor(this@MainActivity, R.color.barka_card)
             setLayout(
-                minOf((resources.displayMetrics.widthPixels * 0.9).toInt(),
-                    (360 * resources.displayMetrics.density).toInt()),
+                minOf((resources.displayMetrics.widthPixels * 0.85).toInt(),
+                    maxOf((resources.displayMetrics.widthPixels * 0.52).toInt(),
+                        (220 * resources.displayMetrics.density).toInt())),
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }

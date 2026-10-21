@@ -9,7 +9,7 @@ data class PriceCatalog(val revision: Long, val prices: Map<String, Int>)
 object PricingStore {
     private const val PREFS = "barka_price_catalog"
     private const val KEY = "catalog"
-    val defaults = mapOf("24h" to 300, "1w" to 800, "2w" to 1000, "1m" to 2000,
+    val defaults = mapOf("24h" to 300, "1w" to 800, "2w" to 1000, "1m" to 2000, "3m" to 6000,
         "reseller_1m" to 5000, "reseller_2m" to 10000)
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -18,9 +18,10 @@ object PricingStore {
         val revision = body.get("revision")
         require((revision is Int || revision is Long) && (revision as Number).toLong() >= 0)
         val values = body.getJSONObject("prices")
-        require(values.keys().asSequence().toSet() == defaults.keys)
+        val keys = values.keys().asSequence().toSet()
+        require(keys == defaults.keys || keys == defaults.keys - "3m")
         val prices = defaults.mapValues { (key, _) ->
-            val amount = values.get(key)
+            val amount = if (key == "3m" && !values.has(key)) defaults.getValue(key) else values.get(key)
             require((amount is Int || amount is Long) && (amount as Number).toLong() in 1..10_000_000L)
             (amount as Number).toInt()
         }

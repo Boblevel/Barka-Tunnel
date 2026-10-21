@@ -25,7 +25,7 @@ class PricingUpdate(BaseModel):
     @classmethod
     def complete_catalog(cls, value):
         if set(value) != set(DEFAULT_PRICES):
-            raise ValueError('Les six tarifs sont requis, sans autre offre.')
+            raise ValueError('Tous les tarifs du catalogue sont requis, sans autre offre.')
         return value
 
 
@@ -39,7 +39,10 @@ def get_catalog(cx=None):
     row = cx.execute('SELECT value FROM admin_state WHERE key=?', (STATE_KEY,)).fetchone()
     if not row:
         return {'revision': 0, 'currency': 'XOF', 'prices': dict(DEFAULT_PRICES)}
-    saved = PricingUpdate.model_validate(json.loads(row['value']))
+    raw = json.loads(row['value'])
+    # Upgrade the six-price catalog while preserving custom amounts and revision.
+    raw['prices'] = {**DEFAULT_PRICES, **raw['prices']}
+    saved = PricingUpdate.model_validate(raw)
     return {**saved.model_dump(), 'currency': 'XOF'}
 
 

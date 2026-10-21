@@ -49,6 +49,26 @@ class PricingTest {
         }while(System.nanoTime()<end)
         fail("Callback did not complete")
     }
+    @Test fun oldCatalogPreservesCustomPricesAndAddsThreeMonths() {
+        val legacy = catalog(8,777).also { it.getJSONObject("prices").remove("3m") }
+        PricingStore.save(context,legacy)
+        assertEquals(777,PricingStore.read(context).prices["24h"])
+        assertEquals(6000,PricingStore.read(context).prices["3m"])
+        assertEquals(8L,PricingStore.read(context).revision)
+    }
+    @Test fun threeMonthsCanBeSelectedAndKeepsPendingPrice() {
+        PendingPaymentStore.save(context,"BT-three-months","3m","https://example.org/checkout",6000)
+        PricingStore.save(context,catalog(2).also { it.getJSONObject("prices").put("3m",7500) })
+        val c=Robolectric.buildActivity(SubscriptionActivity::class.java).setup();val a=c.get()
+        try {
+            settle(a,"checkingPayment")
+            assertEquals(R.id.plan3m,a.findViewById<android.widget.RadioGroup>(R.id.plansGroup).checkedRadioButtonId)
+            assertFalse(a.findViewById<View>(R.id.plan3m).isEnabled)
+            assertTrue(a.findViewById<TextView>(R.id.plan3m).text.toString().contains("3 MOIS"))
+            assertEquals(6000,PendingPaymentStore.amount(a))
+            assertEquals(90L*86400L,com.barkatunnel.app.payment.PaymentPlan.ALL.single {it.id=="3m"}.durationSeconds)
+        } finally {c.pause().stop().destroy()}
+    }
     @Test fun cachedCatalogRejectsInvalidAndOlderResponses() {
         PricingStore.save(context,catalog(3))
         for(invalid in listOf(catalog(4).put("currency","EUR"),catalog(4).also {it.getJSONObject("prices").put("24h",0)},

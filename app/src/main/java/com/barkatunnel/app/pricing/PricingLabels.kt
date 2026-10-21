@@ -12,6 +12,7 @@ object PricingLabels {
             "1w" -> R.string.price_offer_week
             "2w" -> R.string.price_offer_two_weeks
             "1m" -> R.string.price_offer_month
+            "3m" -> R.string.price_offer_three_months
             "reseller_1m" -> R.string.price_reseller_month
             "reseller_2m" -> R.string.price_reseller_two_months
             else -> error("Unknown offer")

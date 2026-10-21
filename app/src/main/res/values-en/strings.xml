@@ -281,4 +281,6 @@
     <string name="suggestions_retry">Refresh</string>
     <string name="ip_finder_orange_patterns">Orange BF: only the prefixes in this list are accepted. Fixed list.</string>
 <string name="global_coverage">Worldwide coverage</string>
+    <string name="subscription_three_months">3 MONTHS — 6 000 XOF</string>
+    <string name="price_offer_three_months">3 MONTHS — %1$s XOF</string>
 </resources>

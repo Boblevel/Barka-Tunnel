@@ -11,11 +11,11 @@ def set_prices(client, **changes):
     return response.json()
 
 
-def test_catalog_admin_only_save_and_persistent_six_prices(env):
+def test_catalog_admin_only_save_and_persistent_seven_prices(env):
     db,_,_,_,_,main,_=env
     with client_for(main) as c:
         initial=c.get('/v1/pricing');assert initial.headers['cache-control'].startswith('no-store')
-        assert len(initial.json()['prices'])==6 and initial.json()['prices']['24h']==300
+        assert len(initial.json()['prices'])==7 and initial.json()['prices']['24h']==300
         saved=set_prices(c, **{'24h':450,'1w':900,'2w':1400,'1m':3000,'reseller_1m':6500,'reseller_2m':12500})
         assert c.get('/v1/pricing').json()==saved
         assert c.get('/v1/admin/pricing',headers={'X-Admin-Token':'invalid'}).status_code==401
@@ -50,7 +50,7 @@ def test_catalog_requires_exact_offers(env,key):
         assert c.put('/v1/admin/pricing',json={'revision':0,'prices':values}).status_code==422
 
 
-@pytest.mark.parametrize('plan',['24h','1w','2w','1m'])
+@pytest.mark.parametrize('plan',['24h','1w','2w','1m','3m'])
 def test_subscription_uses_saved_price_and_delivers_original_duration(env,provider,monkeypatch,plan):
     db,svc,_,_,_,main,_=env
     from app import saspay
@@ -116,3 +116,31 @@ def test_price_change_while_provider_is_creating_cannot_change_quote(env,monkeyp
         assert response.json()['amount']==300
         assert svc.get_payment_for_device(response.json()['payment_reference'],'concurrent-pricing-device')['amount']==300
         assert c.get('/v1/pricing').json()['prices']['24h']==999
+
+
+def test_existing_custom_prices_survive_three_month_upgrade(env):
+    import json
+    db, _, _, _, _, main, _ = env
+    from app.pricing import DEFAULT_PRICES, STATE_KEY
+    legacy = {k: v+50 for k,v in DEFAULT_PRICES.items() if k != '3m'}
+    with db.transaction() as cx:
+        cx.execute('INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?)',
+                   (STATE_KEY,json.dumps({'revision':8,'prices':legacy}),1))
+    with client_for(main) as c:
+        current=c.get('/v1/pricing').json()
+        assert current['revision']==8
+        assert current['prices']=={**legacy,'3m':6000}
+        assert set_prices(c, **{'3m':6500})['prices']=={**legacy,'3m':6500}
+
+
+def test_three_month_admin_code_grants_ninety_days(env):
+    from datetime import datetime
+    _,svc,_,_,_,main,_=env
+    with client_for(main) as c:
+        r=c.post('/v1/admin/codes',json={'plan_id':'3m','count':1})
+        assert r.status_code==200,r.text
+        before=svc.now_ts()
+        assert svc.redeem_activation_code('three-month-admin-device',r.json()['codes'][0])[0]
+        state=svc.access_state('three-month-admin-device')
+        end=int(datetime.fromisoformat(state['expires_at'].replace('Z','+00:00')).timestamp())
+        assert 90*86400 <= end-before <= 90*86400+2

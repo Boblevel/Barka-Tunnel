@@ -290,4 +290,7 @@
     <string name="suggestions_retry">Actualiser</string>
     <string name="ip_finder_orange_patterns">Orange BF : seuls les préfixes de cette liste sont acceptés. Liste fixe.</string>
 <string name="global_coverage">Couverture mondiale</string>
+    <string name="subscription_three_months">3 MOIS — 6 000 XOF</string>
+    <string name="price_offer_three_months">3 MOIS — %1$s XOF</string>
+    <string name="support_number" translatable="false">+1 (985) 221-2404</string>
 </resources>

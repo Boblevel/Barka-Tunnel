@@ -29,6 +29,7 @@ PLANS = {
         "currency": "XOF",
         "duration_seconds": 30 * 24 * 60 * 60,
     },
+    "3m": {"id":"3m", "label":"3 MOIS", "amount":6000, "currency":"XOF", "duration_seconds":90 * 24 * 60 * 60},
 }
 
 

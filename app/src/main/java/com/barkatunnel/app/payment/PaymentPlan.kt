@@ -11,7 +11,8 @@ data class PaymentPlan(
             PaymentPlan("24h", "24 HEURES", 300, 24L * 60L * 60L),
             PaymentPlan("1w", "1 SEMAINE", 800, 7L * 24L * 60L * 60L),
             PaymentPlan("2w", "2 SEMAINES", 1000, 14L * 24L * 60L * 60L),
-            PaymentPlan("1m", "1 MOIS", 2000, 30L * 24L * 60L * 60L)
+            PaymentPlan("1m", "1 MOIS", 2000, 30L * 24L * 60L * 60L),
+            PaymentPlan("3m", "3 MOIS", 6000, 90L * 24L * 60L * 60L)
         )
     }
 }

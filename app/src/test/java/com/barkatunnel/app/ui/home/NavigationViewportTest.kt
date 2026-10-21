@@ -23,7 +23,7 @@ class NavigationViewportTest {
         val activity = controller.get()
         activity.setTheme(R.style.Theme_BarkaTunnel)
         try {
-            for (width in listOf(288, 324, 360)) {
+            for (width in listOf(220, 260, 324)) {
                 val root = activity.layoutInflater.inflate(R.layout.dialog_side_menu, null) as ViewGroup
                 val header = root.getChildAt(0)
                 val scroll = root.getChildAt(1) as ScrollView

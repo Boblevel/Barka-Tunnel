@@ -49,6 +49,6 @@ class SupportActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val SUPPORT_URL = "https://wa.me/message/XUBALKJE5J2CB1"
+        private const val SUPPORT_URL = "https://wa.me/19852212404"
     }
 }

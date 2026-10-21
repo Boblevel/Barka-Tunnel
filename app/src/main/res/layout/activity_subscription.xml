@@ -125,6 +125,19 @@
                 android:textColor="@color/barka_text"
                 android:textSize="14sp"
                 android:textStyle="bold" />
+
+            <RadioButton
+                android:id="@+id/plan3m"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_network_selected"
+                android:buttonTint="@color/barka_blue"
+                android:paddingHorizontal="16dp"
+                android:text="@string/subscription_three_months"
+                android:textColor="@color/barka_text"
+                android:textSize="14sp"
+                android:textStyle="bold" />
         </RadioGroup>
 
         <LinearLayout
