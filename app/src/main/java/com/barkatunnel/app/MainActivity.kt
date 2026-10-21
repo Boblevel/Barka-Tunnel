@@ -89,6 +89,9 @@ private enum class NetworkIpVisualState {
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var homeDownload: com.barkatunnel.app.update.HomeApkDownload
+    private lateinit var homeBrandName: TextView
+
     private var selectedNetwork: NetworkOption? = null
     private var homeController: HomeController? = null
     private lateinit var homeJournalPager: ViewPager2
@@ -256,6 +259,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_home_journal_pager)
         applyRootSystemInsets()
         val homePage = layoutInflater.inflate(R.layout.activity_main, null, false)
+        homeDownload = com.barkatunnel.app.update.HomeApkDownload(this, homePage)
+        homeBrandName = homePage.findViewById(R.id.homeBrandName)
         val journalPage = layoutInflater.inflate(R.layout.activity_journal, null, false)
         journalPage.findViewById<android.view.View>(R.id.journalContentContainer).apply {
             setPadding(paddingLeft, 0, paddingRight, paddingBottom)
@@ -619,6 +624,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        homeDownload.stop()
         giftFireworks?.cancel()
         giftFireworks = null
         vpnStateReconciliationActive = false
@@ -668,6 +674,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        homeDownload.resume()
         homePageResumed = true
         entryUpdateGeneration += 1L
         mainHandler.removeCallbacks(foregroundUpdatePoll)
@@ -1405,6 +1412,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun showApkDownload() {
+        openHome()
+        homeDownload.resume()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        showApkDownload()
+    }
+
+    private fun sideMenuWidth(): Int {
+        val width = window.decorView.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val position = IntArray(2)
+        homeBrandName.getLocationInWindow(position)
+        val index = homeBrandName.text.toString().indexOf("Tunnel")
+        val boundary = if (index >= 0 && homeBrandName.layout != null) {
+            position[0] + homeBrandName.totalPaddingLeft + homeBrandName.layout.getPrimaryHorizontal(index + 2).toInt()
+        } else (width * 0.38f).toInt()
+        return (width - boundary).coerceIn((width * 0.55f).toInt(), (width * 0.90f).toInt())
+    }
+
     private var sideMenuDialog: Dialog? = null
 
     private fun showSideMenu() {
@@ -1420,9 +1448,7 @@ class MainActivity : AppCompatActivity() {
             )
             setGravity(Gravity.RIGHT)
             setLayout(
-                minOf((resources.displayMetrics.widthPixels * 0.85).toInt(),
-                    maxOf((resources.displayMetrics.widthPixels * 0.52).toInt(),
-                        (220 * resources.displayMetrics.density).toInt())),
+                sideMenuWidth(),
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }
@@ -1500,9 +1526,7 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.apply {
             navigationBarColor = ContextCompat.getColor(this@MainActivity, R.color.barka_card)
             setLayout(
-                minOf((resources.displayMetrics.widthPixels * 0.85).toInt(),
-                    maxOf((resources.displayMetrics.widthPixels * 0.52).toInt(),
-                        (220 * resources.displayMetrics.density).toInt())),
+                sideMenuWidth(),
                 WindowManager.LayoutParams.MATCH_PARENT
             )
         }

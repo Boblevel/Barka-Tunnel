@@ -34,6 +34,7 @@ from .app_updates import (
     upsert_app_update,
 )
 
+from .request_protection import protect_request
 from .config import settings
 from .db import connect, init_db
 from .saspay import SasPayError, create_payment, get_payment
@@ -132,7 +133,19 @@ app = FastAPI(
     title="Barka Tunnel Backend",
     version="1.1.0",
     lifespan=lifespan,
+    dependencies=[Depends(protect_request)],
 )
+
+
+@app.middleware("http")
+async def response_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    if request.url.path.startswith(("/v1/admin/", "/v1/reseller", "/v1/payments/", "/v1/vpn/profile", "/v1/access/", "/v1/activation/")):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 from .reseller_purchases import router as reseller_purchase_router
@@ -366,6 +379,8 @@ async def saspay_webhook(
         payload = json.loads(raw.decode("utf-8"))
     except Exception as exc:
         raise HTTPException(status_code=400, detail="JSON webhook invalide") from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("data", {}), dict):
+        raise HTTPException(400, "Structure webhook invalide")
     event_type = str(payload.get("event") or "").strip()
     if x_webhook_event and event_type and x_webhook_event.strip() != event_type:
         raise HTTPException(status_code=400, detail="Type d'événement webhook incohérent")
@@ -771,7 +786,7 @@ def admin_panel():
                 "script-src 'unsafe-inline'; "
                 "img-src 'self' data:; "
                 "connect-src 'self'; "
-                "frame-ancestors 'none'"
+                "frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'"
             ),
         },
     )
@@ -792,7 +807,7 @@ def reseller_panel():
                 "script-src 'unsafe-inline'; "
                 "img-src 'self' data:; "
                 "connect-src 'self'; "
-                "frame-ancestors 'none'"
+                "frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'"
             ),
         },
     )

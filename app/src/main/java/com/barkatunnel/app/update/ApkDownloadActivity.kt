@@ -74,28 +74,12 @@ class ApkDownloadActivity : AppCompatActivity() {
                     val now=System.currentTimeMillis()
                     if(now-lastUi>200||done==total){lastUi=now;runOnUiThread {if(!isDestroyed){bar.progress=(done*100/total).toInt();status.text="${done/1048576} / ${total/1048576} Mo • ${bar.progress}%"}}}
                 }
-                try{verifyApk(file)}catch(error:Exception){file.delete();throw error}
+                try{ApkVerifier.verify(context,file,url,version)}catch(error:Exception){file.delete();throw error}
                 if(file!=apk&&!file.renameTo(apk))throw IllegalStateException("Impossible de préparer l’installation.")
                 ready=apk
                 runOnUiThread {if(!isDestroyed){bar.progress=100;status.text="Téléchargement terminé. APK vérifié.";action.isEnabled=true;action.text="INSTALLER";if(!paused.get())install()}}
             }catch(error:Exception){runOnUiThread{if(!isDestroyed){status.text=error.message?:"Téléchargement interrompu.";action.isEnabled=true;action.text="REPRENDRE"}}}
         }.also {it.start()}
-    }
-    @Suppress("DEPRECATION")
-    private fun verifyApk(file: File) {
-        val expected=Regex("/downloads/apk/([a-f0-9]{64})\\.apk$").find(url)?.groupValues?.get(1)
-        if(expected!=null){
-            val digest=MessageDigest.getInstance("SHA-256")
-            file.inputStream().use {input->val buffer=ByteArray(65536);while(true){val n=input.read(buffer);if(n<0)break;digest.update(buffer,0,n)}}
-            check(digest.digest().joinToString(""){"%02x".format(it)}==expected){"APK endommagé : vérification SHA-256 refusée."}
-        }
-        val flags=if(Build.VERSION.SDK_INT>=28)PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-        val archive=packageManager.getPackageArchiveInfo(file.absolutePath,flags)?:throw IllegalStateException("APK Android invalide.")
-        val installed=packageManager.getPackageInfo(packageName,flags)
-        fun versionOf(info:PackageInfo)=if(Build.VERSION.SDK_INT>=28)info.longVersionCode else info.versionCode.toLong()
-        check(archive.packageName==packageName&&versionOf(archive)==version&&version>versionOf(installed)){"Cet APK ne correspond pas à la version annoncée."}
-        fun signers(info:PackageInfo):Set<String> = (if(Build.VERSION.SDK_INT>=28)info.signingInfo?.apkContentsSigners else info.signatures).orEmpty().map{sha256(it.toByteArray())}.toSet()
-        check(signers(installed).isNotEmpty()&&signers(archive)==signers(installed)){"Signature APK différente : installation refusée."}
     }
     private fun install() {
         val apk=ready?:return
@@ -113,6 +97,11 @@ class ApkDownloadActivity : AppCompatActivity() {
     override fun onStop(){paused.set(true);super.onStop()}
     companion object {
         private fun sha256(bytes:ByteArray)=MessageDigest.getInstance("SHA-256").digest(bytes).joinToString(""){"%02x".format(it)}
-        fun open(context:Context,update:BackendAppUpdate){context.startActivity(Intent(context,ApkDownloadActivity::class.java).putExtra("url",update.apkUrl).putExtra("version",update.latestVersionCode))}
+        fun open(context:Context,update:BackendAppUpdate) {
+            HomeApkDownload.select(context, update)
+            if (context is com.barkatunnel.app.MainActivity) context.showApkDownload()
+            else context.startActivity(Intent(context, com.barkatunnel.app.MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
     }
 }

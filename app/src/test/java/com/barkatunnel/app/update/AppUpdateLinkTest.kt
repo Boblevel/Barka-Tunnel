@@ -40,7 +40,7 @@ class AppUpdateLinkTest {
             controller.pause().stop().destroy()
         }
     }
-    @Test fun mandatoryInternalUpdateRetainsVersionAndOpensDownloader() {
+    @Test fun mandatoryInternalUpdateRetainsVersionAndOpensHomeDownloader() {
         val controller=Robolectric.buildActivity(AppCompatActivity::class.java)
         val activity=controller.get();activity.setTheme(R.style.Theme_BarkaTunnel);controller.setup().visible()
         try {
@@ -49,8 +49,12 @@ class AppUpdateLinkTest {
             ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             shadowOf(android.os.Looper.getMainLooper()).idle()
             val intent=shadowOf(activity).nextStartedActivity
-            assertEquals(ApkDownloadActivity::class.java.name,intent.component?.className)
-            assertEquals(999L,intent.getLongExtra("version",0))
+            assertEquals(com.barkatunnel.app.MainActivity::class.java.name,intent.component?.className)
+            val pending = activity.getSharedPreferences("barka_apk_download", android.content.Context.MODE_PRIVATE)
+            assertEquals(999L, pending.getLong("version", 0))
+            assertEquals("https://example.org/app.apk", pending.getString("url", null))
+            assertFalse(pending.getBoolean("paused", true))
+            assertTrue(AppUpdateGate.isBlocked())
         } finally {AppUpdateGate.clear();controller.pause().stop().destroy()}
     }
 }

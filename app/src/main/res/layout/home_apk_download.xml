@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/apkDownloadCard" android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp" android:background="@drawable/bg_card_final"
+    android:padding="14dp" android:orientation="vertical" android:visibility="gone">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/update_title" android:textStyle="bold" android:textSize="16sp"
+        android:textColor="@color/barka_blue" />
+    <TextView android:id="@+id/apkDownloadPercent" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:gravity="end" android:text="0%"
+        android:textSize="18sp" android:textStyle="bold" android:textColor="@color/barka_blue" />
+    <ProgressBar android:id="@+id/apkDownloadProgress" style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent" android:layout_height="8dp" android:max="100"
+        android:progressTint="@color/barka_blue" />
+    <TextView android:id="@+id/apkDownloadStatus" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginTop="6dp"
+        android:textSize="13sp" android:textColor="@color/barka_text_secondary" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/apkDownloadAction"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp"
+        android:text="@string/download_pause" app:cornerRadius="12dp" app:backgroundTint="@color/barka_blue" />
+</LinearLayout>

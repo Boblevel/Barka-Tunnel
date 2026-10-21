@@ -70,7 +70,7 @@ class NavigationViewportTest {
                     }
                     if (layout == R.layout.activity_settings) {
                         val shop = root.findViewById<TextView>(R.id.shopButton)
-                        assertEquals("VISITEZ NOTRE BOUTIQUE 🌟🌟🌟", shop.text.toString())
+                        assertEquals("VISITEZ NOTRE BOUTIQUE 🛍️", shop.text.toString())
                         assertTrue(shop.height >= 76)
                         assertTrue(shop.width <= width)
                     }

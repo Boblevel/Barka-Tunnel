@@ -1,0 +1,12 @@
+<resources>
+    <string name="download_pause">PAUSE</string>
+    <string name="download_resume">RESUME</string>
+    <string name="download_install">INSTALL</string>
+    <string name="download_connecting">Connecting… Your progress is saved.</string>
+    <string name="download_paused">Paused • downloaded data is saved.</string>
+    <string name="download_progress">%1$d / %2$d MB</string>
+    <string name="download_ready">Download complete • APK verified.</string>
+    <string name="download_retry">Connection interrupted • resuming automatically…</string>
+    <string name="download_failed">Download or verification failed. Tap Resume.</string>
+    <string name="download_permission">Allow this installation in Android, then tap Install.</string>
+</resources>

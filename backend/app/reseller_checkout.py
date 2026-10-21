@@ -19,6 +19,9 @@ async def cancel_checkout(session_id: str) -> dict:
     if response.status_code >= 400:
         raise saspay.SasPayError('Annulation non confirmée')
     try:
-        return saspay._unwrap(response.json())
+        payload = saspay._unwrap(response.json())
+        if str(payload.get("status", "")).upper() == "PAID":
+            return await saspay.get_payment(session_id)
+        return payload
     except ValueError as exc:
         raise saspay.SasPayError('Réponse d’annulation invalide') from exc

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from urllib.parse import quote
+from decimal import Decimal, InvalidOperation
+from .db import connect
 
 import httpx
 
@@ -97,7 +99,7 @@ async def get_payment(checkout_session_id: str) -> dict:
     if not settings.payment_ready:
         raise SasPayError("Paiement SasPay non configuré")
 
-    url = f"{settings.saspay_api_base}/checkout-sessions/{quote(checkout_session_id)}/"
+    url = f"{settings.saspay_api_base}/checkout-sessions/{quote(checkout_session_id, safe='')}/"
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
             response = await client.get(url, headers=_headers())
@@ -114,4 +116,29 @@ async def get_payment(checkout_session_id: str) -> dict:
     if response.status_code >= 400:
         raise SasPayError(f"SasPay HTTP {response.status_code}: {_message(data)}")
 
-    return _unwrap(data)
+    payload = _unwrap(data)
+    validate_paid_session(checkout_session_id, payload)
+    return payload
+
+
+def validate_paid_session(session_id: str, payload: dict) -> None:
+    """Only the server-verified original quote can grant paid rights."""
+    if str(payload.get("status", "")).upper() != "PAID":
+        return
+    cx = connect()
+    try:
+        payment = cx.execute("SELECT * FROM payments WHERE provider_payment_id=?", (session_id,)).fetchone()
+    finally:
+        cx.close()
+    if not payment or str(payload.get("id", "")) != session_id:
+        raise SasPayError("Session de paiement incohérente")
+    try:
+        amount = Decimal(str(payload.get("amount", "")))
+    except InvalidOperation as exc:
+        raise SasPayError("Montant de paiement invalide") from exc
+    if not amount.is_finite() or amount != Decimal(payment["amount"]) or payload.get("currency") != payment["currency"]:
+        raise SasPayError("Montant ou devise de paiement incohérent")
+    metadata = payload.get("metadata")
+    if metadata is not None and (not isinstance(metadata, dict) or
+            ("barka_reference" in metadata and metadata["barka_reference"] != payment["reference"])):
+        raise SasPayError("Référence de paiement incohérente")

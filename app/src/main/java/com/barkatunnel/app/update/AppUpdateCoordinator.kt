@@ -141,6 +141,7 @@ class AppUpdateCoordinator(
 
     private fun showDialog(update: BackendAppUpdate) {
         if (activity.isFinishing || activity.isDestroyed) return
+        if (HomeApkDownload.isSelected(activity, update)) return
 
         val title = if (update.forceUpdate) {
             activity.getString(R.string.update_required_title)

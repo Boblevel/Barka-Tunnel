@@ -34,6 +34,7 @@
     "f8043736e2fa8c656e7c7dbe2eff0112d191398531cdb7616fb4b2846c798966"
   ],
   "app/main.py": [
+    "8d198b01e58eefae3f6462c64e1f2fd6292d491df555e575b369b912720f6cb0",
     "7df60d210e36db53dbfafb90ac4250d9a8ffd413d4d425799b41c91835523346",
     "8371a8d21862390be80809bd433dcdc3f3fdc0b057ed13d2bc9695008a70ba47",
     "3bb04f755743590df6741962a44c15dcac1bfc14c437a0ffc80b16e05cda1f4a"
@@ -63,6 +64,7 @@
     "337f51148c568afc0fe33ad2aa8a42f9fd2e9e6ada80218405d47bc1eeac52ed"
   ],
   "app/reseller_checkout.py": [
+    "c13d40f9dd3bcf16a96e6e2f12cdf93169ab211d2ab44fe645a102a7317c988e",
     "250325d49ff7862d788ac696158dfebed6dfbbe028782fc3eef033d62ba9bd87"
   ],
   "app/reseller_deletion.py": [
@@ -81,6 +83,7 @@
     "db0112a1c4dda7e6349b63ec9c711e6d44882606aac96363e1efe90bbabbaa1f"
   ],
   "app/saspay.py": [
+    "2ea473e798936bbca4c95f538fa39349c82126df61748933cecfb02a9990867b",
     "85a59de90da6e7e4f3ed444feff2b99fe331cfcd693c355bd31632ec3689c643"
   ],
   "app/security.py": [
