@@ -1,0 +1,16 @@
+<resources>
+    <string name="ip_search_notification_permission">Allow notifications, then restart the search for sound and vibration alerts.</string>
+    <string name="ip_network_settings">Active network settings</string>
+    <string name="ip_network_settings_unavailable">Network settings are unavailable on this phone.</string>
+    <string name="settings_telegram_bot">Telegram Bot</string>
+    <string name="promotion_remaining">PROMOTION • %1$s left</string>
+    <string name="guide_section_number">GUIDE • CHAPTER %1$d</string>
+    <string name="guide_9_title">9. Share VPN with a computer</string>
+    <string name="guide_9_text">Prepare\nConnect the VPN. Put the PC on the same Wi-Fi network or phone Wi-Fi/USB tethering. Open Settings → Share VPN with a computer.\n\nConfigure\nSelect the local address and start. Set the PC HTTP and HTTPS proxy to the displayed address and port, and enter the credentials. Use a trusted LAN.\n\nScope\nOnly proxy-aware applications use the VPN. TCP is supported, UDP is not. This does not automatically route all hotspot traffic through the VPN.\n\nStop\nKeep this screen open. STOP, closing this screen or a changed/disconnected VPN session ends sharing. Remove the PC proxy afterwards if necessary.</string>
+    <string name="guide_10_title">10. Test VPN speed</string>
+    <string name="guide_10_text">Start\nConnect the VPN, open Settings → Test VPN speed and tap START. Watch the animated phases.\n\nResults\nHTTPS latency is in milliseconds; download and upload are in Mbps. About 10 MB passes through the VPN. Results depend on signal, servers and other traffic.\n\nSave data\nAvoid unnecessary repeat tests. STOP cancels the measurement. A VPN disconnect stops the test without switching to direct Internet.</string>
+    <string name="guide_11_title">11. Become a reseller</string>
+    <string name="guide_11_text">Purchase or renew\nOpen BECOME A RESELLER, choose a duration and check the price. Promotions show a countdown. Complete payment and return to retrieve account details.\n\nYour reseller panel\nUse the displayed link and credentials. Keep them safe. Access depends on account validity; contact support for frozen or expired accounts.\n\nGenerate codes\nChoose a subscription or a 2, 3 or 6 hour test. Check the duration before generating. Customers activate separately supplied codes on ACTIVATION CODE; in-app purchases use automatic activation.</string>
+    <string name="guide_12_title">12. Update the app</string>
+    <string name="guide_12_text">Check\nUse Settings or the update invitation in the app.\n\nDownload\nInternal downloads display progress on Home. Return after interruption to resume when supported by the server. Do not clear app data during download.\n\nInstall\nFollow the Android installation prompt. If required, authorize installations from Barka Tunnel, then return. Android controls this permission.\n\nAfter installation\nReopen the app, check ABOUT and allow synchronization. If Android refuses an older version, contact support before uninstalling to avoid losing local data.</string>
+</resources>

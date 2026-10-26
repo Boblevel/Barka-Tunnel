@@ -77,7 +77,8 @@
             <RadioButton
                 android:id="@+id/plan24h"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp" android:paddingVertical="14dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
                 android:checked="true"
@@ -90,7 +91,8 @@
             <RadioButton
                 android:id="@+id/plan1w"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp" android:paddingVertical="14dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
@@ -103,7 +105,8 @@
             <RadioButton
                 android:id="@+id/plan2w"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp" android:paddingVertical="14dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
@@ -116,7 +119,8 @@
             <RadioButton
                 android:id="@+id/plan1m"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp" android:paddingVertical="14dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"
@@ -129,7 +133,8 @@
             <RadioButton
                 android:id="@+id/plan3m"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp" android:paddingVertical="14dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
                 android:buttonTint="@color/barka_blue"

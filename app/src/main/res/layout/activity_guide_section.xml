@@ -47,7 +47,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <com.barkatunnel.app.ui.common.AdaptiveNoScrollView
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -72,13 +72,9 @@
             android:paddingEnd="20dp"
             android:paddingBottom="22dp">
 
-            <ImageView
-                android:id="@+id/guideSectionIcon"
-                android:layout_width="46dp"
-                android:layout_height="46dp"
-                android:layout_gravity="center_horizontal"
-                android:contentDescription="@null"
-                app:tint="@null" />
+            <TextView android:id="@+id/guideSectionNumber" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:background="@drawable/bg_ip_finder_method" android:paddingHorizontal="16dp" android:paddingVertical="8dp"
+                android:textColor="@color/barka_blue" android:textSize="13sp" android:textStyle="bold" />
 
 
             <View
@@ -94,8 +90,8 @@
                 android:layout_height="wrap_content"
                 android:lineSpacingExtra="4dp"
                 android:textColor="@color/barka_text_secondary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
         </LinearLayout>
         </LinearLayout>
-    </com.barkatunnel.app.ui.common.AdaptiveNoScrollView>
+    </ScrollView>
 </LinearLayout>

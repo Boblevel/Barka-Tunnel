@@ -23,6 +23,11 @@ class GuideActivity : AppCompatActivity() {
         bindSection(R.id.guide6, 6)
         bindSection(R.id.guide7, 7)
         bindSection(R.id.guide8, 8)
+        bindSection(R.id.guide9, 9)
+        bindSection(R.id.guide10, 10)
+        bindSection(R.id.guide11, 11)
+        bindSection(R.id.guide12, 12)
+
     }
 
     private fun bindSection(viewId: Int, section: Int) {

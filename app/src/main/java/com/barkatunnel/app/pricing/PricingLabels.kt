@@ -19,6 +19,12 @@ object PricingLabels {
         }
         val locale = ConfigurationCompat.getLocales(context.resources.configuration)[0]
             ?: java.util.Locale.getDefault()
-        return context.getString(label, NumberFormat.getIntegerInstance(locale).format(amount))
+        val text = context.getString(label, NumberFormat.getIntegerInstance(locale).format(amount))
+        val catalog = PricingStore.read(context)
+        val promo = catalog.promotions[key] ?: return text
+        if (catalog.serverTime < promo.startsAt || catalog.serverTime >= promo.endsAt || amount != promo.amount) return text
+        val seconds = promo.endsAt - catalog.serverTime
+        val remaining = String.format(locale, "%02d:%02d:%02d", seconds / 3600, seconds % 3600 / 60, seconds % 60)
+        return text + "\n" + context.getString(R.string.promotion_remaining, remaining)
     }
 }

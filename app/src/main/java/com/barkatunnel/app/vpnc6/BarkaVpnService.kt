@@ -663,6 +663,7 @@ class BarkaVpnService : VpnService() {
         keepAliveFuture?.cancel(true)
         val port = socksPort(protocol)
         val monitorGeneration = operationGeneration.get()
+        var nextDiagnosticAt = 0L
         keepAliveFuture = keepAliveExecutor.scheduleWithFixedDelay(
             {
                 if (connected && !stopping) {
@@ -678,6 +679,10 @@ class BarkaVpnService : VpnService() {
                         val enabled = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
                             .getBoolean(KEY_AUTO_PING, true)
                         if (!enabled) return@scheduleWithFixedDelay
+                        val now = SystemClock.elapsedRealtime()
+                        if (now < nextDiagnosticAt) return@scheduleWithFixedDelay
+                        val power = getSystemService(android.os.PowerManager::class.java)
+                        nextDiagnosticAt = now + if (power.isPowerSaveMode || !power.isInteractive) 120_000L else 60_000L
                         // Ce contrôle valide le relais SOCKS. Le processus
                         // tun2socks est contrôlé séparément ci-dessus, car
                         // l'application est volontairement exclue du TUN.

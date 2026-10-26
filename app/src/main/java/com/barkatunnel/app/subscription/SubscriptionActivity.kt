@@ -39,6 +39,7 @@ class SubscriptionActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_subscription)
         SystemBars.apply(this)
+        com.barkatunnel.app.pricing.PromotionTicker(this) { renderPrices() }
 
         findViewById<android.view.View>(R.id.subscriptionBackButton).setOnClickListener { finish() }
 

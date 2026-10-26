@@ -84,6 +84,12 @@
             </intent-filter>
         </activity>
 
+        <service android:name=".ipfinder.IpSearchService" android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-started cellular IP search with stop action and completion alert" />
+        </service>
+
         <service
             android:name=".ipfinder.assistant.BarkaAssistantService"
             android:exported="true"

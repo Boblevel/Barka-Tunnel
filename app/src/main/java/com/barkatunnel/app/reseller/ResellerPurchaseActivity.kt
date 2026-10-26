@@ -46,6 +46,7 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_reseller_purchase)
         SystemBars.apply(this)
+        com.barkatunnel.app.pricing.PromotionTicker(this) { renderPrices() }
         findViewById<View>(R.id.resellerBackButton).setOnClickListener { finish() }
         plans = findViewById(R.id.resellerPlans)
         plans.setOnCheckedChangeListener { _, id -> months = if (id == R.id.resellerTwoMonths) 2 else 1 }

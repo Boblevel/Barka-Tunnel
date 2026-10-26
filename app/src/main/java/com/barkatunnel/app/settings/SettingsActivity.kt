@@ -140,6 +140,13 @@ class SettingsActivity : AppCompatActivity() {
             shareApplication()
         }
 
+        findViewById<MaterialButton>(R.id.telegramBotButton).setOnClickListener {
+            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/rhaffshopbot"))) }
+            catch (_: android.content.ActivityNotFoundException) {
+                android.widget.Toast.makeText(this, R.string.browser_unavailable, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+
         findViewById<MaterialButton>(R.id.telegramChannelButton).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/barkaTunnel")))
         }

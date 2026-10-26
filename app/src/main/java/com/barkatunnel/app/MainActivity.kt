@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
         override fun run() {
             if (!vpnStateReconciliationActive) return
             refreshNetworkIp()
-            mainHandler.postDelayed(this, 1_000L)
+            mainHandler.postDelayed(this, 10_000L)
         }
     }
     private val weeklyGiftRefreshRunnable = Runnable {
@@ -670,6 +670,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         homePageResumed = false
+        if (::timerController.isInitialized) timerController.stop()
+        vpnStateReconciliationActive = false
+        mainHandler.removeCallbacks(networkIpRefreshRunnable)
+        mainHandler.removeCallbacks(vpnStateReconcileRunnable)
         mainHandler.removeCallbacks(foregroundUpdatePoll)
         super.onPause()
     }
@@ -678,6 +682,12 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         homeDownload.resume()
         homePageResumed = true
+        if (::timerController.isInitialized) timerController.start()
+        vpnStateReconciliationActive = true
+        mainHandler.removeCallbacks(networkIpRefreshRunnable)
+        mainHandler.post(networkIpRefreshRunnable)
+        mainHandler.removeCallbacks(vpnStateReconcileRunnable)
+        mainHandler.post(vpnStateReconcileRunnable)
         entryUpdateGeneration += 1L
         mainHandler.removeCallbacks(foregroundUpdatePoll)
         mainHandler.post(foregroundUpdatePoll)
@@ -894,7 +904,16 @@ class MainActivity : AppCompatActivity() {
             listOf(R.id.optionMoov to "moov_bf", R.id.optionTiktok to "moov_tiktok",
                 R.id.optionOrange to "orange_bf", R.id.optionTelecel to "telecel_bf",
                 R.id.optionGlobal to "global_world").forEach { (viewId, networkId) ->
-                dialog.findViewById<View>(viewId).isSelected = id == networkId
+                val row = dialog.findViewById<View>(viewId)
+                val maintenance = vpnProfileRepository.isMaintenance(networkId)
+                row.isSelected = id == networkId && !maintenance
+                row.alpha = if (maintenance) 0.42f else 1f
+                fun shade(view: View) {
+                    if (view is ImageView) view.colorFilter = if (maintenance)
+                        android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply { setSaturation(0f) }) else null
+                    if (view is android.view.ViewGroup) for (i in 0 until view.childCount) shade(view.getChildAt(i))
+                }
+                shade(row)
             }
         }
         updateSelection(selectedId)
@@ -1913,6 +1932,7 @@ class MainActivity : AppCompatActivity() {
         network: NetworkOption?
     ) {
         val drawable = when (network?.id) {
+            "moov_tiktok" -> R.drawable.ic_tiktok_official
             "orange_bf" -> R.drawable.ic_operator_orange
             "telecel_bf" -> R.drawable.ic_operator_telecel
             "global_world" -> R.drawable.global_africa_red
@@ -1921,7 +1941,7 @@ class MainActivity : AppCompatActivity() {
 
         networkLogo.setImageResource(drawable)
         val global = network?.id == "global_world"
-        networkFlagBurkina.setImageResource(if (global) R.drawable.global_africa_red else R.drawable.ic_flag_bf)
+        networkFlagBurkina.setImageResource(if (global) R.drawable.ic_global_world else R.drawable.ic_flag_bf)
         networkFlagBurkina.contentDescription = if (global) getString(R.string.global_coverage) else getString(R.string.burkina_faso)
         val showMoovCountries = network?.id == "moov_bf"
         networkFlagNiger.visibility = if (showMoovCountries) {

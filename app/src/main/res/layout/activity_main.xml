@@ -87,6 +87,7 @@
             android:contentDescription="@string/open_menu_description"
             android:focusable="true"
             android:padding="@dimen/home_header_menu_padding"
+            android:background="@drawable/bg_hamburger_circle" app:tint="@color/barka_blue"
             android:src="@drawable/ic_menu_barka" />
     </LinearLayout>
 

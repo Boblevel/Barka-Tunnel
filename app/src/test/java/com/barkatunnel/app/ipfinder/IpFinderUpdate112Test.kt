@@ -151,18 +151,16 @@ class IpFinderUpdate112Test {
             shadowOf(android.os.Looper.getMainLooper()).idle()
             assertEquals(View.VISIBLE,button.visibility);assertTrue(button.isEnabled)
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_red),result.currentTextColor)
-            val searching=IpFinderActivity::class.java.getDeclaredField("searching").apply {isAccessible=true}
-            searching.setBoolean(activity,true)
             // During a network cut no stale address or reconnection sentence is shown.
             manager.setLinkProperties(network, android.net.LinkProperties())
-            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(1))
+            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(10))
             assertEquals("—", result.text.toString())
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_text_secondary),result.currentTextColor)
             // Some ROMs omit the link callback. Polling must recover without leaving the page.
             val good=link("10.161.2.3");manager.setLinkProperties(network,good)
-            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(1))
+            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(10))
             shadowOf(android.os.Looper.getMainLooper()).idle()
-            assertEquals(View.GONE,button.visibility);assertFalse(searching.getBoolean(activity))
+            assertEquals(View.GONE,button.visibility)
             assertEquals(androidx.core.content.ContextCompat.getColor(activity,R.color.barka_green),result.currentTextColor)
         } finally {controller.pause().stop().destroy()}
     }

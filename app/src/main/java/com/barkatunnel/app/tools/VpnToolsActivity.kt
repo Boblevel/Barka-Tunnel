@@ -33,7 +33,7 @@ class VpnToolsActivity : AppCompatActivity() {
     private val monitor = object : Runnable {
         override fun run() {
             if ((sharing != null || speed != null) && !vpnAlive()) stop(getString(R.string.tools_vpn_required))
-            handler.postDelayed(this, 500)
+            if (sharing != null || speed != null) handler.postDelayed(this, 500)
         }
     }
     private fun vpnAlive() = port != null && BarkaVpnService.connectedSocksPort() == port &&
@@ -53,7 +53,6 @@ class VpnToolsActivity : AppCompatActivity() {
         action.setOnClickListener {
             if (sharing != null || speed != null) stop(getString(R.string.tools_stopped)) else start()
         }
-        handler.post(monitor)
     }
     private fun refreshAddresses() {
         localAddresses = runCatching {
@@ -104,6 +103,7 @@ class VpnToolsActivity : AppCompatActivity() {
                 } finally { test.close() }
             }.start()
         }
+        handler.removeCallbacks(monitor); handler.post(monitor)
         action.setText(R.string.tools_stop)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }

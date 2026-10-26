@@ -5,7 +5,7 @@ import time
 import uuid
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from .db import connect, transaction
 from .plans import PLANS
 from .security import require_admin
@@ -16,10 +16,31 @@ STATE_KEY = 'application_prices_v1'
 router = APIRouter()
 Amount = Annotated[int, Field(strict=True, ge=1, le=10_000_000)]
 
+class Promotion(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    amount: Amount
+    starts_at: int = Field(strict=True, ge=0)
+    ends_at: int = Field(strict=True, gt=0)
+
+    @model_validator(mode='after')
+    def valid_period(self):
+        if self.ends_at <= self.starts_at:
+            raise ValueError('La fin doit être postérieure au début.')
+        return self
+
+
 class PricingUpdate(BaseModel):
     model_config = ConfigDict(extra='forbid')
     revision: int = Field(strict=True, ge=0)
     prices: dict[str, Amount]
+    promotions: dict[str, Promotion] | None = None
+
+    @model_validator(mode='after')
+    def valid_promotions(self):
+        for key, promotion in (self.promotions or {}).items():
+            if key not in self.prices or promotion.amount >= self.prices[key]:
+                raise ValueError('Une promotion doit concerner une offre connue et être inférieure au tarif normal.')
+        return self
 
     @field_validator('prices')
     @classmethod
@@ -37,13 +58,18 @@ def get_catalog(cx=None):
         finally:
             cx.close()
     row = cx.execute('SELECT value FROM admin_state WHERE key=?', (STATE_KEY,)).fetchone()
-    if not row:
-        return {'revision': 0, 'currency': 'XOF', 'prices': dict(DEFAULT_PRICES)}
-    raw = json.loads(row['value'])
+    raw = json.loads(row['value']) if row else {'revision': 0, 'prices': dict(DEFAULT_PRICES)}
     # Upgrade the six-price catalog while preserving custom amounts and revision.
     raw['prices'] = {**DEFAULT_PRICES, **raw['prices']}
     saved = PricingUpdate.model_validate(raw)
-    return {**saved.model_dump(), 'currency': 'XOF'}
+    now = int(time.time())
+    promotions = {key: value.model_dump() for key, value in (saved.promotions or {}).items()}
+    effective = dict(saved.prices)
+    for key, promo in promotions.items():
+        if promo['starts_at'] <= now < promo['ends_at']:
+            effective[key] = promo['amount']
+    return {'revision': saved.revision, 'currency': 'XOF', 'prices': effective,
+            'base_prices': saved.prices, 'promotions': promotions, 'server_time': now}
 
 
 def public_plans():
@@ -88,9 +114,15 @@ def save_pricing(body: PricingUpdate, response: Response):
         current = get_catalog(cx)
         if body.revision != current['revision']:
             raise HTTPException(409, 'Les tarifs ont été modifiés ailleurs. Rechargez avant d’enregistrer.')
-        saved = {'revision': current['revision'] + 1, 'prices': body.prices}
+        promotions = body.promotions if body.promotions is not None else current['promotions']
+        try:
+            validated = PricingUpdate.model_validate({'revision': current['revision'] + 1,
+                                                       'prices': body.prices, 'promotions': promotions})
+        except ValueError as exc:
+            raise HTTPException(422, 'Adaptez ou retirez la promotion avant de réduire le tarif normal.') from exc
+        saved = validated.model_dump()
         cx.execute('''INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?)
                       ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at''',
                    (STATE_KEY, json.dumps(saved), int(time.time())))
     response.headers['Cache-Control'] = 'no-store'
-    return {**saved, 'currency': 'XOF'}
+    return get_catalog()

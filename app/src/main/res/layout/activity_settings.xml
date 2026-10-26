@@ -365,6 +365,35 @@
                 app:rippleColor="@color/barka_border" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/telegramBotButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="76dp"
+                android:layout_marginTop="12dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
+                android:text="@string/settings_telegram_bot"
+                android:textAllCaps="false"
+                android:textColor="@color/barka_text"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_card"
+                app:cornerRadius="20dp"
+
+                app:icon="@drawable/ic_telegram_bot"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="12dp"
+                app:iconTint="@null"
+                app:strokeColor="@color/barka_border"
+                app:strokeWidth="1dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                app:rippleColor="@color/barka_border" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/shopButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

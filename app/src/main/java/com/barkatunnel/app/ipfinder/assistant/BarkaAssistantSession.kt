@@ -77,7 +77,7 @@ class BarkaAssistantSession(
         commandFinished = true
         handler.removeCallbacksAndMessages(null)
         finish()
-        restoreIpFinderTask()
+        // Do not bring Barka to the foreground while the user is in another app.
     }
 
     private fun restoreIpFinderTask() {

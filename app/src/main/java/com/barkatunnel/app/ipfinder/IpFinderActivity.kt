@@ -78,32 +78,17 @@ class IpFinderActivity : AppCompatActivity() {
     private lateinit var ipInput: EditText
 
     private val cycleReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (
-                intent?.action != BarkaAssistantService.ACTION_CYCLE_COMPLETED ||
-                !searching
-            ) {
-                return
-            }
-            val succeeded = intent.getBooleanExtra(
-                BarkaAssistantService.EXTRA_CYCLE_SUCCEEDED,
-                false
-            )
-            if (succeeded) {
-                waitForCellularIp(0)
-            } else if (BarkaAssistantService.isSelected(this@IpFinderActivity)) {
-                if (++failedCycles >= MAX_FAILED_CYCLES) {
-                    stopSearch(getString(R.string.ip_finder_cycle_failed), R.color.barka_red)
-                } else {
-                    handler.postDelayed({ requestNextCycle() }, NEXT_CYCLE_DELAY_MS)
-                }
-            } else {
-                stopSearch(
-                    getString(R.string.ip_finder_cycle_failed),
-                    R.color.barka_red
-                )
-            }
-        }
+        override fun onReceive(context: Context?, intent: Intent?) { renderSearchState() }
+    }
+
+    private fun renderSearchState() {
+        searching = IpSearchService.active
+        stopButton.visibility = if (searching) View.VISIBLE else View.INVISIBLE
+        ipInput.isEnabled = !searching
+        refreshNetworkState()
+        if (IpSearchService.status.isNotEmpty()) statusText.text = IpSearchService.status
+        statusText.setTextColor(ContextCompat.getColor(this, if (searching) R.color.barka_orange
+            else if (IpSearchService.foundIp != null) R.color.barka_green else R.color.barka_text_secondary))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -111,6 +96,19 @@ class IpFinderActivity : AppCompatActivity() {
         setContentView(R.layout.activity_ip_finder)
         SystemBars.apply(this)
 
+        findViewById<View>(R.id.ipNetworkSettings).setOnClickListener {
+            val preferred = if (isWifiActive()) Settings.ACTION_WIFI_SETTINGS else Settings.ACTION_NETWORK_OPERATOR_SETTINGS
+            val opened = listOf(preferred, Settings.ACTION_WIRELESS_SETTINGS, Settings.ACTION_SETTINGS)
+                .any { action ->
+                    val target = Intent(action)
+                    if (action == Settings.ACTION_NETWORK_OPERATOR_SETTINGS && Build.VERSION.SDK_INT >= 24) {
+                        val sim = android.telephony.SubscriptionManager.getDefaultDataSubscriptionId()
+                        if (android.telephony.SubscriptionManager.isValidSubscriptionId(sim)) target.putExtra(Settings.EXTRA_SUB_ID, sim)
+                    }
+                    startIfResolvable(target)
+                }
+            if (!opened) Toast.makeText(this, R.string.ip_network_settings_unavailable, Toast.LENGTH_LONG).show()
+        }
         ipInput = findViewById(R.id.ipInput)
         scanButton = findViewById(R.id.scanButton)
         manualAirplaneButton = findViewById(R.id.manualAirplaneButton)
@@ -128,8 +126,6 @@ class IpFinderActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.ipPatternHelp).setText(R.string.ip_finder_orange_patterns)
         }
         ipInput.doAfterTextChanged { if (!searching) refreshNetworkState() }
-        connectivityManager.registerNetworkCallback(NetworkRequest.Builder().build(),networkCallback)
-        networkRegistered = true
 
         findViewById<android.view.View>(R.id.backButton).setOnClickListener {
             finish()
@@ -164,7 +160,7 @@ class IpFinderActivity : AppCompatActivity() {
         ContextCompat.registerReceiver(
             this,
             cycleReceiver,
-            IntentFilter(BarkaAssistantService.ACTION_CYCLE_COMPLETED),
+            IntentFilter(IpSearchService.CHANGED),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
         receiverRegistered = true
@@ -178,12 +174,18 @@ class IpFinderActivity : AppCompatActivity() {
             setAssistantButton.isEnabled = true
         }
         refreshAssistantState()
-        refreshNetworkState()
+        if (!networkRegistered) {
+            connectivityManager.registerNetworkCallback(NetworkRequest.Builder().build(), networkCallback)
+            networkRegistered = true
+        }
+        renderSearchState()
         displayHandler.removeCallbacks(displayPoll)
         displayHandler.postDelayed(displayPoll, NETWORK_POLL_DELAY_MS)
     }
 
     override fun onPause() {
+        if (networkRegistered) runCatching { connectivityManager.unregisterNetworkCallback(networkCallback) }
+        networkRegistered = false
         displayHandler.removeCallbacks(displayPoll)
         super.onPause()
     }
@@ -194,7 +196,6 @@ class IpFinderActivity : AppCompatActivity() {
         searching = false
         displayHandler.removeCallbacksAndMessages(null)
         handler.removeCallbacksAndMessages(null)
-        BarkaAssistantService.cancelAirplaneCycle(this)
         if (receiverRegistered) {
             runCatching { unregisterReceiver(cycleReceiver) }
             receiverRegistered = false
@@ -300,7 +301,7 @@ class IpFinderActivity : AppCompatActivity() {
         scanButton.visibility = if (compatible) View.GONE else View.VISIBLE
         if (compatible) manualAirplaneButton.visibility = View.GONE
         scanButton.isEnabled = !searching && currentIp != null
-        if (searching && compatible) { completeSearch(currentIp!!); return }
+
         if (!searching && networkChanged) {
             statusText.setText(R.string.ip_finder_idle)
             statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_blue))
@@ -341,127 +342,25 @@ class IpFinderActivity : AppCompatActivity() {
         }
 
         searchPatterns = parsePatterns(rawPattern)
-        previousIp = currentCellularIpv4()
-        attempts = 0
-        failedCycles = 0
-        manualAirplaneButton.visibility = View.GONE
-        searching = true
-        vibrateOnce()
-        scanButton.isEnabled = false
-        stopButton.visibility = View.VISIBLE
-        statusText.setText(R.string.ip_finder_searching)
-        statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_orange))
-        progressText.setText(R.string.ip_finder_waiting_for_network)
-        resultText.text = previousIp ?: getString(R.string.ip_finder_no_cellular_ip)
-        resultText.setTextColor(ContextCompat.getColor(this, R.color.barka_red))
-        AppLogStore.add(this, getString(R.string.ip_finder_log_started))
-
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 740)
+            Toast.makeText(this, R.string.ip_search_notification_permission, Toast.LENGTH_LONG).show()
+            return
+        }
         disconnectActiveTunnel()
-        handler.postDelayed({ requestNextCycle() }, DISCONNECT_SETTLE_DELAY_MS)
-    }
-
-    private fun requestNextCycle() {
-        if (!searching) return
-
-        attempts += 1
-        cycleRequestRetries = 0
-        statusText.setText(R.string.ip_finder_searching)
-        progressText.text = getString(
-            R.string.ip_finder_attempt_format,
-            attempts
-        )
-        requestAirplaneCycleWithRetry()
-    }
-
-    private fun requestAirplaneCycleWithRetry() {
-        if (!searching) return
-        if (BarkaAssistantService.requestAirplaneCycle(this)) return
-
-        if (BarkaAssistantService.isSelected(this)) {
-            cycleRequestRetries += 1
-            if (cycleRequestRetries >= MAX_SERVICE_READY_RETRIES) {
-                stopSearch(
-                    getString(R.string.ip_finder_cycle_failed),
-                    R.color.barka_red
-                )
-                return
-            }
-            handler.postDelayed(
-                { requestAirplaneCycleWithRetry() },
-                SERVICE_READY_RETRY_DELAY_MS
-            )
-            return
-        }
-
-        stopSearch(
-            getString(R.string.ip_finder_cycle_failed),
-            R.color.barka_red
-        )
-    }
-
-    private fun waitForCellularIp(poll: Int) {
-        if (!searching) return
-        statusText.setText(R.string.ip_finder_waiting_for_network)
-        refreshNetworkState()
-        if (!searching) return
-        val candidate = currentCellularIpv4()
-        if (candidate != null && candidate != previousIp) {
-            previousIp = candidate
-            resultText.text = candidate
-            if (matchesSearchPattern(candidate)) {
-                completeSearch(candidate)
-            } else {
-                handler.postDelayed({ requestNextCycle() }, NEXT_CYCLE_DELAY_MS)
-            }
-            return
-        }
-
-        if (poll < MAX_NETWORK_POLLS) {
-            handler.postDelayed(
-                { waitForCellularIp(poll + 1) },
-                NETWORK_POLL_DELAY_MS
-            )
-        } else {
-            requestNextCycle()
-        }
-    }
-
-    private fun completeSearch(ip: String) {
-        scanButton.visibility = View.GONE
-        searching = false
-        vibrateOnce()
-        handler.removeCallbacksAndMessages(null)
-        BarkaAssistantService.cancelAirplaneCycle(this)
-        scanButton.isEnabled = true
-        manualAirplaneButton.visibility = View.GONE
-        stopButton.visibility = View.INVISIBLE
-        statusText.setText(R.string.ip_finder_found)
-        statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_green))
-        progressText.setText(R.string.ip_finder_current_cellular_ip)
-        resultText.text = getString(R.string.ip_finder_found_detail, ip)
-        resultText.setTextColor(ContextCompat.getColor(this, R.color.barka_green))
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_LAST_FOUND_IP, ip)
-            .apply()
-        AppLogStore.add(
-            this,
-            getString(R.string.ip_finder_log_found_format, ip)
-        )
+        runCatching { ContextCompat.startForegroundService(this, Intent(this, IpSearchService::class.java)) }
+            .onFailure { Toast.makeText(this, R.string.ip_finder_cycle_failed, Toast.LENGTH_LONG).show() }
     }
 
     private fun stopSearch(message: String, colorRes: Int) {
+        stopService(Intent(this, IpSearchService::class.java))
         searching = false
-        handler.removeCallbacksAndMessages(null)
-        BarkaAssistantService.cancelAirplaneCycle(this)
-        scanButton.isEnabled = true
-        stopButton.visibility = View.INVISIBLE
-        refreshNetworkState()
-        manualAirplaneButton.visibility = if (colorRes == R.color.barka_red &&
-            BarkaAssistantService.isSelected(this)) View.VISIBLE else View.GONE
         statusText.text = message
         statusText.setTextColor(ContextCompat.getColor(this, colorRes))
-        AppLogStore.add(this, "IP Finder • $message")
+        stopButton.visibility = View.INVISIBLE
+        ipInput.isEnabled = true
+        refreshNetworkState()
     }
 
     private fun vibrateOnce() {
@@ -577,6 +476,7 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     companion object {
+        fun captureCriteria(context: Context) = IpSearchCriteria(usesOrangeRules(context), loadSearchPattern(context))
         fun isIpCompatible(context: Context, ip: String?): Boolean {
             if (ip.isNullOrBlank()) return false
             if (usesOrangeRules(context)) return OrangeIpPolicy.matches(ip)
@@ -626,7 +526,7 @@ class IpFinderActivity : AppCompatActivity() {
         private const val MAX_FAILED_CYCLES = 2
         private const val DISCONNECT_SETTLE_DELAY_MS = 900L
         private const val SERVICE_READY_RETRY_DELAY_MS = 500L
-        private const val NETWORK_POLL_DELAY_MS = 1_000L
+        private const val NETWORK_POLL_DELAY_MS = 10_000L
         private const val NEXT_CYCLE_DELAY_MS = 900L
 
         private fun usesOrangeRules(context: Context): Boolean =
