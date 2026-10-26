@@ -17,6 +17,11 @@ class SshTlsProfileTest {
             for(protocol in VpnProfileProtocol.entries)assertTrue(VpnProfilePolicy.validate(network,protocol))
         assertFalse(VpnProfilePolicy.validate("unknown",VpnProfileProtocol.SSH_TLS))
     }
+    @Test fun passwordWhitespaceIsPreserved() {
+        val parsed = VpnProfileConfigParser.parse(VpnProfileProtocol.SSH_TLS,
+            config.replace("\"password\":\"test\"", "\"password\":\" test \"")) as VpnProfileConfig.SshTls
+        assertEquals(" test ", parsed.password)
+    }
     @Test(expected=BarkaBackendException::class) fun insecureTlsRejected(){VpnProfileConfigParser.parse(VpnProfileProtocol.SSH_TLS,config.dropLast(1)+",\"allow_insecure\":true}")}
     @Test(expected=BarkaBackendException::class) fun invalidPortRejected(){VpnProfileConfigParser.parse(VpnProfileProtocol.SSH_TLS,config.dropLast(1)+",\"port\":70000}")}
 }

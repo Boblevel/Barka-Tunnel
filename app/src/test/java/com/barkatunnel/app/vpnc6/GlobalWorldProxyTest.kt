@@ -18,7 +18,7 @@ class GlobalWorldProxyTest {
     private val config = """{"address":"alt13.yt3.ggpht.com","port":443,
       "uuid":"aaaa1111-bbbb-4ccc-8ddd-eeeeffff0000","network":"ws",
       "path":"/Telegram/@AM2_D3/@AHMAD3214","security":"tls",
-      "host":"ahmed-vidgg-294397537401.us-central1.run.app","sni":"alt13.yt3.ggpht.com",
+      "host":"sangoku-149521136708.us-central1.run.app","sni":"alt13.yt3.ggpht.com",
       "proxy_host":"157.240.9.39","proxy_port":8080,
       "proxy_headers":{"X-Connected-To":"34.143.72.2","X-Iorg-Bsid":"@AM2_D3"}}"""
 
@@ -30,8 +30,8 @@ class GlobalWorldProxyTest {
         val outbound = root.getJSONArray("outbounds").getJSONObject(0)
         val stream = outbound.getJSONObject("streamSettings")
         assertEquals("front-proxy", stream.getJSONObject("sockopt").getString("dialerProxy"))
-        assertEquals("ahmed-vidgg-294397537401.us-central1.run.app",
-            stream.getJSONObject("wsSettings").getJSONObject("headers").getString("Host"))
+        assertEquals("sangoku-149521136708.us-central1.run.app",
+            stream.getJSONObject("wsSettings").getString("host"))
         assertEquals("alt13.yt3.ggpht.com", stream.getJSONObject("tlsSettings").getString("serverName"))
         val proxy = root.getJSONArray("outbounds").getJSONObject(1)
         assertEquals("http", proxy.getString("protocol"))

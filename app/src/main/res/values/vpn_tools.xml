@@ -1,0 +1,19 @@
+<resources>
+    <string name="vpn_share_title">Partager le VPN avec un PC</string>
+    <string name="vpn_speed_title">Tester la vitesse du VPN</string>
+    <string name="vpn_share_help">1. Connectez le VPN et votre ordinateur au même réseau Wi-Fi, ou activez le partage Wi-Fi/USB du téléphone.\n2. Choisissez l’adresse locale et démarrez le partage.\n3. Sur le PC, configurez le proxy HTTP et HTTPS avec l’adresse, le port et les identifiants affichés.\nSeules les applications configurées pour ce proxy utilisent le VPN (TCP, sans UDP). Utilisez un réseau de confiance et gardez cet écran ouvert. Le partage s’arrête à sa fermeture ou à la coupure du VPN.</string>
+    <string name="vpn_speed_help">Mesure en direct via le VPN : latence HTTPS, téléchargement et envoi vers Cloudflare. Environ 10 Mo de données sont utilisés. Le résultat dépend du réseau et du serveur. Vous pouvez arrêter le test à tout moment.</string>
+    <string name="tools_ready">Prêt</string>
+    <string name="tools_start">Démarrer</string>
+    <string name="tools_stop">Arrêter</string>
+    <string name="tools_stopped">Arrêté</string>
+    <string name="tools_vpn_required">Connectez d’abord le VPN. Aucun accès direct hors du tunnel.</string>
+    <string name="tools_no_lan">Activez le Wi-Fi ou le partage USB puis réessayez.</string>
+    <string name="tools_share_credentials">Partage actif\nUtilisateur : %1$s\nMot de passe : %2$s</string>
+    <string name="tools_share_failed">Impossible de démarrer le partage sur cette adresse.</string>
+    <string name="tools_speed_failed">Test interrompu ou serveur inaccessible via le VPN. Réessayez.</string>
+    <string name="tools_latency">Mesure de la latence HTTPS</string>
+    <string name="tools_download">Téléchargement</string>
+    <string name="tools_upload">Envoi</string>
+    <string name="tools_complete">Test terminé</string>
+</resources>

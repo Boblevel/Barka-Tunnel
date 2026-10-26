@@ -67,7 +67,7 @@ class NetworkSelectionLockTest {
         fun field(name:String,value:Any) = MainActivity::class.java.getDeclaredField(name).apply {isAccessible=true}.set(a,value)
         fun text()=android.widget.TextView(a)
         field("uiBinder",HomeUiBinder(text(),text(),text(),text(),text(),text(),com.google.android.material.button.MaterialButton(a)))
-        for(name in listOf("networkLogo","networkFlagNiger","networkFlagTogo")) field(name,android.widget.ImageView(a))
+        for(name in listOf("networkLogo","networkFlagBurkina","networkFlagNiger","networkFlagTogo")) field(name,android.widget.ImageView(a))
         for(name in listOf("networkIpValue","networkIpStatus")) field(name,text())
         field("networkIpCard",View(a))
         call(a,"showNetworkDialog")
@@ -76,6 +76,10 @@ class NetworkSelectionLockTest {
             for((viewId,id) in listOf(R.id.optionGlobal to "global_world",R.id.optionTelecel to "telecel_bf",R.id.optionMoov to "moov_bf")) {
                 dialog.findViewById<View>(viewId).performClick()
                 assertTrue(dialog.isShowing)
+                val flagView = MainActivity::class.java.getDeclaredField("networkFlagBurkina")
+                    .apply { isAccessible = true }.get(a) as android.widget.ImageView
+                assertEquals(a.getString(if (id == "global_world") R.string.global_coverage else R.string.burkina_faso),
+                    flagView.contentDescription)
                 assertEquals(id,a.getSharedPreferences("barka_home_preferences",0).getString("selected_network_id",null))
                 for(row in listOf(R.id.optionGlobal,R.id.optionTelecel,R.id.optionMoov,R.id.optionOrange,R.id.optionTiktok)) {
                     assertEquals(row==viewId,dialog.findViewById<View>(row).isSelected)

@@ -1,0 +1,31 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"
+    android:background="@color/barka_background" android:padding="20dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+        <ImageButton android:id="@+id/toolBack" android:layout_width="48dp" android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_back_barka" android:contentDescription="@string/back" />
+        <TextView android:id="@+id/toolTitle" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:textColor="@color/barka_blue" android:textSize="20sp" android:textStyle="bold" android:gravity="center" />
+    </LinearLayout>
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="24dp" android:paddingBottom="24dp">
+            <TextView android:id="@+id/toolHelp" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="@color/barka_text_secondary" android:textSize="15sp" android:lineSpacingExtra="4dp" />
+            <Spinner android:id="@+id/toolAddresses" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="16dp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+                android:gravity="center" android:layout_marginTop="24dp" android:padding="24dp" android:background="@drawable/bg_card_final" android:animateLayoutChanges="true">
+                <ProgressBar android:id="@+id/toolProgress" android:layout_width="64dp" android:layout_height="64dp"
+                    android:indeterminate="true" android:indeterminateTint="@color/barka_blue" android:visibility="gone" />
+                <TextView android:id="@+id/toolValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="—" android:textColor="@color/barka_blue" android:textSize="30sp" android:textStyle="bold" android:gravity="center"
+                    android:layout_marginTop="16dp" android:textIsSelectable="true" />
+                <TextView android:id="@+id/toolStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/tools_ready" android:textColor="@color/barka_text" android:textSize="16sp"
+                    android:layout_marginTop="16dp" android:gravity="center" android:textIsSelectable="true" android:accessibilityLiveRegion="polite" />
+            </LinearLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/toolAction" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:minHeight="56dp" android:layout_marginTop="24dp" android:text="@string/tools_start"
+                android:textColor="@android:color/white" app:backgroundTint="@color/barka_blue" app:cornerRadius="18dp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

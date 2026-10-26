@@ -231,6 +231,26 @@
                 android:textStyle="bold" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/vpnShareButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minHeight="76dp" android:layout_marginTop="12dp" android:gravity="start|center_vertical"
+                android:padding="16dp" android:text="@string/vpn_share_title" android:textAllCaps="false"
+                android:textColor="@color/barka_text" android:textSize="16sp" android:textStyle="bold"
+                app:backgroundTint="@color/barka_card" app:cornerRadius="20dp" app:icon="@drawable/ic_vpn_share"
+                app:iconGravity="start" app:iconSize="32dp" app:iconPadding="16dp" app:iconTint="@null"
+                app:strokeColor="@color/barka_border" app:strokeWidth="1dp"
+                android:insetTop="0dp" android:insetBottom="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/vpnSpeedButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minHeight="76dp" android:layout_marginTop="12dp" android:gravity="start|center_vertical"
+                android:padding="16dp" android:text="@string/vpn_speed_title" android:textAllCaps="false"
+                android:textColor="@color/barka_text" android:textSize="16sp" android:textStyle="bold"
+                app:backgroundTint="@color/barka_card" app:cornerRadius="20dp" app:icon="@drawable/ic_vpn_speed"
+                app:iconGravity="start" app:iconSize="32dp" app:iconPadding="16dp" app:iconTint="@null"
+                app:strokeColor="@color/barka_border" app:strokeWidth="1dp"
+                android:insetTop="0dp" android:insetBottom="0dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/checkUpdateButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

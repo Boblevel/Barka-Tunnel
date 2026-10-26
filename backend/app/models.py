@@ -203,6 +203,18 @@ class ResellerGenerateSubscriptionRequest(BaseModel):
     plan_id: Literal["24h", "1w", "2w", "1m"]
 
 
+class ResellerGenerateTestRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    duration_hours: int = Field(default=2, strict=True)
+
+    @field_validator("duration_hours")
+    @classmethod
+    def allowed_test_duration(cls, value: int) -> int:
+        if value not in (2, 3, 6):
+            raise ValueError("Durée de test autorisée : 2, 3 ou 6 heures.")
+        return value
+
+
 class AdminCodeRevokeRequest(BaseModel):
     code: str = Field(min_length=8, max_length=80)
 

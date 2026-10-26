@@ -485,8 +485,10 @@ def generate_reseller_subscription(reseller_id: int, plan_id: str) -> str:
     )
 
 
-def generate_reseller_test(reseller_id: int) -> str:
-    return _issue_reseller_code(reseller_id, "test_2h", 2 * 60 * 60)
+def generate_reseller_test(reseller_id: int, duration_hours: int = 2) -> str:
+    if type(duration_hours) is not int or duration_hours not in (2, 3, 6):
+        raise ValueError("Durée de test autorisée : 2, 3 ou 6 heures.")
+    return _issue_reseller_code(reseller_id, f"test_{duration_hours}h", duration_hours * 3600)
 
 
 def list_reseller_codes(reseller_id: int, limit: int = 200, offset: int = 0) -> list[dict]:

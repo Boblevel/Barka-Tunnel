@@ -70,7 +70,10 @@ object VpnProfileConfigParser {
                 if (!json.has("port")) json.put("port",443)
                 if (!json.has("udpgw_port")) json.put("udpgw_port",7300)
                 VpnProfileConfig.SshTls(requiredString(json,"host"),requiredPort(json,"port"),requiredString(json,"sni"),
-                    requiredString(json,"username"),requiredString(json,"password"),
+                    requiredString(json,"username"),
+                    json.optString("password").also {
+                        if (it.isBlank()) throw BarkaBackendException("Champ VPN manquant : password")
+                    },
                     json.optString("udpgw_host","127.0.0.1").ifBlank { "127.0.0.1" },requiredPort(json,"udpgw_port"))
             }
             VpnProfileProtocol.SLOWDNS -> parseSlowDns(json)

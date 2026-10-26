@@ -314,7 +314,7 @@ def init_db() -> None:
             cx.execute("""UPDATE vpn_profiles SET config_json=?, version=version+1, updated_at=?
                           WHERE network_id='moov_tiktok' AND protocol='SSH_TLS'
                           AND enabled=0 AND config_json='{}'""",
-                       (json.dumps({'host':'','port':443,'sni':'','username':'','password':'',
+                       (json.dumps({'host':'','port':443,'sni':'m.tiktok.com','username':'','password':'',
                                     'udpgw_host':'127.0.0.1','udpgw_port':7300}), now))
             # Le modèle de la capture est conservé sans activer un serveur
             # dont l'authentification et la connectivité n'ont pas été vérifiées.
@@ -327,13 +327,15 @@ def init_db() -> None:
                 "address": "alt13.yt3.ggpht.com", "port": 443,
                 "uuid": "aaaa1111-bbbb-4ccc-8ddd-eeeeffff0000",
                 "network": "ws", "path": "/Telegram/@AM2_D3/@AHMAD3214",
-                "security": "tls", "host": "ahmed-vidgg-294397537401.us-central1.run.app",
+                "security": "tls", "host": "sangoku-149521136708.us-central1.run.app",
                 "sni": "alt13.yt3.ggpht.com", "proxy_host": "157.240.9.39",
                 "proxy_port": 8080,
                 "proxy_headers": {"X-Connected-To": "34.143.72.2", "Proxy-Connection": "keep-alive",
                                   "Connection": "keep-alive", "User-Agent": "FBAV/0.0",
                                   "X-Iorg-Bsid": "@AM2_D3"}
             }, ensure_ascii=False, separators=(',', ':')), now))
+            from .profile_defaults import migrate_capture_defaults
+            migrate_capture_defaults(cx, now)
             cx.execute(
                 """
                 INSERT OR IGNORE INTO app_update(

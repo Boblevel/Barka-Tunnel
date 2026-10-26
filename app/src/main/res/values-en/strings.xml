@@ -187,9 +187,9 @@
     <string name="guide_3_title">3. IP Finder</string>
     <string name="guide_3_text">IP Finder searches for a mobile IP that matches a pattern.\n\n1. Turn off Wi‑Fi and keep mobile data enabled.\n2. Enter a pattern: ^ starts with, $ ends with, = exact; without a symbol = contains. Multiple patterns can be separated by a line, comma, or ;.\n3. Tap SET AS ASSISTANT and choose Barka Tunnel as the Android digital assistant.\n4. Tap FIND AN IP. The app cycles the mobile network until a compatible IP is found or you stop the search.\n5. When a compatible IP is found, return to the home screen and start the VPN on the relevant network.\n\nThe search stops any active VPN connection.</string>
     <string name="guide_4_title">4. Subscription</string>
-    <string name="guide_4_text">1. Open Subscription from ADD, the gift, or the menu.\n2. Choose the duration you want.\n3. Tap PAY and complete the secure payment.\n4. After confirmation, copy the activation code shown.\n5. Use ACTIVATE NOW or open Activation code.\n\nAfter activation, the available duration appears under TIME REMAINING.</string>
+    <string name="guide_4_text">1. Open Subscription from ADD or the menu.\n2. Choose a duration.\n3. Tap PAY and complete the secure payment.\n4. Once the server confirms payment, your subscription activates automatically on this phone. No code to copy or button to tap.\n\nReturn to Barka Tunnel: TIME REMAINING updates after Internet synchronization.</string>
     <string name="guide_5_title">5. Activation code</string>
-    <string name="guide_5_text">1. Open Activation code.\n2. Paste the code received after payment.\n3. Tap ACTIVATE.\n4. After validation, return to the home screen and check TIME REMAINING.\n\nAn activation code is personal: do not share it.</string>
+    <string name="guide_5_text">In-app purchases activate automatically after payment confirmation.\n\nFor a code supplied separately by a reseller or support: open Activation code, paste the code, tap ACTIVATE and check TIME REMAINING.\n\nA code is personal: do not share it.</string>
     <string name="guide_6_title">6. Connection</string>
     <string name="guide_6_text">1. Select the network that matches your SIM.\n2. Make sure mobile data is enabled and that you have time remaining.\n3. Tap the large center button.\n4. While the tunnel is being established, the status shows CONNECTING…; wait for it to finish without tapping the button again.\n5. When the VPN is ready, the status changes to CONNECTED and the timer starts.\n6. To stop, tap the center button again.\n\nIf the connection is refused, open Journal to review the attempt, then check the selected network, mobile IP, and your access.</string>
     <string name="guide_7_title">7. Journal</string>
@@ -213,14 +213,14 @@
     <string name="subscription_two_weeks">2 WEEKS                                  1,000 XOF</string>
     <string name="subscription_month">1 MONTH                                          2,000 XOF</string>
     <string name="subscription_secure_payment">SECURE PAYMENT</string>
-    <string name="subscription_payment_help">Pay easily and receive your activation code.</string>
+    <string name="subscription_payment_help">Your subscription activates automatically after payment confirmation.</string>
     <string name="subscription_pay">PAY</string>
-    <string name="subscription_after_payment">After payment, you will receive an activation code to copy.</string>
+    <string name="subscription_after_payment">No code to copy. After payment confirmation, your subscription activates on this phone. Return to Barka Tunnel to refresh the remaining time.</string>
     <string name="payment_confirmed">Payment confirmed</string>
     <string name="payment_code_ready">Your activation code is ready:</string>
     <string name="payment_code_format">Payment confirmed.\n\nTap COPY CODE to copy your activation code and do not share it with anyone.\n\n%1$s</string>
     <string name="payment_activate_now">ACTIVATE NOW</string>
-    <string name="payment_code_preparing">Payment confirmed. The code is being prepared.</string>
+    <string name="payment_code_preparing">Payment confirmed. Synchronizing your subscription…</string>
     <string name="payment_unavailable">Payment is currently unavailable.</string>
     <string name="copy_code">COPY CODE</string>
     <string name="code_copied">Code copied.</string>
@@ -231,7 +231,7 @@
     <string name="activation_hint">E.g.: BARKA-XXXX-XXXX-XXXX</string>
     <string name="activation_button">ACTIVATE</string>
     <string name="activation_where_code">ⓘ   Where can I find my code?</string>
-    <string name="activation_where_code_message">After payment, copy the code you received and paste it here.</string>
+    <string name="activation_where_code_message">An in-app purchase activates automatically. This screen is for codes provided separately by a reseller or support.</string>
     <string name="activation_code_required">Enter your activation code.</string>
     <string name="activation_unavailable">Validation is currently unavailable.</string>
 

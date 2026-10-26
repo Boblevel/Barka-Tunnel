@@ -42,7 +42,8 @@
   "app/models.py": [
     "2a3ecd8f509e15fef221c3d32ca352be395580cd31751e63c4e1fdd3203b7d4c",
     "5a54c1fbccb84fdd882efbb1cb812f211456b8fbf21eb1e8939e8e161befb6df",
-    "a0fbd0c55b910a2bb65b7aef94193aeeb1f4f649800e6b41ab26e3d0e8239f7b"
+    "a0fbd0c55b910a2bb65b7aef94193aeeb1f4f649800e6b41ab26e3d0e8239f7b",
+    "383709eb6c34fa7ae3fbcfdb781681c071d6841aa7a91896275efa507dc52697"
   ],
   "app/panel_management.py": [
     "994c3baea3f341b43d0607baf7f6f24b5955b92e23ad8fb366686f55108c2e10"

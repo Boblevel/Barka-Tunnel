@@ -19,8 +19,10 @@ class SshTlsEngine(private val config: VpnProfileConfig.SshTls, private val sock
     private val factory = object : SocketFactory {
         override fun createSocket(host: String, port: Int): Socket {
             val raw = Socket(); transport = raw
+            var stage = "connexion TCP au serveur SSH TLS"
             try {
                 checkActive(); raw.connect(InetSocketAddress(config.host, config.port), 12000); checkActive()
+                stage = "négociation TLS et validation du certificat SNI"
                 val tls = (SSLSocketFactory.getDefault() as SSLSocketFactory)
                     .createSocket(raw, config.sni, config.port, true) as SSLSocket
                 transport = tls
@@ -29,7 +31,11 @@ class SshTlsEngine(private val config: VpnProfileConfig.SshTls, private val sock
                 tls.enabledProtocols = tls.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
                 tls.startHandshake(); checkActive()
                 return tls
-            } catch (e: Exception) { runCatching { transport?.close() }; raw.close(); throw e }
+            } catch (e: Exception) {
+                runCatching { transport?.close() }; runCatching { raw.close() }
+                if (e is InterruptedException) throw e
+                throw java.io.IOException("SSL/TLS → SSH : échec à l’étape $stage (${e.javaClass.simpleName}). Vérifiez le serveur, le port et le SNI du panel.", e)
+            }
         }
         override fun getInputStream(socket: Socket) = socket.getInputStream()
         override fun getOutputStream(socket: Socket) = socket.getOutputStream()

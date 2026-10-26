@@ -125,6 +125,13 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, com.barkatunnel.app.consumption.ConsumptionActivity::class.java))
         }
 
+        findViewById<android.view.View>(R.id.vpnShareButton).setOnClickListener {
+            startActivity(Intent(this, com.barkatunnel.app.tools.VpnToolsActivity::class.java).putExtra("share", true))
+        }
+        findViewById<android.view.View>(R.id.vpnSpeedButton).setOnClickListener {
+            startActivity(Intent(this, com.barkatunnel.app.tools.VpnToolsActivity::class.java))
+        }
+
         findViewById<MaterialButton>(R.id.checkUpdateButton).setOnClickListener {
             updateCoordinator.check(showNoUpdate = true, force = true)
         }

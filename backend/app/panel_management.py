@@ -44,7 +44,7 @@ def filtered_codes(body: FilterRequest, reseller_id: int | None = None, *, delet
         def matches(row):
             values = [row.get(k) for k in fields]
             if reseller_id is not None:
-                plan_label = {"24h": "24 HEURES", "1w": "1 SEMAINE", "2w": "2 SEMAINES", "1m": "1 MOIS", "test_2h": "TEST 2 H"}.get(row["plan_id"], row["plan_id"])
+                plan_label = {"24h": "24 HEURES", "1w": "1 SEMAINE", "2w": "2 SEMAINES", "1m": "1 MOIS", "test_2h": "TEST 2 H", "test_3h": "TEST 3 H", "test_6h": "TEST 6 H"}.get(row["plan_id"], row["plan_id"])
                 status_label = {"issued": "Disponible", "redeemed": "Actif / utilisé", "expired": "EXPIRÉ", "revoked": "Désactivé"}.get(row["status"], row["status"])
                 values = [row["code"], row["plan_id"], plan_label, row["status"], status_label, row["code_type"]]
             return row["status"] == body.status and (not query or any(query in str(v or "").lower() for v in values))

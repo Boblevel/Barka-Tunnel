@@ -105,6 +105,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var networkTransportIcon: ImageView
     private lateinit var networkName: TextView
     private lateinit var networkSubtitle: TextView
+    private lateinit var networkFlagBurkina: ImageView
     private lateinit var networkFlagNiger: ImageView
     private lateinit var networkFlagTogo: ImageView
     private lateinit var accessRemainingTime: TextView
@@ -288,6 +289,7 @@ class MainActivity : AppCompatActivity() {
         networkLogo = homePage.findViewById(R.id.networkLogo)
         networkName = homePage.findViewById(R.id.networkName)
         networkSubtitle = homePage.findViewById(R.id.networkSubtitle)
+        networkFlagBurkina = homePage.findViewById(R.id.networkFlagBurkina)
         networkFlagNiger = homePage.findViewById(R.id.networkFlagNiger)
         networkFlagTogo = homePage.findViewById(R.id.networkFlagTogo)
 
@@ -1428,7 +1430,7 @@ class MainActivity : AppCompatActivity() {
         homeBrandName.getLocationInWindow(position)
         val index = homeBrandName.text.toString().indexOf("Tunnel")
         val boundary = if (index >= 0 && homeBrandName.layout != null) {
-            position[0] + homeBrandName.totalPaddingLeft + homeBrandName.layout.getPrimaryHorizontal(index + 2).toInt()
+            position[0] + homeBrandName.totalPaddingLeft + homeBrandName.layout.getPrimaryHorizontal(index).toInt()
         } else (width * 0.38f).toInt()
         return (width - boundary).coerceIn((width * 0.55f).toInt(), (width * 0.90f).toInt())
     }
@@ -1447,6 +1449,7 @@ class MainActivity : AppCompatActivity() {
                 ColorDrawable(Color.TRANSPARENT)
             )
             setGravity(Gravity.RIGHT)
+            setWindowAnimations(R.style.BarkaSideMenuAnimation)
             setLayout(
                 sideMenuWidth(),
                 WindowManager.LayoutParams.MATCH_PARENT
@@ -1917,6 +1920,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         networkLogo.setImageResource(drawable)
+        val global = network?.id == "global_world"
+        networkFlagBurkina.setImageResource(if (global) R.drawable.global_africa_red else R.drawable.ic_flag_bf)
+        networkFlagBurkina.contentDescription = if (global) getString(R.string.global_coverage) else getString(R.string.burkina_faso)
         val showMoovCountries = network?.id == "moov_bf"
         networkFlagNiger.visibility = if (showMoovCountries) {
             android.view.View.VISIBLE

@@ -78,7 +78,7 @@ def list_activation_codes(limit: int | None = 100, reseller_id: int | None = Non
                 "redeemed_device_id": row["redeemed_device_id"],
                 "source_type": source_type,
                 "reseller_username": reseller_username,
-                "code_type": "test" if str(row["plan_id"]) == "test_2h" else "subscription",
+                "code_type": "test" if str(row["plan_id"]) in {"test_2h", "test_3h", "test_6h"} else "subscription",
                 "remaining_seconds": (
                     max(0, int(applied_until) - max(now, int(row["applied_from"] or now)))
                     if applied_until is not None

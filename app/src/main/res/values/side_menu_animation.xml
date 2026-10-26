@@ -1,0 +1,1 @@
+<resources><style name="BarkaSideMenuAnimation"><item name="android:windowEnterAnimation">@anim/side_menu_enter</item><item name="android:windowExitAnimation">@anim/side_menu_exit</item></style></resources>

@@ -228,7 +228,8 @@ class SubscriptionActivity : AppCompatActivity() {
                         Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                     } else {
                         AppLogStore.add(this, "Paiement • Activation automatique refusée : ${result.message}")
-                        showActivationCode(code)
+                        Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                        schedulePaymentCheck()
                     }
                 }
             } catch (_: Exception) {

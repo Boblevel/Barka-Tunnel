@@ -196,9 +196,9 @@
     <string name="guide_3_title">3. IP Finder</string>
     <string name="guide_3_text">IP Finder sert à rechercher une IP mobile correspondant à un motif.\n\n1. Désactivez le Wi‑Fi et gardez les données mobiles actives.\n2. Entrez un motif : ^ commence par, $ se termine par, = exact ; sans symbole = contient. Plusieurs motifs peuvent être séparés par ligne, virgule ou ;.\n3. Touchez DÉFINIR COMME ASSISTANT et choisissez Barka Tunnel comme assistant numérique Android.\n4. Touchez TROUVER UNE IP. L’application relance le réseau mobile jusqu’à trouver une IP compatible ou jusqu’à l’arrêt.\n5. Quand une IP compatible est trouvée, revenez à l’accueil et lancez le VPN sur le réseau concerné.\n\nLa recherche interrompt toute connexion VPN active.</string>
     <string name="guide_4_title">4. Abonnement</string>
-    <string name="guide_4_text">1. Ouvrez Abonnement depuis AJOUTER, le cadeau ou le menu.\n2. Choisissez la durée souhaitée.\n3. Touchez PAYER et terminez le paiement sécurisé.\n4. Après confirmation, copiez le code d’activation affiché.\n5. Utilisez ACTIVER MAINTENANT ou ouvrez Code d’activation.\n\nAprès activation, la durée disponible apparaît dans TEMPS RESTANT.</string>
+    <string name="guide_4_text">1. Ouvrez Abonnement depuis AJOUTER ou le menu.\n2. Choisissez la durée souhaitée.\n3. Touchez PAYER et terminez le paiement sécurisé.\n4. Dès que le serveur confirme le paiement, votre abonnement est activé automatiquement sur ce téléphone. Aucun code à copier ni bouton à toucher.\n\nRevenez dans Barka Tunnel : TEMPS RESTANT se met à jour après synchronisation Internet.</string>
     <string name="guide_5_title">5. Code d’activation</string>
-    <string name="guide_5_text">1. Ouvrez Code d’activation.\n2. Collez le code reçu après paiement.\n3. Touchez ACTIVER.\n4. Après validation, revenez à l’accueil et vérifiez TEMPS RESTANT.\n\nUn code d’activation est personnel : ne le partagez pas.</string>
+    <string name="guide_5_text">Les achats dans cette application sont activés automatiquement après confirmation du paiement.\n\nPour un code remis séparément par un revendeur ou le support : ouvrez Code d’activation, collez le code, touchez ACTIVER et vérifiez TEMPS RESTANT.\n\nUn code est personnel : ne le partagez pas.</string>
     <string name="guide_6_title">6. Connexion</string>
     <string name="guide_6_text">1. Sélectionnez le réseau correspondant à votre SIM.\n2. Vérifiez que les données mobiles sont actives et qu’il reste du temps.\n3. Touchez le grand bouton central.\n4. Pendant l’établissement, l’état affiche CONNEXION… ; attendez la fin sans relancer le bouton.\n5. Quand le VPN est prêt, l’état passe à CONNECTÉ et le chronomètre démarre.\n6. Pour arrêter, touchez de nouveau le bouton central.\n\nEn cas de refus, ouvrez Journal pour voir l’état de la tentative puis vérifiez le réseau sélectionné, l’IP mobile et votre accès.</string>
     <string name="guide_7_title">7. Journal</string>
@@ -222,14 +222,14 @@
     <string name="subscription_two_weeks">2 SEMAINES                                  1 000 XOF</string>
     <string name="subscription_month">1 MOIS                                          2 000 XOF</string>
     <string name="subscription_secure_payment">PAIEMENT SÉCURISÉ</string>
-    <string name="subscription_payment_help">Payez facilement et recevez votre code d’activation.</string>
+    <string name="subscription_payment_help">Votre abonnement s’active automatiquement après confirmation du paiement.</string>
     <string name="subscription_pay">PAYER</string>
-    <string name="subscription_after_payment">Après paiement, vous recevrez votre code d’activation à copier.</string>
+    <string name="subscription_after_payment">Aucun code à copier. Après validation du paiement, votre abonnement est activé sur ce téléphone. Revenez dans Barka Tunnel pour actualiser le temps restant.</string>
     <string name="payment_confirmed">Paiement confirmé</string>
     <string name="payment_code_ready">Votre code d’activation est prêt :</string>
     <string name="payment_code_format">Paiement confirmé.\n\nCliquez sur COPIER CODE pour copier votre code d’activation et ne le partagez à personne.\n\n%1$s</string>
     <string name="payment_activate_now">ACTIVER MAINTENANT</string>
-    <string name="payment_code_preparing">Paiement confirmé. Le code est en préparation.</string>
+    <string name="payment_code_preparing">Paiement confirmé. Synchronisation de votre abonnement…</string>
     <string name="payment_unavailable">Paiement indisponible pour le moment.</string>
     <string name="copy_code">COPIER LE CODE</string>
     <string name="code_copied">Code copié.</string>
@@ -240,7 +240,7 @@
     <string name="activation_hint">Ex : BARKA-XXXX-XXXX-XXXX</string>
     <string name="activation_button">ACTIVER</string>
     <string name="activation_where_code">ⓘ   Où trouver mon code ?</string>
-    <string name="activation_where_code_message">Après paiement, copie le code reçu puis colle-le ici.</string>
+    <string name="activation_where_code_message">Un achat dans l’application s’active automatiquement. Cet écran sert aux codes remis séparément par un revendeur ou le support.</string>
     <string name="activation_code_required">Entre ton code d’activation.</string>
     <string name="activation_unavailable">Validation impossible pour le moment.</string>
 

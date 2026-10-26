@@ -32,7 +32,7 @@ body{{font-family:system-ui,sans-serif;background:#f7f9fc;color:#101828;margin:0
 main{{background:white;border:1px solid #dce2ea;border-radius:22px;padding:28px;max-width:440px;margin:20px;overflow-wrap:anywhere}}
 h1{{color:#0961e8}}p{{line-height:1.6}}a{{display:block;background:#0961e8;color:white;text-decoration:none;text-align:center;font-weight:700;padding:18px;border-radius:14px}}small{{color:#667085}}
 </style></head><body><main><h1>Retrouvez votre achat</h1>
-<p>Ouvrez Barka Tunnel. Après confirmation du paiement, votre code d’abonnement ou vos identifiants revendeur apparaîtront dans l’application.</p>
+<p>Ouvrez Barka Tunnel. Après confirmation du paiement, votre abonnement est activé automatiquement sur le téléphone acheteur, sans code à copier. Pour un achat revendeur, retrouvez vos identifiants dans l’application.</p>
 <a href="{link}">RETOURNER DANS BARKA TUNNEL</a>
 <p>Si le bouton ne fonctionne pas, ouvrez l’application et revenez dans Abonnement ou Devenir Revendeur.</p>
 <small>Référence : {html.escape(reference)}</small></main>

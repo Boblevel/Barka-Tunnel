@@ -64,6 +64,7 @@ from .models import (
     AppUpdateAdminUpsert,
     AppUpdateResponse,
     ResellerGenerateSubscriptionRequest,
+    ResellerGenerateTestRequest,
     ResellerLoginRequest,
     AdminVpnProfileResponse,
     AdminVpnProfileUpsert,
@@ -683,12 +684,16 @@ def reseller_subscription_code(
 
 
 @app.post("/v1/reseller/codes/test")
-def reseller_test_code(account: dict = Depends(require_reseller)):
+def reseller_test_code(
+    body: ResellerGenerateTestRequest | None = None,
+    account: dict = Depends(require_reseller),
+):
+    hours = body.duration_hours if body is not None else 2
     try:
-        code = generate_reseller_test(int(account["id"]))
+        code = generate_reseller_test(int(account["id"]), hours)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-    return {"plan_id": "test_2h", "duration_seconds": 7200, "code": code}
+    return {"plan_id": f"test_{hours}h", "duration_seconds": hours * 3600, "code": code}
 
 
 @app.post(

@@ -25,7 +25,7 @@ class XrayVlessEngine(
             ?: config.address
         AppLogStore.add(
             context,
-            "Diagnostic ORANGE • config VLESS • serveur=$outboundAddress:${config.port} • " +
+            "Diagnostic VLESS • config VLESS • serveur=$outboundAddress:${config.port} • " +
                 "WS=${config.host}${config.path} • SNI=${config.sni} • sécurité=${config.security}."
         )
 
@@ -46,7 +46,7 @@ class XrayVlessEngine(
         )
         AppLogStore.add(
             context,
-            "Diagnostic ORANGE • processus Xray lancé • SOCKS attendu 127.0.0.1:$socksPort."
+            "Diagnostic VLESS • processus Xray lancé • SOCKS attendu 127.0.0.1:$socksPort."
         )
 
         if (!PortWaiter.waitUntilOpen("127.0.0.1", socksPort, XRAY_READY_TIMEOUT_MS) {
@@ -56,7 +56,7 @@ class XrayVlessEngine(
             val detail = xrayFailureDetail()
             AppLogStore.add(
                 context,
-                "Diagnostic ORANGE • Xray échec ouverture SOCKS" +
+                "Diagnostic VLESS • Xray échec ouverture SOCKS" +
                     detail.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty() + "."
             )
             stop()
@@ -65,13 +65,13 @@ class XrayVlessEngine(
                 else "VLESS n’a pas ouvert son proxy local : $detail"
             )
         }
-        AppLogStore.add(context, "Diagnostic ORANGE • SOCKS VLESS ouvert • 127.0.0.1:$socksPort.")
+        AppLogStore.add(context, "Diagnostic VLESS • SOCKS VLESS ouvert • 127.0.0.1:$socksPort.")
 
         if (!ProcessCompat.isAlive(process)) {
             val detail = xrayFailureDetail()
             AppLogStore.add(
                 context,
-                "Diagnostic ORANGE • Xray arrêté prématurément" +
+                "Diagnostic VLESS • Xray arrêté prématurément" +
                     detail.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty() + "."
             )
             stop()
@@ -80,7 +80,7 @@ class XrayVlessEngine(
                 else "Le moteur VLESS s’est arrêté : $detail"
             )
         }
-        AppLogStore.add(context, "Diagnostic ORANGE • moteur Xray prêt.")
+        AppLogStore.add(context, "Diagnostic VLESS • moteur Xray prêt.")
     }
 
     override fun stop() {
@@ -125,7 +125,7 @@ class XrayVlessEngine(
 
         val wsSettings = JSONObject()
             .put("path", config.path)
-            .put("headers", JSONObject().put("Host", config.host))
+            .put("host", config.host)
 
         val stream = JSONObject()
             .put("network", config.network)

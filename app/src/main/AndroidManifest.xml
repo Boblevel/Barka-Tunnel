@@ -54,6 +54,8 @@
 
         <activity android:name=".suggestions.SuggestionsActivity" android:exported="false" />
 
+        <activity android:name=".tools.VpnToolsActivity" android:exported="false" />
+
         <activity android:name=".consumption.ConsumptionActivity" android:exported="false" />
 
         <activity
