@@ -84,6 +84,11 @@
             </intent-filter>
         </activity>
 
+        <service android:name=".tools.VpnShareService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-started authenticated VPN proxy for a computer on the local network" />
+        </service>
+
         <service android:name=".ipfinder.IpSearchService" android:exported="false"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"

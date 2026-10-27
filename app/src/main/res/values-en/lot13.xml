@@ -1,0 +1,9 @@
+<resources>
+<string name="suggestions_name">Your name</string>
+<string name="suggestions_name_required">Enter your name (2–80 characters).</string>
+<string name="speed_timeout">The measurement server timed out. Check the VPN and retry.</string>
+<string name="speed_tls_error">Secure connection to the measurement server failed.</string>
+<string name="speed_http_error">The measurement server rejected the request (HTTP %1$s).</string>
+<string name="speed_network_error">Cannot reach the measurement server through this VPN profile. See the journal.</string>
+<string name="share_background_active">Sharing active · Tap to view settings</string>
+</resources>

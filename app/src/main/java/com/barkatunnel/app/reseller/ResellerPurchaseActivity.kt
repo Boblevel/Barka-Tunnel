@@ -56,6 +56,9 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         status = findViewById(R.id.resellerStatus)
         statusCard = findViewById(R.id.resellerStatusCard)
         credentialsCard = findViewById(R.id.resellerCredentialsCard)
+        account = state.optJSONObject("account")
+        account?.let { showCredentials(it) }
+        pay.setText(if (account == null) R.string.subscription_pay else R.string.reseller_renew)
         findViewById<View>(R.id.resellerCopy).setOnClickListener {
             account?.let {
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(
@@ -171,7 +174,12 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         request({ if(reference.isBlank())api("account",payload()) else api(if (returningFromCheckout) "cancel" else "status",payload().put("payment_reference",reference)) }) { render(it) }
     }
     private fun render(result:JSONObject) {
-        result.optJSONObject("account")?.let { account=it;showCredentials(it) }
+        if (result.has("account")) {
+            account = result.optJSONObject("account")
+            if (account != null) { showCredentials(account!!); state.put("account", account) }
+            else { credentialsCard.visibility = View.GONE; state.remove("account") }
+            ResellerPurchaseStore.write(this, state)
+        }
         if (result.has("amount") && state.optString("reference").isNotBlank()) {
             state.put("amount", result.getInt("amount")); ResellerPurchaseStore.write(this,state)
         }
@@ -190,7 +198,8 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         if (result.has("amount")) status.append("\n" + getString(R.string.reseller_amount,
             java.text.NumberFormat.getIntegerInstance(androidx.core.os.ConfigurationCompat.getLocales(resources.configuration)[0]).format(result.optInt("amount"))))
         if(paymentState in listOf("paid","failed","error")) {
-            if(paymentState!="paid" || result.optJSONObject("account")!=null) {
+            if(paymentState!="paid" || result.optJSONObject("account")!=null || result.optBoolean("account_deleted")) {
+                state.put("last_receipt", result)
                 for(key in listOf("reference","checkout_url","request_id","months","amount"))state.remove(key)
                 returningFromCheckout = false
                 handler.removeCallbacksAndMessages(null)
@@ -202,7 +211,10 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             statusCard.visibility = View.VISIBLE
             pay.setText(R.string.reseller_processing)
             schedule()
-        } else pay.setText(if(account==null)R.string.subscription_pay else R.string.reseller_renew)
+        } else {
+            pay.setText(if(account==null)R.string.subscription_pay else R.string.reseller_renew)
+            if (resumed) { handler.removeCallbacksAndMessages(null); handler.postDelayed({refresh()},30_000L) }
+        }
         updateControls()
     }
     private fun updateControls() {

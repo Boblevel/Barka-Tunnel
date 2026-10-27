@@ -14,7 +14,8 @@ import com.google.android.material.button.MaterialButton
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
-import java.security.SecureRandom
+import android.content.Intent
+import androidx.core.content.ContextCompat
 
 class VpnToolsActivity : AppCompatActivity() {
     private lateinit var status: TextView
@@ -24,7 +25,6 @@ class VpnToolsActivity : AppCompatActivity() {
     private lateinit var addresses: Spinner
     private val handler = Handler(Looper.getMainLooper())
     private var localAddresses = emptyList<InetAddress>()
-    private var sharing: VpnShareProxy? = null
     private var speed: VpnSpeedTest? = null
     private var generation = 0
     private var isShare = false
@@ -32,8 +32,9 @@ class VpnToolsActivity : AppCompatActivity() {
     private var port: Int? = null
     private val monitor = object : Runnable {
         override fun run() {
-            if ((sharing != null || speed != null) && !vpnAlive()) stop(getString(R.string.tools_vpn_required))
-            if (sharing != null || speed != null) handler.postDelayed(this, 500)
+            if (isShare) renderSharing()
+            if (speed != null && !vpnAlive()) stop(getString(R.string.tools_vpn_required))
+            if (isShare || speed != null) handler.postDelayed(this, 1000)
         }
     }
     private fun vpnAlive() = port != null && BarkaVpnService.connectedSocksPort() == port &&
@@ -51,7 +52,7 @@ class VpnToolsActivity : AppCompatActivity() {
         addresses.visibility = if (isShare) View.VISIBLE else View.GONE
         if (isShare) refreshAddresses()
         action.setOnClickListener {
-            if (sharing != null || speed != null) stop(getString(R.string.tools_stopped)) else start()
+            if ((isShare && VpnShareService.state != null) || speed != null) stop(getString(R.string.tools_stopped)) else start()
         }
     }
     private fun refreshAddresses() {
@@ -73,15 +74,10 @@ class VpnToolsActivity : AppCompatActivity() {
         if (isShare) {
             val selected = localAddresses.getOrNull(addresses.selectedItemPosition)
             if (selected == null) { refreshAddresses(); status.setText(R.string.tools_no_lan); return }
-            val password = ByteArray(12).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
-            val auth = android.util.Base64.encodeToString("barka:$password".toByteArray(), android.util.Base64.NO_WRAP)
-            val proxy = VpnShareProxy(selected, port!!, "Basic $auth", ::vpnAlive)
             try {
-                proxy.start(); sharing = proxy
-                value.text = "${selected.hostAddress}:${proxy.port}"
-                status.text = getString(R.string.tools_share_credentials, "barka", password)
-                addresses.isEnabled = false
-            } catch (_: Exception) { proxy.close(); status.setText(R.string.tools_share_failed); return }
+                ContextCompat.startForegroundService(this, Intent(this, VpnShareService::class.java)
+                    .putExtra("address", selected.hostAddress))
+            } catch (_: Exception) { status.setText(R.string.tools_share_failed); return }
         } else {
             val test = VpnSpeedTest(port!!, ::vpnAlive)
             speed = test; val token = ++generation
@@ -98,22 +94,49 @@ class VpnToolsActivity : AppCompatActivity() {
                         speed = null; progress.visibility = View.GONE; action.setText(R.string.tools_start)
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     } }
-                } catch (_: Exception) {
-                    runOnUiThread { if (token == generation && !isDestroyed) stop(getString(R.string.tools_speed_failed)) }
+                } catch (error: Exception) {
+                    val detail = when {
+                        !vpnAlive() -> getString(R.string.tools_vpn_required)
+                        error is java.net.SocketTimeoutException -> getString(R.string.speed_timeout)
+                        error is javax.net.ssl.SSLException -> getString(R.string.speed_tls_error)
+                        error.message?.startsWith("HTTP_") == true -> getString(R.string.speed_http_error, error.message!!.removePrefix("HTTP_"))
+                        else -> getString(R.string.speed_network_error)
+                    }
+                    com.barkatunnel.app.journal.AppLogStore.add(this, "Test débit • ${error.javaClass.simpleName} • $detail")
+                    runOnUiThread { if (token == generation && !isDestroyed) stop(detail) }
                 } finally { test.close() }
             }.start()
         }
         handler.removeCallbacks(monitor); handler.post(monitor)
         action.setText(R.string.tools_stop)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (!isShare) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
     private fun stop(message: String) {
-        generation++; speed?.close(); speed = null; sharing?.close(); sharing = null
+        generation++; speed?.close(); speed = null
+        if (isShare) stopService(Intent(this, VpnShareService::class.java))
         progress.visibility = View.GONE; addresses.isEnabled = true
         status.text = message; action.setText(R.string.tools_start)
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
+    private fun renderSharing() {
+        val current = VpnShareService.state
+        addresses.isEnabled = current == null
+        action.setText(if (current == null) R.string.tools_start else R.string.tools_stop)
+        if (current != null) {
+            value.text = "${current.address}:${current.port}"
+            status.text = getString(R.string.tools_share_credentials, "barka", current.password)
+        } else { value.text = "—"; status.setText(VpnShareService.error ?: R.string.tools_ready) }
+    }
+    override fun onResume() {
+        super.onResume()
+        if (isShare) { refreshAddresses(); handler.removeCallbacks(monitor); handler.post(monitor) }
+    }
+    override fun onPause() {
+        if (isShare) handler.removeCallbacks(monitor)
+        super.onPause()
+    }
     override fun onDestroy() {
-        handler.removeCallbacksAndMessages(null); stop(getString(R.string.tools_stopped)); super.onDestroy()
+        handler.removeCallbacksAndMessages(null); generation++; speed?.close(); speed = null
+        super.onDestroy()
     }
 }

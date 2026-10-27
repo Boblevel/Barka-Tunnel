@@ -19,6 +19,7 @@ class SuggestionsActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val prefs by lazy { getSharedPreferences("barka_suggestions", MODE_PRIVATE) }
     private val client by lazy { BarkaBackendClient(this) }
+    private lateinit var senderName: EditText
     private lateinit var message: EditText
     private lateinit var status: TextView
     private lateinit var send: MaterialButton
@@ -38,6 +39,8 @@ class SuggestionsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_suggestions)
         SystemBars.apply(this)
+        senderName = findViewById(R.id.suggestionName)
+        senderName.setText(prefs.getString("sender_name", ""))
         message = findViewById(R.id.suggestionMessage)
         status = findViewById(R.id.suggestionStatus)
         send = findViewById(R.id.suggestionSend)
@@ -56,7 +59,7 @@ class SuggestionsActivity : AppCompatActivity() {
     override fun onPause() {
         resumed = false
         handler.removeCallbacks(poll)
-        prefs.edit().putString("draft", message.text.toString()).apply()
+        prefs.edit().putString("draft", message.text.toString()).putString("sender_name", senderName.text.toString()).apply()
         super.onPause()
     }
 
@@ -81,29 +84,33 @@ class SuggestionsActivity : AppCompatActivity() {
 
     private fun submit() {
         if (sending || !enabled) return
+        val name = senderName.text.toString().trim()
+        if (name.length !in 2..80) { senderName.error = getString(R.string.suggestions_name_required); return }
         val text = message.text.toString().trim()
         if (text.length !in 3..2000) {
             message.error = getString(R.string.suggestions_invalid)
             return
         }
         // Reuse the receipt after a timeout or activity recreation.
-        val requestId = if (prefs.getString("pending_text", null) == text)
+        val requestId = if (prefs.getString("pending_text", null) == text && prefs.getString("pending_name", null) == name)
             prefs.getString("pending_id", null) ?: UUID.randomUUID().toString()
         else UUID.randomUUID().toString()
         prefs.edit().putString("pending_text", text).putString("pending_id", requestId)
-            .putString("draft", text).commit()
+            .putString("draft", text).putString("pending_name", name).putString("sender_name", name).commit()
         sending = true
         send.isEnabled = false
         message.isEnabled = false
+        senderName.isEnabled = false
         status.setText(R.string.suggestions_sending)
         worker.execute {
-            val result = runCatching { client.sendSuggestion(text, requestId) }
+            val result = runCatching { client.sendSuggestion(text, requestId, name) }
             // Keep the receipt while a recreated activity might still show this draft.
             if (result.isSuccess) prefs.edit().remove("draft").commit()
             runOnUiThread {
                 if (isDestroyed || isFinishing) return@runOnUiThread
                 sending = false
                 message.isEnabled = true
+                senderName.isEnabled = true
                 send.isEnabled = enabled
                 result.fold({
                     message.text.clear()

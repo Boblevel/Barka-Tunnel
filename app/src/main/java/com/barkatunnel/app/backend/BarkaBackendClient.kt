@@ -69,9 +69,15 @@ class BarkaBackendClient(context: Context) {
         return body.getBoolean("enabled")
     }
 
-    fun sendSuggestion(message: String, requestId: String) {
+    fun supportUrl(): String {
+        val number = getObject("/v1/support/config", BarkaVpnService.connectedSocksPort()).getString("whatsapp_number")
+        require(number.matches(Regex("[1-9][0-9]{7,14}")))
+        return "https://wa.me/$number"
+    }
+
+    fun sendSuggestion(message: String, requestId: String, senderName: String) {
         val body = post("/v1/suggestions", JSONObject()
-            .put("device_id", deviceId).put("message", message).put("request_id", requestId),
+            .put("device_id", deviceId).put("message", message).put("request_id", requestId).put("sender_name", senderName),
             BarkaVpnService.connectedSocksPort())
         if (!body.optBoolean("success", false)) throw BarkaBackendException("Envoi non confirmé. Réessayez.")
     }
@@ -210,11 +216,16 @@ class BarkaBackendClient(context: Context) {
             socksPort = BarkaVpnService.connectedSocksPort()
         )
 
-        return BackendActivationResult(
+        val result = BackendActivationResult(
             success = body.optBoolean("success", false),
             message = cleanMessage(body.optString("message", "Validation terminée.")),
             access = parseAccess(body.optJSONObject("access") ?: JSONObject())
         )
+        if (result.success && result.access.allowed && result.access.remainingSeconds > 0L) {
+            com.barkatunnel.app.ui.home.HomeAccessSnapshotStore.saveActivation(appContext,
+                com.barkatunnel.app.ui.home.HomeAccessState(true, result.access.remainingSeconds, "Accès actif"))
+        }
+        return result
     }
 
     fun resellerPurchase(action: String, payload: JSONObject): JSONObject {

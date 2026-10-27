@@ -40,6 +40,10 @@
             android:background="@drawable/bg_menu_active" android:padding="16dp"
             android:textSize="14sp"
             android:text="@string/suggestions_checking" android:textColor="@color/barka_text" />
+        <EditText android:id="@+id/suggestionName" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:hint="@string/suggestions_name" android:maxLength="80"
+            android:background="@drawable/bg_card_final" android:padding="18dp" android:inputType="textPersonName"
+            android:textColor="@color/barka_text" android:textColorHint="@color/barka_text_secondary" />
         <EditText android:id="@+id/suggestionMessage" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="16dp" android:hint="@string/suggestions_hint"
             android:background="@drawable/bg_card_final" android:padding="18dp" android:textSize="16sp"

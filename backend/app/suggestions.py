@@ -17,8 +17,9 @@ router = APIRouter()
 class SuggestionRequest(DeviceRequest):
     request_id: UUID
     message: str = Field(min_length=3, max_length=2000)
+    sender_name: str = Field(default="", max_length=80)
 
-    @field_validator('message', mode='before')
+    @field_validator('message', 'sender_name', mode='before')
     @classmethod
     def trim_message(cls, value):
         return value.strip() if isinstance(value, str) else value
@@ -51,7 +52,7 @@ def submit(body: SuggestionRequest):
         existing = cx.execute('SELECT * FROM suggestions WHERE device_id=? AND request_id=?',
                               (body.device_id, str(body.request_id))).fetchone()
         if existing:
-            if existing['message'] != body.message:
+            if existing['message'] != body.message or existing['sender_name'] != body.sender_name:
                 raise HTTPException(409, 'Cet envoi existe déjà avec un autre contenu.')
             return {'success': True, 'id': existing['id']}
         if not enabled_in(cx):
@@ -59,8 +60,8 @@ def submit(body: SuggestionRequest):
         if cx.execute('SELECT 1 FROM suggestions WHERE device_id=? AND created_at>? LIMIT 1',
                       (body.device_id, now - 60)).fetchone():
             raise HTTPException(429, 'Veuillez patienter une minute entre deux suggestions.')
-        cursor = cx.execute('INSERT INTO suggestions(device_id,request_id,message,created_at) VALUES(?,?,?,?)',
-                            (body.device_id, str(body.request_id), body.message, now))
+        cursor = cx.execute('INSERT INTO suggestions(device_id,request_id,message,created_at,sender_name) VALUES(?,?,?,?,?)',
+                            (body.device_id, str(body.request_id), body.message, now, body.sender_name))
         return {'success': True, 'id': cursor.lastrowid}
 
 
@@ -68,7 +69,7 @@ def submit(body: SuggestionRequest):
 def list_suggestions(response: Response, offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
     response.headers['Cache-Control'] = 'no-store'
     with transaction() as cx:
-        rows = cx.execute('SELECT id,device_id,message,created_at,read_at FROM suggestions ORDER BY id DESC LIMIT ? OFFSET ?',
+        rows = cx.execute('SELECT id,device_id,message,created_at,read_at,sender_name FROM suggestions ORDER BY id DESC LIMIT ? OFFSET ?',
                           (limit, offset)).fetchall()
         return {'enabled': enabled_in(cx), 'total': cx.execute('SELECT COUNT(*) FROM suggestions').fetchone()[0],
                 'items': [dict(row, created_at=stamp(row['created_at'])) for row in rows]}

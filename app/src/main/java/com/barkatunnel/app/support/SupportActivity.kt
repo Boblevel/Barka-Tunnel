@@ -20,11 +20,17 @@ class SupportActivity : AppCompatActivity() {
         applySystemBars()
 
         findViewById<MaterialButton>(R.id.contactSupportButton).setOnClickListener {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SUPPORT_URL)))
-            } catch (_: Exception) {
-                Toast.makeText(this, R.string.support_open_failed, Toast.LENGTH_SHORT).show()
-            }
+            it.isEnabled = false
+            val button = it
+            Thread {
+                val result = runCatching { com.barkatunnel.app.backend.BarkaBackendClient(this).supportUrl() }
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    button.isEnabled = true
+                    val opened = result.mapCatching { url -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                    if (opened.isFailure) Toast.makeText(this, R.string.support_open_failed, Toast.LENGTH_SHORT).show()
+                }
+            }.start()
         }
 
         findViewById<android.view.View>(R.id.supportBackButton).setOnClickListener {
@@ -48,7 +54,4 @@ class SupportActivity : AppCompatActivity() {
         }
     }
 
-    companion object {
-        private const val SUPPORT_URL = "https://wa.me/19852212404"
-    }
 }

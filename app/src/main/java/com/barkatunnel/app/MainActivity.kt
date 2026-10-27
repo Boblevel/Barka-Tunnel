@@ -707,6 +707,7 @@ class MainActivity : AppCompatActivity() {
             ) {
                 BarkaVpnService.cancelConnectingNotification(this)
             }
+            restoreAccessSnapshot()
             refreshHomeState()
             if (isInitialRemoteSyncComplete()) {
                 refreshVpnServices(force = true)
@@ -816,15 +817,28 @@ class MainActivity : AppCompatActivity() {
         return connection
     }
 
+    private fun restoreAccessSnapshot() {
+        val controller = homeController ?: return
+        val cached = HomeAccessSnapshotStore.restore(this) ?: return
+        handleHomeResult(controller.syncAccess(cached))
+        timerController.syncAccessRemaining(cached.remainingSeconds)
+    }
+
     private fun refreshHomeState() {
         val controller = homeController ?: return
         if (!accessRefreshInProgress.compareAndSet(false, true)) return
+        val activationGeneration = HomeAccessSnapshotStore.activationGeneration
 
         Thread {
             val accessResult = runCatching { controller.refreshAccess() }.getOrNull()
 
             runOnUiThread {
                 try {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (activationGeneration != HomeAccessSnapshotStore.activationGeneration) {
+                        restoreAccessSnapshot()
+                        return@runOnUiThread
+                    }
                     if (accessResult != null) {
                         handleHomeResult(accessResult)
 
@@ -946,6 +960,7 @@ class MainActivity : AppCompatActivity() {
 
             refreshNetworkIp()
             updateSelection(networkId)
+            dialog.dismiss()
         }
 
         dialog.findViewById<android.view.View>(R.id.networkDialogClose)
@@ -1940,6 +1955,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         networkLogo.setImageResource(drawable)
+        val logoSize = resources.getDimensionPixelSize(R.dimen.home_network_logo_size)
+        val inset = if (network?.id in listOf("moov_tiktok", "global_world")) logoSize / 4 else 0
+        networkLogo.setPadding(inset, inset, inset, inset)
         val global = network?.id == "global_world"
         networkFlagBurkina.setImageResource(if (global) R.drawable.ic_global_world else R.drawable.ic_flag_bf)
         networkFlagBurkina.contentDescription = if (global) getString(R.string.global_coverage) else getString(R.string.burkina_faso)

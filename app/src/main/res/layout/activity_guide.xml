@@ -44,6 +44,7 @@
     </LinearLayout>
 
     <ScrollView
+        android:scrollbars="none"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -72,10 +73,10 @@
         <TextView android:id="@+id/guide7" style="@style/BarkaGuideItem" android:drawableStart="@drawable/tile_ic_nav_journal" android:text="@string/guide_7_title" />
 
         <TextView android:id="@+id/guide8" style="@style/BarkaGuideItem" android:drawableStart="@drawable/tile_ic_menu_settings_line" android:text="@string/guide_8_title" />
-        <TextView android:id="@+id/guide9" style="@style/BarkaGuideItem" android:text="@string/guide_9_title" />
-        <TextView android:id="@+id/guide10" style="@style/BarkaGuideItem" android:text="@string/guide_10_title" />
-        <TextView android:id="@+id/guide11" style="@style/BarkaGuideItem" android:text="@string/guide_11_title" />
-        <TextView android:id="@+id/guide12" style="@style/BarkaGuideItem" android:text="@string/guide_12_title" />
+        <TextView android:id="@+id/guide9" android:drawableStart="@drawable/tile_ic_vpn_share" style="@style/BarkaGuideItem" android:text="@string/guide_9_title" />
+        <TextView android:id="@+id/guide10" android:drawableStart="@drawable/tile_ic_vpn_speed" style="@style/BarkaGuideItem" android:text="@string/guide_10_title" />
+        <TextView android:id="@+id/guide11" android:drawableStart="@drawable/tile_ic_menu_card_line" style="@style/BarkaGuideItem" android:text="@string/guide_11_title" />
+        <TextView android:id="@+id/guide12" android:drawableStart="@drawable/tile_ic_refresh_barka" style="@style/BarkaGuideItem" android:text="@string/guide_12_title" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

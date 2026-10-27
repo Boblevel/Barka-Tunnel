@@ -41,6 +41,19 @@ def add_months(timestamp, months):
     year, month = index // 12, index % 12 + 1
     return int(start.replace(year=year, month=month, day=min(start.day, calendar.monthrange(year, month)[1])).timestamp())
 
+def readable_username(cx):
+    first = ('Amadou', 'Aminata', 'Adama', 'Fatou', 'Issa', 'Awa', 'Mariam', 'Moussa',
+             'Oumar', 'Salimata', 'Idrissa', 'Seydou', 'Aicha', 'Karim', 'Nadia', 'Ali')
+    last = ('Traore', 'Diallo', 'Ouedraogo', 'Sow', 'Barry', 'Sanogo', 'Coulibaly', 'Bamba',
+            'Toure', 'Kone', 'Sangare', 'Sissoko', 'Cisse', 'Ba', 'Zongo', 'Sawadogo')
+    for attempt in range(100):
+        name = secrets.choice(first) + '-' + secrets.choice(last)
+        if attempt >= 10:
+            name += '-' + str(secrets.randbelow(900000) + 100000)
+        if not cx.execute('SELECT 1 FROM reseller_accounts WHERE lower(username)=?', (name.lower(),)).fetchone():
+            return name
+    raise ValueError('Impossible de réserver un nom de panel, réessayez.')
+
 def fulfill(cx, payment):
     """Called inside the payment transaction; duplicate callbacks never add time twice."""
     order = cx.execute('SELECT * FROM reseller_purchases WHERE reference=?', (payment['reference'],)).fetchone()
@@ -68,7 +81,7 @@ def fulfill(cx, payment):
         nonce = secrets.token_hex(32)
         password = resellers._recoverable_password(nonce)
         salt = secrets.token_bytes(16)
-        username = 'rev-' + uuid.uuid4().hex[:20]
+        username = readable_username(cx)
         target = cx.execute('''INSERT INTO reseller_accounts(username,password_hash,password_salt,status,expires_at,created_at,updated_at,password_nonce)
                               VALUES(?,?,?,'active',?,?,?,?)''',
                             (username, resellers._encode(resellers._password_digest(password,salt)), resellers._encode(salt), add_months(now,order['months']), now,now,nonce)).lastrowid
@@ -122,7 +135,11 @@ async def start(body: StartRequest, response: Response):
             pending=cx.execute("SELECT 1 FROM reseller_purchases r JOIN payments p ON p.reference=r.reference WHERE r.owner_hash=? AND p.status IN ('creating','pending')",(owner,)).fetchone()
             if pending:raise HTTPException(409,'Un paiement est déjà en cours. Vérifiez sa confirmation.')
             bound=cx.execute('SELECT a.* FROM reseller_purchase_owners o JOIN reseller_accounts a ON a.id=o.reseller_id WHERE o.owner_hash=?',(owner,)).fetchone()
-            if bound and (bound['deleted_at'] is not None or bound['status']!='active'):
+            if bound and bound['deleted_at'] is not None:
+                # Only an explicit new purchase may detach a deleted account. Old receipts remain bound.
+                cx.execute('DELETE FROM reseller_purchase_owners WHERE owner_hash=?', (owner,))
+                bound = None
+            if bound and bound['status']!='active':
                 raise HTTPException(403,'Sous-panel désactivé par l’administration. Contactez le support.')
             amount = get_catalog(cx)['prices']['reseller_'+str(body.months)+'m']
             check_expected_amount(amount, body.expected_amount)
@@ -150,6 +167,7 @@ def payment_result(reference,owner):
     try:
         row=cx.execute('''SELECT p.*, r.reseller_id,r.fulfilled_at,r.fulfillment_error FROM payments p JOIN reseller_purchases r ON r.reference=p.reference
                            WHERE p.reference=? AND r.owner_hash=?''',(reference,owner)).fetchone()
+        deleted = bool(row and row['reseller_id'] is not None and cx.execute('SELECT 1 FROM reseller_accounts WHERE id=? AND deleted_at IS NOT NULL',(row['reseller_id'],)).fetchone())
     finally:cx.close()
     if not row:raise HTTPException(404,'Paiement introuvable.')
     credentials=None
@@ -157,7 +175,7 @@ def payment_result(reference,owner):
         try:credentials=resellers.reseller_credentials(row['reseller_id'])
         except ValueError:pass
     return {'payment_reference':reference,'status':row['status'],'checkout_url':row['checkout_url'],'amount':row['amount'],'currency':'XOF',
-            'account':credentials,'message':row['fulfillment_error'] or {
+            'account':credentials,'account_deleted':deleted,'fulfilled':row['fulfilled_at'] is not None,'message':row['fulfillment_error'] or {
                 'paid':'Paiement confirmé.', 'pending':'Paiement en attente de confirmation.',
                 'creating':'Préparation du paiement en cours.', 'failed':'Paiement annulé ou expiré.',
                 'error':'Le paiement n’a pas pu être préparé. Connectez-vous à un réseau, puis réessayez.'

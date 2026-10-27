@@ -226,7 +226,7 @@
         android:orientation="horizontal"
         android:paddingHorizontal="16dp">
         <ImageView android:layout_width="56dp" android:layout_height="56dp"
-            android:contentDescription="GLOBAL MONDIAL" android:scaleType="fitCenter" android:src="@drawable/global_africa_red" />
+            android:contentDescription="GLOBAL MONDIAL" android:padding="14dp" android:scaleType="fitCenter" android:src="@drawable/global_africa_red" />
         <TextView android:id="@+id/optionGlobalName"
             android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_marginStart="12dp" android:layout_weight="1"

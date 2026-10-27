@@ -1,0 +1,9 @@
+<resources>
+<string name="suggestions_name">Votre nom</string>
+<string name="suggestions_name_required">Indiquez votre nom (2 à 80 caractères).</string>
+<string name="speed_timeout">Le serveur de mesure ne répond pas assez vite. Vérifiez le VPN puis réessayez.</string>
+<string name="speed_tls_error">La connexion sécurisée au serveur de mesure a échoué.</string>
+<string name="speed_http_error">Le serveur de mesure a refusé la requête (HTTP %1$s).</string>
+<string name="speed_network_error">Impossible de joindre le serveur de mesure à travers ce profil VPN. Consultez le journal.</string>
+<string name="share_background_active">Partage actif · Appuyez pour afficher les réglages</string>
+</resources>

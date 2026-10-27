@@ -225,6 +225,8 @@ def init_db() -> None:
             )
 
             suggestion_columns = {row["name"] for row in cx.execute("PRAGMA table_info(suggestions)")}
+            if "sender_name" not in suggestion_columns:
+                cx.execute("ALTER TABLE suggestions ADD COLUMN sender_name TEXT NOT NULL DEFAULT ''")
             if "read_at" not in suggestion_columns:
                 cx.execute("ALTER TABLE suggestions ADD COLUMN read_at INTEGER")
 

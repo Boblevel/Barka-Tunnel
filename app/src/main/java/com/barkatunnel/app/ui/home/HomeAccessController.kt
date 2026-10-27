@@ -81,6 +81,7 @@ class HomeAccessController private constructor(
         },
         refreshAction = {
             try {
+                val generation = HomeAccessSnapshotStore.activationGeneration
                 val access = backendClient.checkAccess()
                 val state = HomeAccessState(
                     allowed = access.allowed,
@@ -91,8 +92,7 @@ class HomeAccessController private constructor(
                         else -> "Aucun temps actif"
                     }
                 )
-                HomeAccessSnapshotStore.save(context, state)
-                state
+                HomeAccessSnapshotStore.saveRefresh(context, state, generation)
             } catch (e: Exception) {
                 HomeAccessSnapshotStore.restore(context) ?: HomeAccessState(
                     allowed = false,

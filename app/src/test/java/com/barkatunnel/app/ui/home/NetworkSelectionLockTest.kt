@@ -60,7 +60,7 @@ class NetworkSelectionLockTest {
         assertFalse(dialog.isShowing)
         assertNull(a.getSharedPreferences("barka_home_preferences",0).getString("selected_network_id",null))
     }
-    @Test fun selectingSeveralNetworksKeepsDialogOpenUntilBack() {
+    @Test fun selectingNetworkClosesDialogAndPersistsChoice() {
         val a=Robolectric.buildActivity(MainActivity::class.java).get()
         a.setTheme(R.style.Theme_BarkaTunnel)
         runtime(BarkaVpnService.RuntimeConnectionState.DISCONNECTED)
@@ -70,12 +70,12 @@ class NetworkSelectionLockTest {
         for(name in listOf("networkLogo","networkFlagBurkina","networkFlagNiger","networkFlagTogo")) field(name,android.widget.ImageView(a))
         for(name in listOf("networkIpValue","networkIpStatus")) field(name,text())
         field("networkIpCard",View(a))
-        call(a,"showNetworkDialog")
-        val dialog=ShadowDialog.getLatestDialog()
         try {
             for((viewId,id) in listOf(R.id.optionGlobal to "global_world",R.id.optionTelecel to "telecel_bf",R.id.optionMoov to "moov_bf")) {
+                call(a,"showNetworkDialog")
+                val dialog=ShadowDialog.getLatestDialog()
                 dialog.findViewById<View>(viewId).performClick()
-                assertTrue(dialog.isShowing)
+                assertFalse(dialog.isShowing)
                 val flagView = MainActivity::class.java.getDeclaredField("networkFlagBurkina")
                     .apply { isAccessible = true }.get(a) as android.widget.ImageView
                 assertEquals(a.getString(if (id == "global_world") R.string.global_coverage else R.string.burkina_faso),
@@ -85,9 +85,7 @@ class NetworkSelectionLockTest {
                     assertEquals(row==viewId,dialog.findViewById<View>(row).isSelected)
                 }
             }
-            dialog.findViewById<View>(R.id.networkDialogClose).performClick()
-            assertFalse(dialog.isShowing)
-        } finally {dialog.dismiss();a.getSharedPreferences("barka_home_preferences",0).edit().clear().commit()}
+        } finally {ShadowDialog.getLatestDialog()?.dismiss();a.getSharedPreferences("barka_home_preferences",0).edit().clear().commit()}
     }
 
 }
