@@ -103,8 +103,37 @@ class IpSearchService : Service() {
         val message = getString(R.string.ip_finder_found_detail, ip)
         AppLogStore.add(this, getString(R.string.ip_finder_log_found_format, ip))
         notifications.notify(FOUND_NOTIFICATION, notification(FOUND_CHANNEL, message, false))
+        vibrateFound()
         finishSearch(message)
     }
+    @Suppress("DEPRECATION")
+    private fun vibrateFound() {
+        // A notification usage is required for vibration while the activity is hidden.
+        if (!androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled()) return
+        if (notifications.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL) return
+        if (Build.VERSION.SDK_INT >= 26) {
+            val channel = notifications.getNotificationChannel(FOUND_CHANNEL) ?: return
+            if (!channel.shouldVibrate() || channel.importance < NotificationManager.IMPORTANCE_DEFAULT) return
+        }
+        val vibrator = if (Build.VERSION.SDK_INT >= 31)
+            getSystemService(VibratorManager::class.java)?.defaultVibrator
+        else getSystemService(Vibrator::class.java)
+        if (vibrator?.hasVibrator() != true) return
+        val pattern = longArrayOf(0, 180, 100, 300)
+        runCatching {
+            if (Build.VERSION.SDK_INT >= 33) {
+                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1),
+                    VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_NOTIFICATION).build())
+            } else {
+                val attributes = android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
+                if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1), attributes)
+                else vibrator.vibrate(pattern, -1, attributes)
+            }
+        }
+    }
+
     private fun notification(channel: String, message: String, ongoing: Boolean): Notification {
         val open = PendingIntent.getActivity(this, 0, Intent(this, IpFinderActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, IpSearchService::class.java).setAction(STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)

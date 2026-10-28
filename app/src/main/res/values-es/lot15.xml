@@ -1,0 +1,8 @@
+<resources>
+    <string name="share_local_address">Dirección local del teléfono</string>
+    <string name="share_address">Dirección IP</string>
+    <string name="share_port">Puerto</string>
+    <string name="share_username">Usuario</string>
+    <string name="share_password">Contraseña</string>
+    <string name="share_active">Compartiendo</string>
+</resources>

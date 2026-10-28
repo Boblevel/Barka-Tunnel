@@ -1,0 +1,8 @@
+<resources>
+    <string name="share_local_address">عنوان الهاتف المحلي</string>
+    <string name="share_address">عنوان IP</string>
+    <string name="share_port">المنفذ</string>
+    <string name="share_username">اسم المستخدم</string>
+    <string name="share_password">كلمة المرور</string>
+    <string name="share_active">المشاركة نشطة</string>
+</resources>

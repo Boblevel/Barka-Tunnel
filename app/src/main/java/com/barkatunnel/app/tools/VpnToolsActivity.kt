@@ -53,6 +53,8 @@ class VpnToolsActivity : AppCompatActivity() {
             if (!isShare) setText(R.string.vpn_speed_help)
         }
         addresses.visibility = if (isShare) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.shareAddressLabel).visibility = if (isShare) View.VISIBLE else View.GONE
+        value.visibility = if (isShare) View.GONE else View.VISIBLE
         if (isShare) refreshAddresses()
         action.setOnClickListener {
             if ((isShare && VpnShareService.state != null) || speed != null) stop(getString(R.string.tools_stopped)) else start()
@@ -125,10 +127,12 @@ class VpnToolsActivity : AppCompatActivity() {
         val current = VpnShareService.state
         addresses.isEnabled = current == null
         action.setText(if (current == null) R.string.tools_start else R.string.tools_stop)
-        if (current != null) {
-            value.text = "${current.address}:${current.port}"
-            status.text = getString(R.string.tools_share_credentials, "barka", current.password)
-        } else { value.text = "—"; status.setText(VpnShareService.error ?: R.string.tools_ready) }
+        findViewById<View>(R.id.shareDetails).visibility = if (current == null) View.GONE else View.VISIBLE
+        findViewById<TextView>(R.id.shareAddress).text = current?.address.orEmpty()
+        findViewById<TextView>(R.id.sharePort).text = current?.port?.toString().orEmpty()
+        findViewById<TextView>(R.id.shareUsername).text = if (current == null) "" else "barka"
+        findViewById<TextView>(R.id.sharePassword).text = current?.password.orEmpty()
+        status.setText(if (current != null) R.string.share_active else VpnShareService.error ?: R.string.tools_ready)
     }
     override fun onResume() {
         super.onResume()

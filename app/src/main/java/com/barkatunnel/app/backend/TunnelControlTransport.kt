@@ -16,6 +16,28 @@ internal object TunnelControlTransport {
     private val clients = ConcurrentHashMap<Int, OkHttpClient>()
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
+    /** Drop pooled sockets and pending requests belonging to the previous native session. */
+    @Synchronized
+    fun closeSession(socksPort: Int) {
+        clients.remove(socksPort)?.let { client ->
+            client.dispatcher.cancelAll()
+            client.connectionPool.evictAll()
+        }
+    }
+
+    @Synchronized
+    private fun clientFor(socksPort: Int): OkHttpClient = clients.getOrPut(socksPort) {
+        OkHttpClient.Builder()
+            .proxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", socksPort)))
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .callTimeout(35, TimeUnit.SECONDS)
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .retryOnConnectionFailure(false)
+            .build()
+    }
+
     fun request(url: String, payload: JSONObject?, socksPort: Int): JSONObject =
         JSONObject(requestText(url, payload, socksPort))
 
@@ -30,17 +52,7 @@ internal object TunnelControlTransport {
             .apply { if (payload != null) post(payload.toString().toRequestBody(jsonType)) }
             .build()
         require(request.url.isHttps) { "HTTPS requis pour le contrôle d’accès." }
-        val client = clients.getOrPut(socksPort) {
-            OkHttpClient.Builder()
-                .proxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", socksPort)))
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
-                .callTimeout(35, TimeUnit.SECONDS)
-                .followRedirects(false)
-                .followSslRedirects(false)
-                .retryOnConnectionFailure(false)
-                .build()
-        }
+        val client = clientFor(socksPort)
         try {
             client.newCall(request).execute().use { response ->
                 val body = response.body ?: throw IOException("Réponse serveur vide")

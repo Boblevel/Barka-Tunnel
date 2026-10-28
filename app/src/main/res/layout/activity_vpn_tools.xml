@@ -11,6 +11,9 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="24dp" android:paddingBottom="24dp">
             <TextView android:id="@+id/toolHelp" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="@color/barka_text_secondary" android:textSize="15sp" android:lineSpacingExtra="4dp" />
+            <TextView android:id="@+id/shareAddressLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" android:text="@string/share_local_address" android:textColor="@color/barka_text_secondary"
+                android:textSize="14sp" android:visibility="gone" />
             <Spinner android:id="@+id/toolAddresses" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="16dp" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
                 android:gravity="center" android:layout_marginTop="24dp" android:padding="24dp" android:background="@drawable/bg_card_final" android:animateLayoutChanges="true">
@@ -19,6 +22,29 @@
                 <TextView android:id="@+id/toolValue" android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="—" android:textColor="@color/barka_blue" android:textSize="30sp" android:textStyle="bold" android:gravity="center"
                     android:layout_marginTop="16dp" android:textIsSelectable="true" />
+                <LinearLayout android:id="@+id/shareDetails" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:visibility="gone">
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:text="@string/share_address" android:textColor="@color/barka_text_secondary" android:textSize="14sp" android:layout_marginTop="16dp" />
+                    <TextView android:id="@+id/shareAddress" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:textColor="@color/barka_blue" android:textSize="24sp" android:textStyle="bold"
+                        android:textDirection="ltr" android:gravity="start" android:textIsSelectable="true" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:text="@string/share_port" android:textColor="@color/barka_text_secondary" android:textSize="14sp" android:layout_marginTop="16dp" />
+                    <TextView android:id="@+id/sharePort" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:textColor="@color/barka_blue" android:textSize="22sp" android:textStyle="bold"
+                        android:textDirection="ltr" android:gravity="start" android:textIsSelectable="true" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:text="@string/share_username" android:textColor="@color/barka_text_secondary" android:textSize="14sp" android:layout_marginTop="16dp" />
+                    <TextView android:id="@+id/shareUsername" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:textColor="@color/barka_blue" android:textSize="20sp" android:textStyle="bold"
+                        android:textDirection="ltr" android:gravity="start" android:textIsSelectable="true" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:text="@string/share_password" android:textColor="@color/barka_text_secondary" android:textSize="14sp" android:layout_marginTop="16dp" />
+                    <TextView android:id="@+id/sharePassword" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:textColor="@color/barka_blue" android:textSize="16sp" android:textStyle="bold"
+                        android:textDirection="ltr" android:gravity="start" android:textIsSelectable="true" />
+                </LinearLayout>
                 <TextView android:id="@+id/toolStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="@string/tools_ready" android:textColor="@color/barka_text" android:textSize="16sp"
                     android:layout_marginTop="16dp" android:gravity="center" android:textIsSelectable="true" android:accessibilityLiveRegion="polite" />

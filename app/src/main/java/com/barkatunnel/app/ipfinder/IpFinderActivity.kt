@@ -86,9 +86,6 @@ class IpFinderActivity : AppCompatActivity() {
         stopButton.visibility = if (searching) View.VISIBLE else View.INVISIBLE
         ipInput.isEnabled = !searching
         refreshNetworkState()
-        if (IpSearchService.status.isNotEmpty()) statusText.text = IpSearchService.status
-        statusText.setTextColor(ContextCompat.getColor(this, if (searching) R.color.barka_orange
-            else if (IpSearchService.foundIp != null) R.color.barka_green else R.color.barka_text_secondary))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -302,12 +299,20 @@ class IpFinderActivity : AppCompatActivity() {
         if (compatible) manualAirplaneButton.visibility = View.GONE
         scanButton.isEnabled = !searching && currentIp != null
 
-        if (!searching && networkChanged) {
-            statusText.setText(R.string.ip_finder_idle)
-            statusText.setTextColor(ContextCompat.getColor(this, R.color.barka_blue))
-            progressText.setText(R.string.ip_finder_current_ip)
-
+        // Historical search success is not evidence that the address is still active.
+        val foundStillCurrent = compatible && currentIp == IpSearchService.foundIp
+        statusText.text = when {
+            searching -> IpSearchService.status.ifEmpty { getString(R.string.ip_finder_searching) }
+            foundStillCurrent -> getString(R.string.ip_finder_found_detail, currentIp)
+            IpSearchService.foundIp == null && !networkChanged && IpSearchService.status.isNotEmpty() -> IpSearchService.status
+            else -> getString(R.string.ip_finder_idle)
         }
+        statusText.setTextColor(ContextCompat.getColor(this, when {
+            searching -> R.color.barka_orange
+            foundStillCurrent -> R.color.barka_green
+            else -> R.color.barka_text_secondary
+        }))
+        if (!searching) progressText.setText(R.string.ip_finder_current_ip)
     }
 
     private fun startSearch() {

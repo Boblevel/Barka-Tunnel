@@ -24,6 +24,9 @@ class BackgroundIpSearchTest {
         val service=serviceController.get()
         val screen=Robolectric.buildActivity(IpFinderActivity::class.java).setup()
         try {
+            app.getSystemService(NotificationManager::class.java).setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+            val vibrator=shadowOf(app.getSystemService(android.os.Vibrator::class.java))
+            vibrator.setHasVibrator(true)
             service.onStartCommand(Intent(app, IpSearchService::class.java),0,1)
             assertTrue(IpSearchService.active)
             if(closeActivity)screen.pause().stop().destroy()
@@ -33,6 +36,7 @@ class BackgroundIpSearchTest {
             val manager=app.getSystemService(NotificationManager::class.java)
             val alert=shadowOf(manager).getNotification(741)
             assertNotNull(alert)
+            assertTrue("Success must trigger the vibrator inside and outside the activity",vibrator.isVibrating)
             assertNotNull(manager.getNotificationChannel("ip_search_found").sound)
             assertEquals(NotificationManager.IMPORTANCE_HIGH,manager.getNotificationChannel("ip_search_found").importance)
             assertTrue(manager.getNotificationChannel("ip_search_found").shouldVibrate())

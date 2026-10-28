@@ -336,6 +336,7 @@ class BarkaVpnService : VpnService() {
         connectGeneration: Long
     ) {
         val localSocksPort = socksPort(protocol)
+        com.barkatunnel.app.backend.TunnelControlTransport.closeSession(localSocksPort)
         if (
             !waitUntilLocalPortClosed(
                 port = localSocksPort,
@@ -499,6 +500,10 @@ class BarkaVpnService : VpnService() {
                 activeEngine = engine
                 engine = null
                 connected = false
+            }
+
+            activeEngine?.socksAddress?.substringAfterLast(':')?.toIntOrNull()?.let {
+                com.barkatunnel.app.backend.TunnelControlTransport.closeSession(it)
             }
 
             // Arrêter d'abord tun2socks pendant que le descripteur TUN est encore valide.
