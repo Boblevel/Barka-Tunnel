@@ -20,12 +20,28 @@ object SystemBars {
         }
 
         val content = activity.findViewById<android.view.View>(android.R.id.content)
+        val pageNames = setOf("SettingsActivity", "GuideActivity", "GuideSectionActivity",
+            "SubscriptionActivity", "ActivationActivity", "IpFinderActivity", "SupportActivity",
+            "SuggestionsActivity", "ResellerPurchaseActivity", "ConsumptionActivity", "VpnToolsActivity")
+        val alignedPage = activity.javaClass.simpleName in pageNames
+        if (alignedPage) {
+            val root = (content as? android.view.ViewGroup)?.getChildAt(0) as? android.view.ViewGroup
+            val header = if (activity.javaClass.simpleName == "VpnToolsActivity") root else root?.getChildAt(0)
+            header?.setPaddingRelative(header.paddingStart,
+                (8 * activity.resources.displayMetrics.density).toInt(), header.paddingEnd, header.paddingBottom)
+            val container = header as? android.widget.LinearLayout
+            val row = if (container?.orientation == android.widget.LinearLayout.VERTICAL) container.getChildAt(0) else container
+            row?.let {
+                it.minimumHeight = (56 * activity.resources.displayMetrics.density).toInt()
+                it.layoutParams = it.layoutParams.apply { height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT }
+            }
+        }
         ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
             val referenceStatusBar = (24f * view.resources.displayMetrics.density).toInt()
-            val topPadding = (bars.top - referenceStatusBar).coerceAtLeast(0)
+            val topPadding = if (alignedPage) bars.top else (bars.top - referenceStatusBar).coerceAtLeast(0)
             view.setPadding(bars.left, topPadding, bars.right, bars.bottom)
             insets
         }

@@ -1,5 +1,5 @@
 <resources>
-    <string name="vpn_share_title">Share VPN with a computer</string>
+    <string name="vpn_share_title">VPN sharing to PC</string>
     <string name="vpn_speed_title">Test VPN speed</string>
     <string name="vpn_share_help">1. Connect the VPN and your computer to the same Wi-Fi network, or enable phone Wi-Fi/USB tethering.\n2. Select the local address and start sharing.\n3. Configure the computer HTTP and HTTPS proxy using the displayed address, port and credentials.\nOnly proxy-configured applications use the VPN (TCP, no UDP). Use a trusted network. Sharing continues after closing this screen; stop it here or in the notification. A VPN disconnect stops sharing.</string>
     <string name="vpn_speed_help">Live VPN measurement: HTTPS latency, download and upload to Cloudflare. Uses up to approximately 2.5 MB. Results depend on the network and server. You can stop at any time.</string>

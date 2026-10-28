@@ -48,7 +48,10 @@ class VpnToolsActivity : AppCompatActivity() {
         addresses = findViewById(R.id.toolAddresses)
         findViewById<View>(R.id.toolBack).setOnClickListener { finish() }
         findViewById<TextView>(R.id.toolTitle).setText(if (isShare) R.string.vpn_share_title else R.string.vpn_speed_title)
-        findViewById<TextView>(R.id.toolHelp).setText(if (isShare) R.string.vpn_share_help else R.string.vpn_speed_help)
+        findViewById<TextView>(R.id.toolHelp).apply {
+            visibility = if (isShare) View.GONE else View.VISIBLE
+            if (!isShare) setText(R.string.vpn_speed_help)
+        }
         addresses.visibility = if (isShare) View.VISIBLE else View.GONE
         if (isShare) refreshAddresses()
         action.setOnClickListener {

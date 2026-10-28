@@ -18,7 +18,7 @@ object UpdateSuccessFeedback {
     @Synchronized
     @Suppress("DEPRECATION")
     fun showOnce(activity: Activity, message: Int, revision: String = "apk:${BuildConfig.VERSION_CODE}") {
-        if (activity.isFinishing || activity.isDestroyed) return
+        if (message == R.string.config_update_applied_message || activity.isFinishing || activity.isDestroyed) return
         val prefs = activity.applicationContext.getSharedPreferences("barka_update_feedback", Context.MODE_PRIVATE)
         val key = activity.resources.getResourceEntryName(message)
         if (prefs.getString(key, null) == revision) return

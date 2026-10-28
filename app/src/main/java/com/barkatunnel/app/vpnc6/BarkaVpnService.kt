@@ -379,36 +379,15 @@ class BarkaVpnService : VpnService() {
         if (!protocolEngine.isRunning()) {
             throw IllegalStateException("Le moteur ${protocol.name} s’est arrêté prématurément.")
         }
-        val probeOk = SocksProbe.hasUsableInternet(
-            proxyHost = "127.0.0.1",
-            proxyPort = localSocksPort,
-            timeoutMs = if (protocol == VpnProfileProtocol.SLOWDNS) {
-                SLOWDNS_SOCKS_TIMEOUT_MS
-            } else {
-                DIAGNOSTIC_SOCKS_TIMEOUT_MS
-            }
-        )
-        val diagnosticNetwork = when (protocol) {
-            VpnProfileProtocol.VLESS -> "ORANGE"
-            VpnProfileProtocol.SLOWDNS -> "MOOV"
-            VpnProfileProtocol.SSH_TLS -> "SSH TLS"
-            VpnProfileProtocol.UDP -> "TELECEL"
-        }
-        AppLogStore.add(
-            this,
-            "Diagnostic $diagnosticNetwork • trafic réel via SOCKS • ${if (probeOk) "OK" else "ÉCHEC"}."
-        )
-        if (!probeOk || !protocolEngine.isRunning()) {
-            throw IllegalStateException(
-                "Le proxy ${protocol.name} n’achemine aucune donnée Internet."
-            )
-        }
+        // The authenticated API request below proves real traffic through this SOCKS tunnel.
+        // A blocked diagnostic IP must not reject a usable VPN.
 
         // Mobile may reach the control API only through the native proxy.
         // Authorize BEFORE establishing TUN or forwarding other applications.
         if (!isConnectOperationActive(connectGeneration)) throw InterruptedException("Connexion annulée.")
         val access = com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess(localSocksPort)
         if (!access.allowed) throw IllegalStateException("Accès retiré ou expiré.")
+        if (!protocolEngine.isRunning()) throw IllegalStateException("Le moteur VPN s’est arrêté pendant la validation.")
         sessionAccessRevision = access.accessRevision
 
         val dns = when (profileConfig) {
@@ -501,45 +480,50 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun stopTunnel() {
-        runtimeSocksPort = null
-        accessFuture?.cancel(true)
-        accessFuture = null
-        keepAliveFuture?.cancel(true)
-        keepAliveFuture = null
+        val interrupted = Thread.interrupted()
+        try {
+            runtimeSocksPort = null
+            accessFuture?.cancel(true)
+            accessFuture = null
+            keepAliveFuture?.cancel(true)
+            keepAliveFuture = null
 
-        val descriptor: ParcelFileDescriptor?
-        val runner: Tun2SocksRunner?
-        val activeEngine: C6ProtocolEngine?
-        synchronized(tunnelLock) {
-            descriptor = vpnDescriptor
-            vpnDescriptor = null
-            runner = tun2SocksRunner
-            tun2SocksRunner = null
-            activeEngine = engine
-            engine = null
-            connected = false
-        }
+            val descriptor: ParcelFileDescriptor?
+            val runner: Tun2SocksRunner?
+            val activeEngine: C6ProtocolEngine?
+            synchronized(tunnelLock) {
+                descriptor = vpnDescriptor
+                vpnDescriptor = null
+                runner = tun2SocksRunner
+                tun2SocksRunner = null
+                activeEngine = engine
+                engine = null
+                connected = false
+            }
 
-        // Arrêter d'abord tun2socks pendant que le descripteur TUN est encore valide.
-        // Fermer le TUN avant l'arrêt natif peut faire tomber brutalement le pont
-        // TUN -> SOCKS et laisser les tentatives suivantes dans un état incohérent.
-        runCatching { runner?.stop() }
-            .onFailure { Log.w(TAG, "tun2socks shutdown incomplete", it) }
-        runCatching { descriptor?.close() }
-        runCatching { activeEngine?.stop() }
-            .onFailure { Log.w(TAG, "Protocol engine shutdown incomplete", it) }
+            // Arrêter d'abord tun2socks pendant que le descripteur TUN est encore valide.
+            // Fermer le TUN avant l'arrêt natif peut faire tomber brutalement le pont
+            // TUN -> SOCKS et laisser les tentatives suivantes dans un état incohérent.
+            runCatching { runner?.stop() }
+                .onFailure { Log.w(TAG, "tun2socks shutdown incomplete", it) }
+            runCatching { descriptor?.close() }
+            runCatching { activeEngine?.stop() }
+                .onFailure { Log.w(TAG, "Protocol engine shutdown incomplete", it) }
 
-        val releasedPort = activeEngine?.socksAddress
-            ?.substringAfterLast(':')
-            ?.toIntOrNull()
-        if (
-            releasedPort != null &&
-            !waitUntilLocalPortClosed(
-                port = releasedPort,
-                timeoutMs = LOCAL_PROXY_RELEASE_TIMEOUT_MS
-            ) { true }
-        ) {
-            Log.w(TAG, "Local proxy port $releasedPort is still open after shutdown")
+            val releasedPort = activeEngine?.socksAddress
+                ?.substringAfterLast(':')
+                ?.toIntOrNull()
+            if (
+                releasedPort != null &&
+                !waitUntilLocalPortClosed(
+                    port = releasedPort,
+                    timeoutMs = LOCAL_PROXY_RELEASE_TIMEOUT_MS
+                ) { true }
+            ) {
+                Log.w(TAG, "Local proxy port $releasedPort is still open after shutdown")
+            }
+        } finally {
+            if (interrupted) Thread.currentThread().interrupt()
         }
     }
 

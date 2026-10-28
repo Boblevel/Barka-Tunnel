@@ -37,7 +37,7 @@ class UpdateSuccessFeedbackTest {
         second.pause().stop().destroy()
     }
 
-    @Test fun persistedReceiptSurvivesNewFeedbackInstanceAndNewConfigurationIsVisible() {
+    @Test fun profileRefreshStaysSilentEvenForNewRevision() {
         val app = RuntimeEnvironment.getApplication()
         val key = app.resources.getResourceEntryName(R.string.config_update_applied_message)
         app.getSharedPreferences("barka_update_feedback", Context.MODE_PRIVATE)
@@ -47,7 +47,7 @@ class UpdateSuccessFeedbackTest {
         assertEquals(0, ShadowToast.shownToastCount())
         UpdateSuccessFeedback.showOnce(activity.get(), R.string.config_update_applied_message, "orange:4")
         UpdateSuccessFeedback.showOnce(activity.get(), R.string.config_update_applied_message, "orange:4")
-        assertEquals(1, ShadowToast.shownToastCount())
+        assertEquals(0, ShadowToast.shownToastCount())
         activity.pause().stop().destroy()
     }
 }

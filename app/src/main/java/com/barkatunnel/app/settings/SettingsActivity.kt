@@ -65,11 +65,12 @@ class SettingsActivity : AppCompatActivity() {
             val language = prefs.getString("language", "fr") ?: "fr"
             languageButton.text = getString(
                 R.string.settings_language_format,
-                if (language == "en") {
-                    getString(R.string.language_english)
-                } else {
-                    getString(R.string.language_french)
-                }
+                getString(when (language) {
+                    "en" -> R.string.language_english
+                    "es" -> R.string.language_spanish
+                    "ar" -> R.string.language_arabic
+                    else -> R.string.language_french
+                })
             )
         }
 
@@ -102,15 +103,16 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         languageButton.setOnClickListener {
-            val french = getString(R.string.language_french)
-            val english = getString(R.string.language_english)
+            val tags = arrayOf("fr", "en", "es", "ar")
+            val labels = arrayOf(getString(R.string.language_french), getString(R.string.language_english),
+                getString(R.string.language_spanish), getString(R.string.language_arabic))
             val currentLanguage = prefs.getString("language", "fr") ?: "fr"
             showSingleChoiceDialog(
                 title = getString(R.string.settings_choose_language),
-                values = arrayOf(french, english),
-                selected = if (currentLanguage == "en") english else french
+                values = labels,
+                selected = labels[tags.indexOf(currentLanguage).coerceAtLeast(0)]
             ) { value ->
-                val language = if (value == english) "en" else "fr"
+                val language = tags[labels.indexOf(value).coerceAtLeast(0)]
                 prefs.edit().putString("language", language).commit()
                 AppCompatDelegate.setApplicationLocales(
                     LocaleListCompat.forLanguageTags(language)

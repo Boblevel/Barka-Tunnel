@@ -1,0 +1,7 @@
+<resources>
+<string name="language_spanish">Español</string>
+<string name="language_arabic">العربية</string>
+<string name="promotion_alert_title">Barka Tunnel promotion</string>
+<string name="promotion_alert_subscription">Subscription promotion: %1$d XOF. Tap to view offers.</string>
+<string name="promotion_alert_reseller">Reseller panel promotion: %1$d XOF. Tap to view offers.</string>
+</resources>

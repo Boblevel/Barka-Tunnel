@@ -48,7 +48,10 @@ object PricingSync : Application.ActivityLifecycleCallbacks {
         if (!busy.compareAndSet(false, true)) return
         val application = context.applicationContext
         Thread {
-            try { PricingStore.save(application, BarkaBackendClient(application).getPricing()) }
+            try {
+                PricingStore.save(application, BarkaBackendClient(application).getPricing())
+                PromotionNotifications.publish(application)
+            }
             catch (_: Exception) { /* Keep the last valid catalog without a popup. */ }
             finally { busy.set(false) }
         }.start()
@@ -71,6 +74,7 @@ object PricingSync : Application.ActivityLifecycleCallbacks {
 class PricingWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     override fun doWork(): Result = try {
         PricingStore.save(applicationContext, BarkaBackendClient(applicationContext).getPricing())
+        PromotionNotifications.publish(applicationContext)
         Result.success()
     } catch (_: Exception) { Result.retry() }
 }

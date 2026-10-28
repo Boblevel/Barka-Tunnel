@@ -110,24 +110,29 @@ class Tun2SocksRunner(context: Context) {
 
     fun stop() {
         if (!stopped.compareAndSet(false, true)) return
-        connectionLatch?.countDown()
-        pendingResponse?.complete(
-            Response(Tun2SocksProcessService.RESPONSE_ERROR, "Connexion annulée.", false)
-        )
-        val binder = remoteBinder
-        val messenger = remoteMessenger
-        if (messenger != null && remoteBinder?.isBinderAlive == true) {
-            runCatching {
-                sendAndAwait(
-                    command = Tun2SocksProcessService.COMMAND_STOP,
-                    timeoutMs = STOP_TIMEOUT_MS
-                )
+        val interrupted = Thread.interrupted()
+        try {
+            connectionLatch?.countDown()
+            pendingResponse?.complete(
+                Response(Tun2SocksProcessService.RESPONSE_ERROR, "Connexion annulée.", false)
+            )
+            val binder = remoteBinder
+            val messenger = remoteMessenger
+            if (messenger != null && remoteBinder?.isBinderAlive == true) {
+                runCatching {
+                    sendAndAwait(
+                        command = Tun2SocksProcessService.COMMAND_STOP,
+                        timeoutMs = STOP_TIMEOUT_MS
+                    )
+                }
             }
+            remoteReady = false
+            unbindRemoteService()
+            awaitRemoteProcessExit(binder)
+            replyThread.quitSafely()
+        } finally {
+            if (interrupted) Thread.currentThread().interrupt()
         }
-        remoteReady = false
-        unbindRemoteService()
-        awaitRemoteProcessExit(binder)
-        replyThread.quitSafely()
     }
 
     private fun bindRemoteService() {

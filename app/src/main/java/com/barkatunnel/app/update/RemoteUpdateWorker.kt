@@ -96,13 +96,7 @@ class RemoteUpdateWorker(
                 ) {
                     is VpnProfileSyncResult.Success -> {
                         AppLogStore.add(applicationContext, "Profils à jour.")
-                        if (previousFingerprint != null) {
-                            showNotification(
-                                NOTIFICATION_PROFILE_ID,
-                                applicationContext.getString(R.string.remote_profile_update_title),
-                                applicationContext.getString(R.string.remote_profile_update_message)
-                            )
-                        }
+
                     }
 
                     is VpnProfileSyncResult.Error -> return Result.retry()
@@ -213,6 +207,7 @@ object RemoteUpdateScheduler {
     private const val IMMEDIATE_WORK_NAME = "barka_remote_update_watch_now"
 
     fun schedule(context: Context) {
+        NotificationManagerCompat.from(context).cancel(2201)
         RemoteUpdateWorker.onInstalledVersion(context)
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)

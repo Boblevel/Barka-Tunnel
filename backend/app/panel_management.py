@@ -16,7 +16,7 @@ from .services import iso, now_ts
 
 class FilterRequest(BaseModel):
     kind: Literal["subscription", "redeem"]
-    status: Literal["issued", "redeemed", "expired", "revoked", "active"]
+    status: Literal["issued", "redeemed", "expired", "revoked", "active", "all"]
     query: str = Field(default="", max_length=200)
     fingerprint: str | None = Field(default=None, min_length=64, max_length=64)
 
@@ -25,6 +25,8 @@ def filtered_codes(body: FilterRequest, reseller_id: int | None = None, *, delet
     if reseller_id is not None and body.kind != "subscription":
         raise HTTPException(403, "Action non autorisée.")
     allowed = {"issued", "redeemed", "expired", "revoked"} if body.kind == "subscription" else {"active", "expired", "revoked"}
+    if reseller_id is not None:
+        allowed.add("all")
     if body.status not in allowed:
         raise HTTPException(400, "Filtre de statut invalide.")
     # Preview and confirmation use the same calculation. Lock writers during the
@@ -47,7 +49,7 @@ def filtered_codes(body: FilterRequest, reseller_id: int | None = None, *, delet
                 plan_label = {"24h": "24 HEURES", "1w": "1 SEMAINE", "2w": "2 SEMAINES", "1m": "1 MOIS", "test_2h": "TEST 2 H", "test_3h": "TEST 3 H", "test_6h": "TEST 6 H"}.get(row["plan_id"], row["plan_id"])
                 status_label = {"issued": "Disponible", "redeemed": "Actif / utilisé", "expired": "EXPIRÉ", "revoked": "Désactivé"}.get(row["status"], row["status"])
                 values = [row["code"], row["plan_id"], plan_label, row["status"], status_label, row["code_type"]]
-            return row["status"] == body.status and (not query or any(query in str(v or "").lower() for v in values))
+            return (body.status == "all" or row["status"] == body.status) and (not query or any(query in str(v or "").lower() for v in values))
         rows = [r for r in rows if matches(r)]
         snapshot = [{k: v for k, v in row.items() if k != "remaining_seconds"} for row in rows]
         raw = json.dumps([body.kind, body.status, query, reseller_id, snapshot], sort_keys=True).encode()
