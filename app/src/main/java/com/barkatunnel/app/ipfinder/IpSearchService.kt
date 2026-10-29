@@ -22,6 +22,7 @@ class IpSearchService : Service() {
     private var registered = false
     private lateinit var cm: ConnectivityManager
     private lateinit var notifications: NotificationManager
+    private val stopAfterAlert = Runnable { stopSearchService() }
     private val check = Runnable { inspectIp() }
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) {
@@ -49,7 +50,7 @@ class IpSearchService : Service() {
         if (Build.VERSION.SDK_INT >= 26) {
             notifications.createNotificationChannel(NotificationChannel(CHANNEL, getString(R.string.ip_finder_title), NotificationManager.IMPORTANCE_LOW))
             notifications.createNotificationChannel(NotificationChannel(FOUND_CHANNEL, getString(R.string.ip_finder_found), NotificationManager.IMPORTANCE_HIGH).apply {
-                enableVibration(true); vibrationPattern = longArrayOf(0, 180, 100, 300)
+                enableVibration(true); vibrationPattern = FOUND_VIBRATION_PATTERN
                 setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
                     android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION).build())
             })
@@ -61,6 +62,7 @@ class IpSearchService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) { finishSearch(getString(R.string.ip_finder_stopped)); return START_NOT_STICKY }
         if (active) return START_NOT_STICKY
+        handler.removeCallbacks(stopAfterAlert)
         criteria = IpFinderActivity.captureCriteria(this)
         active = true; foundIp = null; attempts = 0
         startForeground(NOTIFICATION, notification(CHANNEL, getString(R.string.ip_finder_searching), true))
@@ -102,25 +104,35 @@ class IpSearchService : Service() {
             .putString(IpFinderActivity.KEY_LAST_FOUND_IP, ip).apply()
         val message = getString(R.string.ip_finder_found_detail, ip)
         AppLogStore.add(this, getString(R.string.ip_finder_log_found_format, ip))
-        notifications.notify(FOUND_NOTIFICATION, notification(FOUND_CHANNEL, message, false))
-        vibrateFound()
-        finishSearch(message)
+        runCatching { notifications.notify(FOUND_NOTIFICATION, notification(FOUND_CHANNEL, message, false)) }
+            .onFailure { AppLogStore.add(this, getString(R.string.ip_alert_notification_failed, it.javaClass.simpleName)) }
+        val vibrationRequested = vibrateFound()
+        // Stop searching immediately, but keep the foreground service alive until the alert ends.
+        finishSearch(message, if (vibrationRequested) FOUND_VIBRATION_PATTERN.sum() + 250L else 0L)
     }
     @Suppress("DEPRECATION")
-    private fun vibrateFound() {
+    private fun vibrateFound(): Boolean {
         // A notification usage is required for vibration while the activity is hidden.
-        if (!androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled()) return
-        if (notifications.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL) return
+        fun blocked(reason: Int): Boolean {
+            AppLogStore.add(this, getString(reason))
+            return false
+        }
+        if (!androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled())
+            return blocked(R.string.ip_alert_notifications_disabled)
+        if (notifications.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL)
+            return blocked(R.string.ip_alert_dnd)
         if (Build.VERSION.SDK_INT >= 26) {
-            val channel = notifications.getNotificationChannel(FOUND_CHANNEL) ?: return
-            if (!channel.shouldVibrate() || channel.importance < NotificationManager.IMPORTANCE_DEFAULT) return
+            val channel = notifications.getNotificationChannel(FOUND_CHANNEL)
+                ?: return blocked(R.string.ip_alert_channel_disabled)
+            if (!channel.shouldVibrate() || channel.importance < NotificationManager.IMPORTANCE_DEFAULT)
+                return blocked(R.string.ip_alert_channel_disabled)
         }
         val vibrator = if (Build.VERSION.SDK_INT >= 31)
             getSystemService(VibratorManager::class.java)?.defaultVibrator
         else getSystemService(Vibrator::class.java)
-        if (vibrator?.hasVibrator() != true) return
-        val pattern = longArrayOf(0, 180, 100, 300)
-        runCatching {
+        if (vibrator?.hasVibrator() != true) return blocked(R.string.ip_alert_no_vibrator)
+        val pattern = FOUND_VIBRATION_PATTERN
+        return runCatching {
             if (Build.VERSION.SDK_INT >= 33) {
                 vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1),
                     VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_NOTIFICATION).build())
@@ -131,6 +143,11 @@ class IpSearchService : Service() {
                 if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1), attributes)
                 else vibrator.vibrate(pattern, -1, attributes)
             }
+            AppLogStore.add(this, getString(R.string.ip_alert_requested))
+            true
+        }.getOrElse {
+            AppLogStore.add(this, getString(R.string.ip_alert_failed, it.javaClass.simpleName))
+            false
         }
     }
 
@@ -149,10 +166,14 @@ class IpSearchService : Service() {
         sendBroadcast(Intent(CHANGED).setPackage(packageName))
         if (active) notifications.notify(NOTIFICATION, notification(CHANNEL, message, true))
     }
-    private fun finishSearch(message: String) {
+    private fun finishSearch(message: String, alertDurationMs: Long = 0L) {
         active = false; handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)
         publish(message)
+        if (alertDurationMs > 0L) handler.postDelayed(stopAfterAlert, alertDurationMs)
+        else stopSearchService()
+    }
+    private fun stopSearchService() {
         if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE) else { @Suppress("DEPRECATION") stopForeground(true) }
         stopSelf()
     }
@@ -172,6 +193,7 @@ class IpSearchService : Service() {
         private const val FOUND_CHANNEL = "ip_search_found"
         private const val NOTIFICATION = 740
         private const val FOUND_NOTIFICATION = 741
+        private val FOUND_VIBRATION_PATTERN = longArrayOf(0, 400, 150, 400)
         @Volatile var active = false; private set
         @Volatile var status = ""; private set
         @Volatile var foundIp: String? = null; private set

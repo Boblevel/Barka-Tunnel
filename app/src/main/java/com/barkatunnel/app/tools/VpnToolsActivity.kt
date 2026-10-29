@@ -49,8 +49,8 @@ class VpnToolsActivity : AppCompatActivity() {
         findViewById<View>(R.id.toolBack).setOnClickListener { finish() }
         findViewById<TextView>(R.id.toolTitle).setText(if (isShare) R.string.vpn_share_title else R.string.vpn_speed_title)
         findViewById<TextView>(R.id.toolHelp).apply {
-            visibility = if (isShare) View.GONE else View.VISIBLE
-            if (!isShare) setText(R.string.vpn_speed_help)
+            visibility = View.VISIBLE
+            setText(if (isShare) R.string.share_start_instructions else R.string.vpn_speed_help)
         }
         addresses.visibility = if (isShare) View.VISIBLE else View.GONE
         findViewById<View>(R.id.shareAddressLabel).visibility = if (isShare) View.VISIBLE else View.GONE
@@ -61,6 +61,7 @@ class VpnToolsActivity : AppCompatActivity() {
         }
     }
     private fun refreshAddresses() {
+        val previousAddress = localAddresses.getOrNull(addresses.selectedItemPosition)?.hostAddress
         localAddresses = runCatching {
             NetworkInterface.getNetworkInterfaces().toList().filter {
                 it.isUp && !it.isLoopback && !it.name.startsWith("tun") &&
@@ -70,15 +71,21 @@ class VpnToolsActivity : AppCompatActivity() {
             }.distinctBy { it.hostAddress }
         }.getOrDefault(emptyList())
         addresses.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
-            localAddresses.map { it.hostAddress }.ifEmpty { listOf(getString(R.string.tools_no_lan)) })
+            localAddresses.map { it.hostAddress })
+        val selectedIndex = localAddresses.indexOfFirst { it.hostAddress == previousAddress }
+        if (selectedIndex >= 0) addresses.setSelection(selectedIndex)
+        val addressVisibility = if (localAddresses.isEmpty()) View.GONE else View.VISIBLE
+        addresses.visibility = addressVisibility
+        findViewById<View>(R.id.shareAddressLabel).visibility = addressVisibility
     }
     private fun start() {
         port = BarkaVpnService.connectedSocksPort()
         epoch = BarkaVpnService.connectionSnapshot().connectedAtElapsedMs
         if (!vpnAlive()) { status.setText(R.string.tools_vpn_required); return }
         if (isShare) {
+            refreshAddresses()
             val selected = localAddresses.getOrNull(addresses.selectedItemPosition)
-            if (selected == null) { refreshAddresses(); status.setText(R.string.tools_no_lan); return }
+            if (selected == null) { status.setText(R.string.share_address_unavailable); return }
             try {
                 ContextCompat.startForegroundService(this, Intent(this, VpnShareService::class.java)
                     .putExtra("address", selected.hostAddress))

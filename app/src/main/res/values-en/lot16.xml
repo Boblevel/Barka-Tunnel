@@ -1,0 +1,12 @@
+<resources>
+    <string name="share_start_instructions">Before starting\n\n1. Connect Barka Tunnel to the VPN and wait for “Connected”.\n2. Enable the phone’s mobile hotspot.\n3. Return to this screen, then tap “Start”.</string>
+    <string name="share_address_unavailable">Hotspot address unavailable. Check that the mobile hotspot is enabled, then try again.</string>
+    <string name="ip_alert_notifications_disabled">IP Finder • Vibration not requested: Barka Tunnel notifications are disabled in Android.</string>
+    <string name="ip_alert_dnd">IP Finder • Direct vibration not requested: Do Not Disturb filtering is active or unknown.</string>
+    <string name="ip_alert_channel_disabled">IP Finder • Vibration not requested: check vibration and alert mode for the “Compatible IP found” channel in Android settings.</string>
+    <string name="ip_alert_no_vibrator">IP Finder • Android detected no available vibrator.</string>
+    <string name="ip_alert_requested">IP Finder • Vibration requested from Android (two pulses). This does not confirm physical vibration.</string>
+    <string name="ip_alert_failed">IP Finder • Vibration request failed: %1$s.</string>
+    <string name="ip_alert_notification_failed">IP Finder • Success notification failed: %1$s.</string>
+</resources>
+

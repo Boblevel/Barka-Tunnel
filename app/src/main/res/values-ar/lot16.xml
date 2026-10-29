@@ -1,0 +1,12 @@
+<resources>
+    <string name="share_start_instructions">قبل البدء\n\n1. صل Barka Tunnel بشبكة VPN وانتظر ظهور حالة «متصل».\n2. فعّل نقطة الاتصال المحمولة في الهاتف.\n3. عد إلى هذه الشاشة ثم اضغط «بدء».</string>
+    <string name="share_address_unavailable">عنوان نقطة الاتصال غير متاح. تأكد من تفعيل نقطة الاتصال المحمولة ثم حاول مجددًا.</string>
+    <string name="ip_alert_notifications_disabled">IP Finder • لم يُطلب الاهتزاز: إشعارات Barka Tunnel معطّلة في Android.</string>
+    <string name="ip_alert_dnd">IP Finder • لم يُطلب الاهتزاز المباشر: تصفية عدم الإزعاج نشطة أو حالتها غير معروفة.</string>
+    <string name="ip_alert_channel_disabled">IP Finder • لم يُطلب الاهتزاز: تحقق من الاهتزاز ووضع التنبيه لقناة «تم العثور على IP متوافق» في إعدادات Android.</string>
+    <string name="ip_alert_no_vibrator">IP Finder • لم يكتشف Android أي محرّك اهتزاز متاح.</string>
+    <string name="ip_alert_requested">IP Finder • طُلب من Android الاهتزاز مرتين. هذا لا يؤكد حدوث الاهتزاز فعليًا.</string>
+    <string name="ip_alert_failed">IP Finder • تعذر طلب الاهتزاز: %1$s.</string>
+    <string name="ip_alert_notification_failed">IP Finder • تعذر إرسال إشعار النجاح: %1$s.</string>
+</resources>
+
