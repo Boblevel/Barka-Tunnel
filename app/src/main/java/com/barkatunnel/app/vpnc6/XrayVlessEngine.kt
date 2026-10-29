@@ -16,6 +16,7 @@ class XrayVlessEngine(
 
     override val socksAddress: String = "127.0.0.1:$socksPort"
     private var process: Process? = null
+    private var connectBridge: HttpConnectBridge? = null
     private var configFile: File? = null
     private var logFile: File? = null
 
@@ -32,6 +33,13 @@ class XrayVlessEngine(
         val xray = NativeCoreLocator.xray(context)
         if (!xray.canExecute() && !xray.setExecutable(true, false)) {
             throw IllegalStateException("Le moteur VLESS Android n’est pas exécutable.")
+        }
+
+        if (!config.proxyHost.isNullOrBlank() && config.proxyHeaders.isNotEmpty()) {
+            connectBridge = HttpConnectBridge(config.proxyHost, requireNotNull(config.proxyPort),
+                outboundAddress, config.port, config.proxyHeaders) { detail ->
+                AppLogStore.add(context, "Diagnostic VLESS • CONNECT • $detail.")
+            }.also { it.start() }
         }
 
         val file = File(context.cacheDir, "c6_xray_${System.nanoTime()}.json")
@@ -84,6 +92,8 @@ class XrayVlessEngine(
     }
 
     override fun stop() {
+        connectBridge?.close()
+        connectBridge = null
         ProcessCompat.stop(process)
         process = null
         configFile?.delete()
@@ -162,8 +172,8 @@ class XrayVlessEngine(
             val headers = JSONObject()
             config.proxyHeaders.forEach { (key, value) -> headers.put(key, value) }
             outbounds.put(JSONObject().put("tag", "front-proxy").put("protocol", "http")
-                .put("settings", JSONObject().put("address", config.proxyHost)
-                    .put("port", config.proxyPort).put("headers", headers)))
+                .put("settings", JSONObject().put("address", if (connectBridge != null) "127.0.0.1" else config.proxyHost)
+                    .put("port", connectBridge?.port ?: config.proxyPort).put("headers", headers)))
         }
         return JSONObject()
             .put("log", JSONObject().put("loglevel", "warning"))

@@ -39,6 +39,27 @@ class GlobalWorldProxyTest {
         assertEquals("34.143.72.2", proxy.getJSONObject("settings").getJSONObject("headers").getString("X-Connected-To"))
     }
 
+    @Test fun payloadBridgeChangesOnlyProxyEndpoint() {
+        val profile = VpnProfileConfigParser.parse(VpnProfileProtocol.VLESS, config) as VpnProfileConfig.Vless
+        val engine = XrayVlessEngine(RuntimeEnvironment.getApplication(), profile, 10801)
+        val build = XrayVlessEngine::class.java.getDeclaredMethod("buildConfig").apply { isAccessible = true }
+        val original = build.invoke(engine) as JSONObject
+        HttpConnectBridge("127.0.0.1", 9, profile.address, profile.port, profile.proxyHeaders).use { bridge ->
+            bridge.start()
+            val port = bridge.port
+            XrayVlessEngine::class.java.getDeclaredField("connectBridge").apply { isAccessible = true }.set(engine, bridge)
+            val adapted = build.invoke(engine) as JSONObject
+            assertEquals(original.getJSONArray("outbounds").getJSONObject(0).toString(),
+                adapted.getJSONArray("outbounds").getJSONObject(0).toString())
+            val endpoint = adapted.getJSONArray("outbounds").getJSONObject(1).getJSONObject("settings")
+            assertEquals("127.0.0.1", endpoint.getString("address"))
+            assertEquals(port, endpoint.getInt("port"))
+            engine.stop()
+            try { java.net.Socket("127.0.0.1", port).close(); fail("Bridge still open") }
+            catch (_: java.net.ConnectException) { }
+        }
+    }
+
     @Test(expected = com.barkatunnel.app.backend.BarkaBackendException::class)
     fun proxyUriCannotRemoveTls() {
         val json = JSONObject(config).put("uri",

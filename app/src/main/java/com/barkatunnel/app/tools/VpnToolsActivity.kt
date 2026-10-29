@@ -137,7 +137,7 @@ class VpnToolsActivity : AppCompatActivity() {
         findViewById<View>(R.id.shareDetails).visibility = if (current == null) View.GONE else View.VISIBLE
         findViewById<TextView>(R.id.shareAddress).text = current?.address.orEmpty()
         findViewById<TextView>(R.id.sharePort).text = current?.port?.toString().orEmpty()
-        findViewById<TextView>(R.id.shareUsername).text = if (current == null) "" else "barka"
+        findViewById<TextView>(R.id.shareUsername).text = if (current == null) "" else VpnShareService.USERNAME
         findViewById<TextView>(R.id.sharePassword).text = current?.password.orEmpty()
         status.setText(if (current != null) R.string.share_active else VpnShareService.error ?: R.string.tools_ready)
     }
