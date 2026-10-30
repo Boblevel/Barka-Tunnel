@@ -13,7 +13,7 @@ import org.robolectric.annotation.Config
 @Config(application = Application::class, sdk = [29])
 class JournalDiagnosticTest {
     private fun binder(): JournalUiBinder {
-        val context = RuntimeEnvironment.getApplication<Application>()
+        val context = RuntimeEnvironment.getApplication()
         return JournalUiBinder(context, LinearLayout(context))
     }
     @Test fun diagnosticsBecomeVisibleWithoutChangingOtherEvents() {
