@@ -42,8 +42,8 @@ class VpnShareService : Service() {
             epoch = BarkaVpnService.connectionSnapshot().connectedAtElapsedMs
             check(vpnAlive())
             val address = InetAddress.getByName(requireNotNull(intent.getStringExtra("address")))
-            val password = ByteArray(12).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
-            val auth = android.util.Base64.encodeToString("barka:$password".toByteArray(), android.util.Base64.NO_WRAP)
+            val password = newPassword()
+            val auth = android.util.Base64.encodeToString("$USERNAME:$password".toByteArray(), android.util.Base64.NO_WRAP)
             proxy = VpnShareProxy(address, socksPort!!, "Basic $auth", ::vpnAlive).also { it.start() }
             state = State(address.hostAddress!!, proxy!!.port, password)
             handler.post(monitor)
@@ -57,6 +57,12 @@ class VpnShareService : Service() {
         super.onDestroy()
     }
     companion object {
+        const val USERNAME = "Barka"
+        internal fun newPassword(): String {
+            val alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+            val random = SecureRandom()
+            return CharArray(8) { alphabet[random.nextInt(alphabet.length)] }.concatToString()
+        }
         private const val CHANNEL = "barka_vpn_share"
         const val STOP = "com.barkatunnel.app.STOP_SHARE"
         @Volatile var state: State? = null; private set

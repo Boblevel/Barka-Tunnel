@@ -68,7 +68,8 @@ class JournalUiBinder(
 
         val type = when {
             value.startsWith("diagnostic vpn") ||
-                value.startsWith("diagnostic moov") ||
+                value.startsWith("diagnostic vless") -> EventType.DIAGNOSTIC
+            value.startsWith("diagnostic moov") ||
                 value.startsWith("diagnostic orange") ||
                 value.startsWith("diagnostic telecel") -> return null
             value.startsWith("ping :") -> EventType.PING
@@ -106,12 +107,23 @@ class JournalUiBinder(
             clock = clock,
             type = type,
             networkName = networkName,
-            detail = if (
-                type == EventType.DIAGNOSTIC ||
+            detail = if (type == EventType.DIAGNOSTIC) safeDiagnostic(message) else if (
                 type == EventType.PING ||
                 type == EventType.UPDATE_AVAILABLE
             ) message else null
         )
+    }
+
+    // Temporary LOT17 diagnostics: remove after the network fix is confirmed.
+    internal fun safeDiagnostic(message: String): String {
+        if (message.startsWith("Diagnostic VLESS • config VLESS", ignoreCase = true)) {
+            return "Diagnostic VLESS • configuration chargée (identifiants masqués)."
+        }
+        return message
+            .replace(Regex("""(?i)[a-z][a-z0-9+.-]*://\S+"""), "[adresse masquée]")
+            .replace(Regex("""(?i)\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b"""), "[UUID masqué]")
+            .replace(Regex("""(?i)(authorization|password|passwd|token|secret|uuid|username|pubkey|public[_ -]?key)\s*[:=].*"""), "$1=[masqué]")
+            .take(400)
     }
 
     private fun addEventRow(event: JournalEvent) {

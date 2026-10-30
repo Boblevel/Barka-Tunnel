@@ -27,7 +27,7 @@ class VpnShareFieldsTest {
             val activity=controller.get()
             assertEquals(View.GONE,activity.findViewById<View>(R.id.toolValue).visibility)
             for ((id,value) in listOf(R.id.shareAddress to "192.168.43.1",R.id.sharePort to "36399",
-                R.id.shareUsername to "barka",R.id.sharePassword to "test-password")) {
+                R.id.shareUsername to "Barka",R.id.sharePassword to "test-password")) {
                 val view=activity.findViewById<TextView>(id)
                 assertEquals(value,view.text.toString());assertTrue(view.isTextSelectable)
             }
