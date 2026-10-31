@@ -6,9 +6,11 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.security.MessageDigest
 import java.util.Collections
 import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Loopback HTTP proxy preserving configured CONNECT headers without implicit additions. */
 internal class HttpConnectBridge(
@@ -23,6 +25,7 @@ internal class HttpConnectBridge(
     private val sockets = Collections.synchronizedSet(mutableSetOf<Socket>())
     private val workers = Executors.newFixedThreadPool(128)
     private val permits = Semaphore(64)
+    private val requestReported = AtomicBoolean(false)
     @Volatile private var closed = false
     val port: Int get() = listener.localPort
 
@@ -57,10 +60,15 @@ internal class HttpConnectBridge(
             val request = readHeader(client.getInputStream()).toString(Charsets.ISO_8859_1)
             require(request.substringBefore("\r\n") == "CONNECT $authority HTTP/1.1")
             stage = "connexion au proxy"
+            val startedAt = System.nanoTime()
             remote.connect(InetSocketAddress(proxyHost, proxyPort), 15_000)
             check(!closed)
             remote.soTimeout = 30_000
-            remote.getOutputStream().write(connectRequest())
+            val payload = connectRequest()
+            if (requestReported.compareAndSet(false, true)) {
+                runCatching { reportFailure(requestDiagnostic(payload)) }
+            }
+            remote.getOutputStream().write(payload)
             remote.getOutputStream().flush()
             stage = "réponse CONNECT"
             val response = readHeader(remote.getInputStream())
@@ -70,7 +78,9 @@ internal class HttpConnectBridge(
             client.getOutputStream().flush()
             responseSent = true
             if (status[1] != "200") {
-                if (!closed) reportFailure("proxy HTTP : statut ${status[1]}")
+                if (!closed) runCatching {
+                    reportFailure("proxy HTTP : statut ${status[1]} • délai=${(System.nanoTime() - startedAt) / 1_000_000} ms • ${responseDiagnostic(response)}")
+                }
                 return
             }
             stage = "relais du tunnel"
@@ -88,6 +98,25 @@ internal class HttpConnectBridge(
     }
 
     private val authority get() = (if (':' in targetHost) "[$targetHost]" else targetHost) + ":$targetPort"
+
+    // Temporary diagnostics: no raw destination, header values or response body.
+    internal fun requestDiagnostic(payload: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(payload)
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        return "requête CONNECT • octets=${payload.size} • SHA256=$digest"
+    }
+
+    internal fun responseDiagnostic(response: ByteArray): String {
+        val retry = response.toString(Charsets.ISO_8859_1).split("\r\n")
+            .drop(1).firstOrNull { it.substringBefore(':').equals("Retry-After", ignoreCase = true) }
+            ?.substringAfter(':')?.trim()
+        val safeRetry = when {
+            retry == null -> "absent"
+            retry.matches(Regex("[0-9]{1,9}")) -> "$retry s"
+            else -> "présent (valeur masquée)"
+        }
+        return "Retry-After=$safeRetry"
+    }
 
     internal fun connectRequest(): ByteArray {
         require(targetHost.isNotBlank() && targetHost.none { it.isWhitespace() } && targetPort in 1..65535)

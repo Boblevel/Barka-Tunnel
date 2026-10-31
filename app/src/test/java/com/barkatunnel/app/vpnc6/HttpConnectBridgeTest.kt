@@ -78,7 +78,10 @@ class HttpConnectBridgeTest {
                         client.soTimeout = 5000
                         client.getOutputStream().write("CONNECT target.invalid:443 HTTP/1.1\r\n\r\n".toByteArray())
                         assertEquals("HTTP/1.1 403 Forbidden", client.getInputStream().bufferedReader().readLine())
-                        assertEquals("proxy HTTP : statut 403", diagnostic.poll(5, TimeUnit.SECONDS))
+                        assertTrue(diagnostic.poll(5, TimeUnit.SECONDS).orEmpty().startsWith("requête CONNECT •"))
+                        val rejection = diagnostic.poll(5, TimeUnit.SECONDS).orEmpty()
+                        assertTrue(rejection.startsWith("proxy HTTP : statut 403 • délai="))
+                        assertTrue(rejection.endsWith("Retry-After=absent"))
                     }
                     future.get(5, TimeUnit.SECONDS)
                 }
@@ -101,5 +104,21 @@ class HttpConnectBridgeTest {
     @Test(expected = IllegalArgumentException::class) fun rejectsHeaderInjection() {
         HttpConnectBridge("127.0.0.1", 8080, "target.invalid", 443,
             mapOf("X-Test" to "value\r\nInjected: yes")).use { it.connectRequest() }
+    }
+
+    @Test fun diagnosticMasksResponseValuesAndFingerprintsExactBytes() {
+        HttpConnectBridge("127.0.0.1", 8080, "private.invalid", 443,
+            mapOf("Authorization" to "secret-value")).use { bridge ->
+            val payload = bridge.connectRequest()
+            val summary = bridge.requestDiagnostic(payload)
+            assertFalse(summary.contains("secret-value"))
+            assertFalse(summary.contains("private.invalid"))
+            assertEquals(summary, bridge.requestDiagnostic(payload.copyOf()))
+            assertNotEquals(summary, bridge.requestDiagnostic(payload + byteArrayOf(32)))
+            assertEquals("Retry-After=120 s", bridge.responseDiagnostic(
+                "HTTP/1.1 429 Too Many Requests\r\nretry-after: 120\r\nSet-Cookie: secret\r\n\r\n".toByteArray()))
+            assertEquals("Retry-After=présent (valeur masquée)", bridge.responseDiagnostic(
+                "HTTP/1.1 429 Error\r\nRetry-After: secret-value\r\n\r\n".toByteArray()))
+        }
     }
 }

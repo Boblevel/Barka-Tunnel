@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.backend.BarkaBackendException
+import com.barkatunnel.app.journal.AppLogStore
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -118,7 +119,7 @@ class VpnProfileRepository(
             if (requiredVersion > cached.version) {
                 if (hasInternetCapability()) {
                     try {
-                        return fetchAndCache(networkId)
+                        return reportLoadedProfile(fetchAndCache(networkId), "serveur")
                     } catch (_: Exception) {
                         // La version exigée reste bloquante tant que sa récupération
                         // n'a pas réellement réussi.
@@ -128,13 +129,13 @@ class VpnProfileRepository(
                     "Mise à jour obligatoire de la configuration. Connecte Internet pour synchroniser ce réseau."
                 )
             }
-            return cached
+            return reportLoadedProfile(cached, "cache")
         }
 
         // Première installation sans cache : on tente réellement le serveur,
         // même si Android n'a pas encore marqué le réseau comme VALIDATED.
         try {
-            return fetchAndCache(networkId)
+            return reportLoadedProfile(fetchAndCache(networkId), "serveur")
         } catch (error: Exception) {
             if (hasValidatedInternet()) throw error
         }
@@ -146,6 +147,14 @@ class VpnProfileRepository(
 
     fun shouldRefresh(maxAgeMillis: Long): Boolean =
         System.currentTimeMillis() - secureStore.lastSuccessfulSyncAt() >= maxAgeMillis
+
+    private fun reportLoadedProfile(profile: VpnProfile, source: String): VpnProfile {
+        if (profile.protocol == VpnProfileProtocol.VLESS) runCatching {
+            AppLogStore.add(appContext,
+                "Diagnostic VPN • profil VLESS utilisé • version=${profile.version} • source=$source.")
+        }
+        return profile
+    }
 
     fun hasSuccessfulSyncForCurrentInstall(): Boolean {
         if (secureStore.lastSuccessfulSyncAt() <= 0L) return false
