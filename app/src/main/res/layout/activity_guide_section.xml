@@ -37,7 +37,7 @@
 
                 android:gravity="center"
                 android:maxLines="3"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="19sp"
                 android:textStyle="bold" />
 
@@ -75,7 +75,7 @@
 
             <TextView android:id="@+id/guideSectionNumber" android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:background="@drawable/bg_ip_finder_method" android:paddingHorizontal="16dp" android:paddingVertical="8dp"
-                android:textColor="@color/barka_blue" android:textSize="13sp" android:textStyle="bold" />
+                android:textColor="?attr/barkaAccent" android:textSize="13sp" android:textStyle="bold" />
 
 
             <View

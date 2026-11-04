@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, StrictBool, field_validator
 
 from .db import transaction
 from .models import DeviceRequest
+from .moderation import state as moderation_state
 from .security import require_admin
 
 router = APIRouter()
@@ -49,6 +50,9 @@ def config(response: Response):
 def submit(body: SuggestionRequest):
     now = int(time.time())
     with transaction() as cx:
+        flags = moderation_state(cx, body.device_id)
+        if flags['app_blocked'] or flags['suggestions_blocked']:
+            raise HTTPException(403, 'Votre accès aux suggestions a été suspendu. Contact : barkatunnel@gmail.com')
         existing = cx.execute('SELECT * FROM suggestions WHERE device_id=? AND request_id=?',
                               (body.device_id, str(body.request_id))).fetchone()
         if existing:
@@ -72,7 +76,7 @@ def list_suggestions(response: Response, offset: int = Query(0, ge=0), limit: in
         rows = cx.execute('SELECT id,device_id,message,created_at,read_at,sender_name FROM suggestions ORDER BY id DESC LIMIT ? OFFSET ?',
                           (limit, offset)).fetchall()
         return {'enabled': enabled_in(cx), 'total': cx.execute('SELECT COUNT(*) FROM suggestions').fetchone()[0],
-                'items': [dict(row, created_at=stamp(row['created_at'])) for row in rows]}
+                'items': [dict(row, created_at=stamp(row['created_at']), **moderation_state(cx, row['device_id'])) for row in rows]}
 
 
 @router.put('/v1/admin/suggestions/config', dependencies=[Depends(require_admin)])
@@ -118,3 +122,38 @@ def reset(body: SuggestionReset):
         deleted = cx.execute('DELETE FROM suggestions').rowcount
         # Keep AUTOINCREMENT: stale read requests must never mark future messages read.
         return {'deleted': deleted, 'unread': 0}
+
+
+class ModerationChange(DeviceRequest):
+    scope: Literal['app', 'suggestions']
+    blocked: StrictBool
+
+
+@router.post('/v1/moderation/status')
+def moderation_status(body: DeviceRequest, response: Response):
+    response.headers['Cache-Control'] = 'no-store'
+    with transaction() as cx:
+        return moderation_state(cx, body.device_id)
+
+
+@router.get('/v1/admin/moderation', dependencies=[Depends(require_admin)])
+def moderation_list(response: Response, offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
+    response.headers['Cache-Control'] = 'no-store'
+    with transaction() as cx:
+        rows = cx.execute('SELECT * FROM device_moderation WHERE app_blocked=1 OR suggestions_blocked=1 ORDER BY updated_at DESC,device_id LIMIT ? OFFSET ?', (limit, offset)).fetchall()
+        return {'items': [dict(row) for row in rows]}
+
+
+@router.put('/v1/admin/moderation', dependencies=[Depends(require_admin)])
+def moderation_change(body: ModerationChange):
+    with transaction() as cx:
+        if not cx.execute('SELECT 1 FROM suggestions WHERE device_id=? UNION SELECT 1 FROM device_moderation WHERE device_id=?', (body.device_id, body.device_id)).fetchone():
+            raise HTTPException(404, 'Auteur de suggestion introuvable.')
+        before = moderation_state(cx, body.device_id)
+        after = dict(before)
+        after[body.scope + '_blocked'] = body.blocked
+        cx.execute('INSERT INTO device_moderation(device_id,app_blocked,suggestions_blocked,updated_at) VALUES(?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET app_blocked=excluded.app_blocked,suggestions_blocked=excluded.suggestions_blocked,updated_at=excluded.updated_at',
+                   (body.device_id, int(after['app_blocked']), int(after['suggestions_blocked']), int(time.time())))
+        if before['app_blocked'] != after['app_blocked']:
+            cx.execute('UPDATE devices SET access_revision=access_revision+1 WHERE device_id=?', (body.device_id,))
+        return after

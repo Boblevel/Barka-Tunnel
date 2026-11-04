@@ -34,7 +34,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:text="@string/subscription_title"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="21sp"
                 android:textStyle="bold" />
 
@@ -80,7 +80,7 @@
                 android:layout_height="wrap_content"
                 android:minHeight="60dp" android:paddingVertical="14dp"
                 android:background="@drawable/bg_network_selected"
-                android:buttonTint="@color/barka_blue"
+                android:buttonTint="?attr/barkaAccent"
                 android:checked="true"
                 android:paddingHorizontal="16dp"
                 android:text="@string/subscription_24h"
@@ -95,7 +95,7 @@
                 android:minHeight="60dp" android:paddingVertical="14dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
-                android:buttonTint="@color/barka_blue"
+                android:buttonTint="?attr/barkaAccent"
                 android:paddingHorizontal="16dp"
                 android:text="@string/subscription_week"
                 android:textColor="@color/barka_text"
@@ -109,7 +109,7 @@
                 android:minHeight="60dp" android:paddingVertical="14dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
-                android:buttonTint="@color/barka_blue"
+                android:buttonTint="?attr/barkaAccent"
                 android:paddingHorizontal="16dp"
                 android:text="@string/subscription_two_weeks"
                 android:textColor="@color/barka_text"
@@ -123,7 +123,7 @@
                 android:minHeight="60dp" android:paddingVertical="14dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
-                android:buttonTint="@color/barka_blue"
+                android:buttonTint="?attr/barkaAccent"
                 android:paddingHorizontal="16dp"
                 android:text="@string/subscription_month"
                 android:textColor="@color/barka_text"
@@ -137,7 +137,7 @@
                 android:minHeight="60dp" android:paddingVertical="14dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_network_selected"
-                android:buttonTint="@color/barka_blue"
+                android:buttonTint="?attr/barkaAccent"
                 android:paddingHorizontal="16dp"
                 android:text="@string/subscription_three_months"
                 android:textColor="@color/barka_text"
@@ -157,7 +157,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/subscription_secure_payment"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -179,7 +179,7 @@
                 android:text="@string/subscription_pay"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                app:backgroundTint="@color/barka_blue"
+                app:backgroundTint="?attr/barkaAccent"
                 app:cornerRadius="12dp" />
 
             <TextView

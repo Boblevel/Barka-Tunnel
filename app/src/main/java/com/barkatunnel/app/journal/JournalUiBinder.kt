@@ -132,7 +132,7 @@ class JournalUiBinder(
         val presentation = presentationFor(event)
 
         row.findViewById<TextView>(R.id.eventDot).setTextColor(
-            ContextCompat.getColor(context, presentation.colorRes)
+            com.barkatunnel.app.ui.BrandTheme.color(context, presentation.colorRes)
         )
         row.findViewById<TextView>(R.id.eventTitle).text = presentation.title
         row.findViewById<TextView>(R.id.eventMessage).text = presentation.message

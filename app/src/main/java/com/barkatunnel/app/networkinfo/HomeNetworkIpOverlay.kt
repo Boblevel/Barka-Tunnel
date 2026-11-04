@@ -29,7 +29,7 @@ object HomeNetworkIpOverlay {
 
         val title = TextView(activity).apply {
             setText(R.string.network_ip_title)
-            setTextColor(activity.getColor(R.color.barka_blue))
+            setTextColor(com.barkatunnel.app.ui.BrandTheme.color(activity, R.color.barka_blue))
             textSize = 12f
             setTypeface(typeface, Typeface.BOLD)
             gravity = Gravity.CENTER

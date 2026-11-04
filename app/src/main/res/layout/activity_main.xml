@@ -87,7 +87,7 @@
             android:contentDescription="@string/open_menu_description"
             android:focusable="true"
             android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless" app:tint="@color/barka_blue"
+            android:background="?attr/selectableItemBackgroundBorderless" app:tint="?attr/barkaAccent"
             android:src="@drawable/ic_menu_barka" />
     </LinearLayout>
 
@@ -136,7 +136,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/network_ip_title"
-                        android:textColor="@color/barka_blue"
+                        android:textColor="?attr/barkaAccent"
                         android:textSize="12sp"
                         android:textStyle="bold" />
 
@@ -174,7 +174,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/home_network_title_margin_top"
                 android:text="@string/network_title"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
@@ -208,7 +208,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/selected_network_title"
-                        android:textColor="@color/barka_blue"
+                        android:textColor="?attr/barkaAccent"
                         android:textSize="11sp"
                         android:textStyle="bold" />
 
@@ -272,7 +272,7 @@
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:text="›"
-                    android:textColor="@color/barka_blue"
+                    android:textColor="?attr/barkaAccent"
                     android:textSize="32sp" />
             </LinearLayout>
 
@@ -289,7 +289,7 @@
                 android:elevation="5dp"
                 android:gravity="center"
                 android:text=""
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="58sp" />
 
             <TextView
@@ -341,7 +341,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/remaining_time"
-                        android:textColor="@color/barka_blue"
+                        android:textColor="?attr/barkaAccent"
                         android:textSize="@dimen/home_remaining_label_text_size"
                         android:maxLines="1"
                         android:textStyle="bold"
@@ -380,7 +380,7 @@
                     android:text="@string/add"
                     android:textSize="@dimen/home_add_button_text_size"
                     android:textStyle="bold"
-                    app:backgroundTint="@color/barka_blue"
+                    app:backgroundTint="?attr/barkaAccent"
                     app:cornerRadius="12dp" />
             </LinearLayout>
 
@@ -426,7 +426,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
                 android:text="@string/home"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>

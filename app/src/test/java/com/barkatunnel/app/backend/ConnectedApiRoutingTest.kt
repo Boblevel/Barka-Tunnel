@@ -43,7 +43,7 @@ class ConnectedApiRoutingTest {
                     true
                 }
                 try { call(); fail("La panne du proxy doit être signalée") }
-                catch (error: BarkaBackendException) { assertTrue(error.message.orEmpty().contains("Connectez-vous à un réseau")) }
+                catch (error: BarkaBackendException) { assertTrue(error.message.orEmpty().contains("Contrôle via tunnel • TCP/SOCKS")) }
                 assertTrue(accepted.get(5, TimeUnit.SECONDS))
             }
         } finally {

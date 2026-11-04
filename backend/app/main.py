@@ -158,6 +158,8 @@ from .apk_release import router as apk_release_router
 app.include_router(apk_release_router)
 from .suggestions import router as suggestions_router
 app.include_router(suggestions_router)
+from .legal import router as legal_router
+app.include_router(legal_router)
 from .support_config import router as support_router
 from .admin_reseller_session import router as admin_reseller_session_router
 app.include_router(support_router)

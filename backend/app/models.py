@@ -9,14 +9,15 @@ from pydantic import BaseModel, Field, field_validator
 class DeviceRequest(BaseModel):
     device_id: str = Field(min_length=12, max_length=200)
 
-    @field_validator("device_id")
+    @field_validator("device_id", mode="before")
     @classmethod
     def clean_device_id(cls, value: str) -> str:
-        return value.strip()
+        return value.strip() if isinstance(value, str) else value
 
 
 class AccessResponse(BaseModel):
     allowed: bool
+    app_blocked: bool = False
     unlimited: bool = False
     access_revision: int = 0
     trial_used: bool = False

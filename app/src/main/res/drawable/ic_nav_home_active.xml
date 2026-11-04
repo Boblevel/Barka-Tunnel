@@ -6,7 +6,7 @@
     android:viewportHeight="24">
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="@color/barka_blue"
+        android:strokeColor="?attr/barkaAccent"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:strokeWidth="2.2"

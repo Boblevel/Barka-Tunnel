@@ -34,7 +34,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="@string/activation_title"
-            android:textColor="@color/barka_blue"
+            android:textColor="?attr/barkaAccent"
             android:textSize="21sp"
             android:textStyle="bold" />
 
@@ -89,7 +89,7 @@
         android:text="@string/activation_button"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:backgroundTint="@color/barka_blue"
+        app:backgroundTint="?attr/barkaAccent"
         app:cornerRadius="12dp" />
 
     <TextView
@@ -99,7 +99,7 @@
         android:layout_marginTop="6dp"
         android:gravity="center"
         android:text="@string/activation_where_code"
-        android:textColor="@color/barka_blue"
+        android:textColor="?attr/barkaAccent"
         android:textSize="13sp"
         android:textStyle="bold" />
         </LinearLayout>

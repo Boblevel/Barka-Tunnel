@@ -73,7 +73,7 @@
             android:text="@string/login_button"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:backgroundTint="@color/barka_blue"
+            app:backgroundTint="?attr/barkaAccent"
             app:cornerRadius="14dp" />
 
     </LinearLayout>

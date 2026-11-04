@@ -300,7 +300,7 @@ class MainActivity : AppCompatActivity() {
         homePage.findViewById<TextView>(R.id.homeBrandName).text =
             SpannableString("$brandBarka $brandTunnel").apply {
                 setSpan(
-                    ForegroundColorSpan(ContextCompat.getColor(this@MainActivity, R.color.barka_blue)),
+                    ForegroundColorSpan(com.barkatunnel.app.ui.BrandTheme.color(this@MainActivity, R.color.barka_blue)),
                     brandBarka.length + 1, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
@@ -492,13 +492,13 @@ class MainActivity : AppCompatActivity() {
                 if (homeActive) R.drawable.ic_nav_journal else R.drawable.ic_nav_journal_active
             )
             sharedNavHomeLabel.setTextColor(
-                ContextCompat.getColor(
+                com.barkatunnel.app.ui.BrandTheme.color(
                     this,
                     if (homeActive) R.color.barka_blue else R.color.barka_text_secondary
                 )
             )
             sharedNavJournalLabel.setTextColor(
-                ContextCompat.getColor(
+                com.barkatunnel.app.ui.BrandTheme.color(
                     this,
                     if (homeActive) R.color.barka_text_secondary else R.color.barka_blue
                 )

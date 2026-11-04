@@ -33,7 +33,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="@string/choose_network"
-            android:textColor="@color/barka_blue"
+            android:textColor="?attr/barkaAccent"
             android:textSize="19sp"
             android:textStyle="bold" />
 

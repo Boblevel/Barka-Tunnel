@@ -7,7 +7,7 @@
     <path
         android:fillColor="@android:color/transparent"
         android:pathData="M7,9 L12,14 L17,9"
-        android:strokeColor="@color/barka_blue"
+        android:strokeColor="?attr/barkaAccent"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:strokeWidth="2.2" />

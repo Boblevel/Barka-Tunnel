@@ -28,7 +28,9 @@ class BarkaApplication : Application() {
             settings.edit().putBoolean("auto_ping", true)
                 .putBoolean("auto_ping_default_105", true).commit()
         }
+        registerActivityLifecycleCallbacks(com.barkatunnel.app.ui.BrandTheme)
         registerActivityLifecycleCallbacks(PressFeedback)
+        registerActivityLifecycleCallbacks(com.barkatunnel.app.moderation.ModerationGuard)
         applySavedLanguage()
         applySavedTheme()
         container = AppContainer(this)

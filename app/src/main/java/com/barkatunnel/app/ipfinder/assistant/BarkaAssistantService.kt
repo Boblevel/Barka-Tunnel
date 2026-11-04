@@ -16,6 +16,7 @@ class BarkaAssistantService : VoiceInteractionService() {
     private var cycleInProgress = false
     private var requestedAirplaneState: Boolean? = null
     private var restoringOnly = false
+    private var cycleStartedAt = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -44,7 +45,13 @@ class BarkaAssistantService : VoiceInteractionService() {
     }
 
     private fun beginAirplaneCycle(): Boolean {
-        if (cycleInProgress) return true
+        if (restoringOnly) return false
+        if (cycleInProgress) {
+            if (android.os.SystemClock.elapsedRealtime() - cycleStartedAt < 60_000L) return true
+            cancelCycleAndRestoreNetwork()
+            return false
+        }
+        cycleStartedAt = android.os.SystemClock.elapsedRealtime()
         restoringOnly = false
         cycleInProgress = true
         requestAirplaneState(true)
@@ -81,6 +88,10 @@ class BarkaAssistantService : VoiceInteractionService() {
     private fun requestAirplaneState(enabled: Boolean) {
         if (!cycleInProgress) return
         requestedAirplaneState = enabled
+        if (!enabled && !isAirplaneModeEnabled()) {
+            waitForAirplaneState(false, 0)
+            return
+        }
         runCatching {
             showSession(
                 Bundle().apply {

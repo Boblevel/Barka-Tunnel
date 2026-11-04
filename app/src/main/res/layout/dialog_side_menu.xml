@@ -58,7 +58,7 @@
                 android:id="@+id/menuHome"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_home_line"
-                android:drawableTint="@color/barka_blue"
+                android:drawableTint="?attr/barkaAccent"
                 android:background="@drawable/bg_menu_active"
                 android:text="@string/home" />
 
@@ -82,7 +82,7 @@
                 android:id="@+id/menuActivation"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_key_line"
-                android:drawableTint="@color/barka_blue"
+                android:drawableTint="?attr/barkaAccent"
                 android:text="@string/menu_activation_code" />
 
             <TextView style="@style/BarkaMenuSection" android:text="@string/menu_section_tools" />
@@ -98,7 +98,7 @@
                 android:id="@+id/menuSettings"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_settings_line"
-                android:drawableTint="@color/barka_blue"
+                android:drawableTint="?attr/barkaAccent"
                 android:text="@string/menu_settings" />
 
             <TextView style="@style/BarkaMenuSection" android:text="@string/menu_section_community" />
@@ -121,7 +121,7 @@
                 android:id="@+id/menuSuggestions"
                 style="@style/BarkaMenuItem"
                 android:drawableStart="@drawable/ic_menu_suggestions"
-                android:drawableTint="@color/barka_blue"
+                android:drawableTint="?attr/barkaAccent"
                 android:text="@string/suggestions_title" />
 
             <View

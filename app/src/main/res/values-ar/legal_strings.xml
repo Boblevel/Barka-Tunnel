@@ -1,0 +1,16 @@
+<resources>
+    <string name="legal_menu">المعلومات القانونية</string>
+    <string name="legal_cookies">سياسة ملفات تعريف الارتباط</string>
+    <string name="legal_privacy">سياسة الخصوصية</string>
+    <string name="legal_terms">شروط الاستخدام</string>
+    <string name="legal_back">رجوع</string>
+    <string name="theme_orange">برتقالي</string>
+    <string name="theme_red">أحمر</string>
+    <string name="theme_yellow">أصفر</string>
+    <string name="theme_purple">بنفسجي</string>
+    <string name="moderation_title">تم تعليق الوصول</string>
+    <string name="moderation_message">علّقت الإدارة الوصول إلى Barka Tunnel. لطلب مراجعة القرار تواصل عبر barkatunnel@gmail.com.</string>
+    <string name="moderation_retry">التحقق مجددًا</string>
+    <string name="moderation_contact">تواصل</string>
+    <string name="activation_no_active_time">تم استلام التفعيل، لكن لم يتم تأكيد مدة صالحة. حدّث حالة الوصول أو تواصل مع الدعم.</string>
+</resources>

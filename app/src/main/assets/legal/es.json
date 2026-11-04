@@ -1,0 +1,64 @@
+{
+  "privacy": [
+    [
+      "Responsable y contacto",
+      "RHAFF SERVICE ofrece Barka Tunnel. Para privacidad, acceso, rectificación o eliminación de datos: barkatunnel@gmail.com."
+    ],
+    [
+      "Datos utilizados",
+      "Un identificador del dispositivo vincula permisos, pruebas, suscripciones y restricciones. El servidor conserva fechas de actividad, referencias y estados de pago, activaciones y sugerencias con el nombre introducido. Las cuentas de revendedores utilizan credenciales y registros de acceso."
+    ],
+    [
+      "Funcionamiento del VPN",
+      "Con tu permiso de Android, el VPN dirige el tráfico compatible al servidor del perfil seleccionado. Los servidores pueden procesar direcciones IP, destinos y metadatos necesarios para la conexión. La protección depende del protocolo y perfil; no se garantiza el anonimato ni la seguridad de los sitios visitados."
+    ],
+    [
+      "Almacenamiento y destinatarios",
+      "Preferencias, perfiles, diagnósticos y contadores se guardan en el teléfono. El historial se exporta a petición tuya. RHAFF SERVICE y los servicios técnicos necesarios procesan datos de gestión. El proveedor de pagos trata los datos de su página. WhatsApp, Telegram y otros servicios externos tienen sus propias políticas."
+    ],
+    [
+      "Conservación y eliminación",
+      "Los datos se conservan para prestar el servicio, gestionar pagos, prevenir abusos y cumplir obligaciones aplicables. Puedes solicitar su eliminación por correo; algunos registros de transacciones pueden tener que conservarse. Desinstalar no elimina automáticamente los datos del servidor. Solicita acceso, rectificación o eliminación aportando solo lo necesario para identificar tus datos."
+    ],
+    [
+      "Permisos y transparencia",
+      "Notificaciones y vibración respetan los ajustes de Android. El almacenamiento permite exportaciones y descargas solicitadas. Instalar APK requiere tu confirmación. Los diagnósticos temporales ayudan a resolver incidencias; no publiques credenciales ni configuraciones. Revisa esta política cuando cambie el tratamiento de datos."
+    ]
+  ],
+  "cookies": [
+    [
+      "Aplicación Android",
+      "Idioma, tema, ajustes y ciertos estados se guardan localmente. Estos datos técnicos no son cookies publicitarias."
+    ],
+    [
+      "Paneles Web",
+      "Los paneles utilizan almacenamiento de sesión del navegador para autenticación y navegación. Borrarlo o cerrar sesión puede terminar el acceso. No compartas un navegador con una sesión del panel abierta."
+    ],
+    [
+      "Servicios externos y opciones",
+      "Las páginas de pago y enlaces externos pueden usar sus propias cookies. Consulta sus políticas. Puedes gestionar cookies en el navegador y borrar datos de Android; se pueden perder preferencias y accesos guardados. Contacto: RHAFF SERVICE — barkatunnel@gmail.com."
+    ]
+  ],
+  "terms": [
+    [
+      "Objeto y uso permitido",
+      "Barka Tunnel ofrece conexión VPN, búsqueda de IP y seguimiento local del consumo. Utiliza solo redes y servicios autorizados, respetando las leyes y condiciones del operador. No se garantiza Internet gratuito ni una velocidad mínima."
+    ],
+    [
+      "Acceso y suscripciones",
+      "El acceso depende de la oferta activada y su duración. Revisa precio y condiciones antes de pagar. Conserva la referencia de pago y contacta con soporte para reclamaciones. No compartas códigos ni credenciales."
+    ],
+    [
+      "Sugerencias y moderación",
+      "Las sugerencias deben ser respetuosas. Insultos, amenazas, spam o abusos pueden causar la suspensión de sugerencias o de la aplicación. Solicita revisión en barkatunnel@gmail.com. El bloqueo no elimina automáticamente el historial de compras."
+    ],
+    [
+      "Límites técnicos",
+      "La disponibilidad depende de red, servidores y vigencia del perfil. Compartir con PC es un proxy HTTP/HTTPS para aplicaciones configuradas; no comparte todo el tráfico del punto de acceso y no admite UDP. Los contadores pueden diferir de la facturación del operador."
+    ],
+    [
+      "Soporte y cambios",
+      "RHAFF SERVICE — barkatunnel@gmail.com. No publiques secretos al informar de incidencias. Las funciones y condiciones pueden evolucionar; se respetan los derechos imperativos del usuario."
+    ]
+  ]
+}

@@ -31,12 +31,15 @@ class BarkaAssistantSession(
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
-        if (commandStarted || args?.getString(BarkaAssistantService.KEY_SESSION_ACTION) !=
+        if (args?.getString(BarkaAssistantService.KEY_SESSION_ACTION) !=
             BarkaAssistantService.SESSION_ACTION_SET_AIRPLANE_MODE) {
             finish()
             return
         }
 
+        handler.removeCallbacksAndMessages(null)
+        commandReported = false
+        commandFinished = false
         commandStarted = true
         requestedState = args.getBoolean(BarkaAssistantService.KEY_AIRPLANE_MODE_ENABLED)
         commandIssued = requestAirplaneMode(requestedState)
@@ -52,6 +55,7 @@ class BarkaAssistantSession(
     }
 
     override fun onDestroy() {
+        reportCommandIfNeeded()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }

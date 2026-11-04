@@ -24,6 +24,9 @@ class IpSearchService : Service() {
     private lateinit var notifications: NotificationManager
     private val stopAfterAlert = Runnable { stopSearchService() }
     private val check = Runnable { inspectIp() }
+    private val cycleTimeout = Runnable {
+        if (active && !waiting) finishSearch(getString(R.string.ip_finder_cycle_failed))
+    }
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) {
             handler.removeCallbacks(check); handler.postDelayed(check, 500)
@@ -35,6 +38,7 @@ class IpSearchService : Service() {
     private val completed = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (!active) return
+            handler.removeCallbacks(cycleTimeout)
             if (intent?.getBooleanExtra(BarkaAssistantService.EXTRA_CYCLE_SUCCEEDED, false) == true) {
                 waiting = true; failures = 0; inspectIp()
                 handler.postDelayed({ if (active && waiting) nextCycle() }, 30_000)
@@ -65,6 +69,7 @@ class IpSearchService : Service() {
         handler.removeCallbacks(stopAfterAlert)
         criteria = IpFinderActivity.captureCriteria(this)
         active = true; foundIp = null; attempts = 0
+        failures = 0; readyRetries = 0; waiting = false
         startForeground(NOTIFICATION, notification(CHANNEL, getString(R.string.ip_finder_searching), true))
         publish(getString(R.string.ip_finder_searching))
         handler.postDelayed({ nextCycle() }, 1000)
@@ -83,7 +88,11 @@ class IpSearchService : Service() {
     }
     private fun requestCycle() {
         if (!active) return
-        if (BarkaAssistantService.requestAirplaneCycle(this)) return
+        if (BarkaAssistantService.requestAirplaneCycle(this)) {
+            handler.removeCallbacks(cycleTimeout)
+            handler.postDelayed(cycleTimeout, 60_000L)
+            return
+        }
         if (!BarkaAssistantService.isSelected(this) || ++readyRetries >= 10) finishSearch(getString(R.string.ip_finder_cycle_failed))
         else handler.postDelayed({ requestCycle() }, 1000)
     }

@@ -35,7 +35,7 @@ class HomeUiBinder(
         accessRemainingTime.text = if (seconds == ConnectionTimeFormatter.UNLIMITED_SECONDS)
             accessRemainingTime.context.getString(R.string.access_unlimited)
         else ConnectionTimeFormatter.formatRemaining(seconds)
-        accessRemainingTime.setTextColor(ContextCompat.getColor(accessRemainingTime.context,
+        accessRemainingTime.setTextColor(com.barkatunnel.app.ui.BrandTheme.color(accessRemainingTime.context,
             if (seconds == ConnectionTimeFormatter.UNLIMITED_SECONDS) R.color.barka_unlimited else R.color.barka_text))
     }
 
@@ -53,7 +53,7 @@ class HomeUiBinder(
                 vpnStatus.setText(R.string.status_connecting)
                 connectButton.setText(R.string.disconnect)
                 vpnStatus.setTextColor(
-                    ContextCompat.getColor(vpnStatus.context, R.color.barka_blue)
+                    com.barkatunnel.app.ui.BrandTheme.color(vpnStatus.context, R.color.barka_blue)
                 )
             }
 
@@ -61,7 +61,7 @@ class HomeUiBinder(
                 vpnStatus.setText(R.string.status_disconnecting)
                 connectButton.setText(R.string.disconnect)
                 vpnStatus.setTextColor(
-                    ContextCompat.getColor(vpnStatus.context, R.color.barka_blue)
+                    com.barkatunnel.app.ui.BrandTheme.color(vpnStatus.context, R.color.barka_blue)
                 )
             }
 

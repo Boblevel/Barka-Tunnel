@@ -37,7 +37,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:text="@string/journal_title"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="21sp"
                 android:textStyle="bold" />
 
@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:text="@string/today"
-            android:textColor="@color/barka_blue"
+            android:textColor="?attr/barkaAccent"
             android:textSize="10sp"
             android:textStyle="bold" />
 
@@ -121,7 +121,7 @@
             android:gravity="center"
             android:orientation="vertical">
             <ImageView android:layout_width="24dp" android:layout_height="24dp" android:contentDescription="@string/journal" android:src="@drawable/ic_nav_journal_active" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/journal" android:textColor="@color/barka_blue" android:textSize="12sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/journal" android:textColor="?attr/barkaAccent" android:textSize="12sp" android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

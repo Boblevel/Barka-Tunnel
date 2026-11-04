@@ -18,8 +18,12 @@ object HomeAccessSnapshotStore {
         save(context, state)
         return state
     }
-    private fun boot(context: Context): Int = if (android.os.Build.VERSION.SDK_INT >= 24)
-        android.provider.Settings.Global.getInt(context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, -1) else -1
+    private val processSession = java.util.UUID.randomUUID().toString()
+    private fun boot(context: Context): Int = runCatching {
+        if (android.os.Build.VERSION.SDK_INT >= 24)
+            android.provider.Settings.Global.getInt(context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, -1)
+        else -1
+    }.getOrDefault(-1)
 
     @Synchronized fun save(context: Context, state: HomeAccessState) {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -35,6 +39,7 @@ object HomeAccessSnapshotStore {
             .putLong("remaining_seconds", state.remainingSeconds)
             .putLong("saved_elapsed", android.os.SystemClock.elapsedRealtime())
             .putInt("saved_boot", boot(context))
+            .putString("process_session", processSession)
             .commit()
     }
 
@@ -43,7 +48,10 @@ object HomeAccessSnapshotStore {
         if (!prefs.getBoolean(KEY_ALLOWED, false)) return null
         val expiry = prefs.getLong(KEY_EXPIRY_MS, 0L)
         val elapsed = android.os.SystemClock.elapsedRealtime() - prefs.getLong("saved_elapsed", -1L)
-        val sameBoot = prefs.contains("saved_elapsed") && elapsed >= 0 && boot(context) >= 0 && prefs.getInt("saved_boot", -2) == boot(context)
+        val bootCount = boot(context)
+        val sameBoot = prefs.contains("saved_elapsed") && elapsed >= 0 &&
+            (prefs.getString("process_session", null) == processSession ||
+                (bootCount >= 0 && prefs.getInt("saved_boot", -2) == bootCount))
         val remaining = if (prefs.getBoolean("unlimited", false)) ConnectionTimeFormatter.UNLIMITED_SECONDS
             else if (sameBoot) (prefs.getLong("remaining_seconds", 0L) - elapsed / 1000L).coerceAtLeast(0L)
             else ((expiry - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)

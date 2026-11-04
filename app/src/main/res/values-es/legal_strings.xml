@@ -1,0 +1,16 @@
+<resources>
+    <string name="legal_menu">Información legal</string>
+    <string name="legal_cookies">Política de cookies</string>
+    <string name="legal_privacy">Política de privacidad</string>
+    <string name="legal_terms">Condiciones de uso</string>
+    <string name="legal_back">Volver</string>
+    <string name="theme_orange">Naranja</string>
+    <string name="theme_red">Rojo</string>
+    <string name="theme_yellow">Amarillo</string>
+    <string name="theme_purple">Violeta</string>
+    <string name="moderation_title">Acceso suspendido</string>
+    <string name="moderation_message">La administración ha suspendido el acceso a Barka Tunnel. Para solicitar una revisión, escribe a barkatunnel@gmail.com.</string>
+    <string name="moderation_retry">Comprobar de nuevo</string>
+    <string name="moderation_contact">Contactar</string>
+    <string name="activation_no_active_time">Activación recibida, pero sin tiempo activo confirmado. Actualiza tu acceso o contacta con soporte.</string>
+</resources>

@@ -38,7 +38,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:text="@string/settings_title"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="21sp"
                 android:textStyle="bold" />
 
@@ -73,7 +73,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/settings_general"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -140,7 +140,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/settings_connection"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -226,7 +226,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/settings_tools"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -426,12 +426,14 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/settings_about"
-                android:textColor="@color/barka_blue"
+                android:textColor="?attr/barkaAccent"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/aboutValue"
+                android:drawableEnd="@drawable/ic_legal_next"
+                android:drawablePadding="12dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"

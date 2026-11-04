@@ -6,7 +6,7 @@
     android:viewportHeight="48">
 
     <path
-        android:fillColor="@color/barka_blue"
+        android:fillColor="?attr/barkaAccent"
         android:pathData="M24,3 A21,21 0,1 0,24,45 A21,21 0,1 0,24,3" />
 
     <path

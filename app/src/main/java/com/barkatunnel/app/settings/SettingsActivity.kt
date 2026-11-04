@@ -41,6 +41,12 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.aboutValue).text =
             getString(R.string.settings_about_format, BuildConfig.VERSION_NAME)
 
+        findViewById<TextView>(R.id.aboutValue).apply {
+            isFocusable = true
+            minimumHeight = (48 * resources.displayMetrics.density).toInt()
+            setOnClickListener { startActivity(Intent(this@SettingsActivity, LegalActivity::class.java)) }
+        }
+
         val autoPingSwitch = findViewById<SwitchCompat>(R.id.autoPingSwitch)
         val themeButton = findViewById<MaterialButton>(R.id.themeButton)
         val languageButton = findViewById<MaterialButton>(R.id.languageButton)
@@ -80,7 +86,9 @@ class SettingsActivity : AppCompatActivity() {
                 values = arrayOf(
                     getString(R.string.theme_light),
                     getString(R.string.theme_dark),
-                    getString(R.string.theme_system)
+                    getString(R.string.theme_system),
+                    getString(R.string.theme_orange), getString(R.string.theme_red),
+                    getString(R.string.theme_yellow), getString(R.string.theme_purple)
                 ),
                 selected = themeLabel(
                     normalizedTheme(prefs.getString("theme", "light") ?: "light")
@@ -89,6 +97,10 @@ class SettingsActivity : AppCompatActivity() {
                 val theme = when (value) {
                     getString(R.string.theme_dark) -> "dark"
                     getString(R.string.theme_system) -> "system"
+                    getString(R.string.theme_orange) -> "orange"
+                    getString(R.string.theme_red) -> "red"
+                    getString(R.string.theme_yellow) -> "yellow"
+                    getString(R.string.theme_purple) -> "purple"
                     else -> "light"
                 }
                 prefs.edit().putString("theme", theme).apply()
@@ -99,6 +111,7 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 AppCompatDelegate.setDefaultNightMode(mode)
                 refreshDynamicLabels()
+                recreate()
             }
         }
 
@@ -213,12 +226,17 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun normalizedTheme(value: String): String = when (value) {
+        "orange", "red", "yellow", "purple" -> value
         "dark", "Sombre" -> "dark"
         "system", "Système" -> "system"
         else -> "light"
     }
 
     private fun themeLabel(value: String): String = when (value) {
+        "orange" -> getString(R.string.theme_orange)
+        "red" -> getString(R.string.theme_red)
+        "yellow" -> getString(R.string.theme_yellow)
+        "purple" -> getString(R.string.theme_purple)
         "dark" -> getString(R.string.theme_dark)
         "system" -> getString(R.string.theme_system)
         else -> getString(R.string.theme_light)

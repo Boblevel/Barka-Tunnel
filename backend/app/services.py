@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from .config import settings
 from .db import connect, transaction
 from .plans import get_plan
+from .moderation import app_blocked
 from .security import activation_code_for_source, code_hash
 from .reseller_access import code_suspended, subscription_expiry, settle_device_pause
 
@@ -59,6 +60,7 @@ def access_state(device_id: str) -> dict:
             "SELECT * FROM devices WHERE device_id=?",
             (device_id,),
         ).fetchone()
+        moderated = app_blocked(cx, device_id)
         unlimited_code = cx.execute(
             """SELECT redeemed_at FROM activation_codes
                WHERE redeemed_device_id=? AND plan_id='unlimited'
@@ -76,11 +78,12 @@ def access_state(device_id: str) -> dict:
 
     weekly = {
         "access_revision": int(row["access_revision"]),
+        "app_blocked": moderated,
         "trial_week_start": week,
         "trial_week_used": claimed,
         "server_timestamp": now,
     }
-    if bool(row["access_disabled"]):
+    if bool(row["access_disabled"]) or moderated:
         return {
             **weekly,
             "trial_used": row["trial_started_at"] is not None,
@@ -154,7 +157,7 @@ def start_trial(device_id: str) -> tuple[dict, bool, str]:
             "SELECT 1 FROM weekly_trial_claims WHERE device_id=? AND week_start>=? LIMIT 1",
             (device_id, week),
         ).fetchone()
-        if bool(row["access_disabled"]):
+        if bool(row["access_disabled"]) or app_blocked(cx, device_id):
             message = "Accès désactivé par l’administration."
         elif claimed:
             message = "Cadeau déjà utilisé cette semaine. Disponible lundi à 00 h (Burkina Faso)."

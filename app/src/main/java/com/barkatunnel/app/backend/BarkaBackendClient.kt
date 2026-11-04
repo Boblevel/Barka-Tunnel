@@ -69,6 +69,15 @@ class BarkaBackendClient(context: Context) {
         return body.getBoolean("enabled")
     }
 
+    fun moderationStatus(): JSONObject {
+        val body = post("/v1/moderation/status", JSONObject().put("device_id", deviceId),
+            BarkaVpnService.connectedSocksPort())
+        if (body.opt("app_blocked") !is Boolean || body.opt("suggestions_blocked") !is Boolean)
+            throw BarkaBackendException("Réponse de modération invalide.")
+        com.barkatunnel.app.moderation.ModerationGuard.record(appContext, body.getBoolean("app_blocked"))
+        return body
+    }
+
     fun supportUrl(): String {
         val number = getObject("/v1/support/config", BarkaVpnService.connectedSocksPort()).getString("whatsapp_number")
         require(number.matches(Regex("[1-9][0-9]{7,14}")))
@@ -216,10 +225,13 @@ class BarkaBackendClient(context: Context) {
             socksPort = BarkaVpnService.connectedSocksPort()
         )
 
+        val activationAccess = parseAccess(body.optJSONObject("access") ?: JSONObject())
+        if (body.optBoolean("success", false) && (!activationAccess.allowed || activationAccess.remainingSeconds <= 0L))
+            throw BarkaBackendException(appContext.getString(com.barkatunnel.app.R.string.activation_no_active_time))
         val result = BackendActivationResult(
             success = body.optBoolean("success", false),
             message = cleanMessage(body.optString("message", "Validation terminée.")),
-            access = parseAccess(body.optJSONObject("access") ?: JSONObject())
+            access = activationAccess
         )
         if (result.success && result.access.allowed && result.access.remainingSeconds > 0L) {
             com.barkatunnel.app.ui.home.HomeAccessSnapshotStore.saveActivation(appContext,
@@ -235,6 +247,8 @@ class BarkaBackendClient(context: Context) {
     }
 
     private fun parseAccess(body: JSONObject): BackendAccessState {
+        if (body.opt("app_blocked") is Boolean)
+            com.barkatunnel.app.moderation.ModerationGuard.record(appContext, body.getBoolean("app_blocked"))
         val week = body.optLong("trial_week_start", -1L)
         val serverTime = body.optLong("server_timestamp", -1L)
         if (body.opt("trial_week_used") is Boolean && week >= 0L && serverTime >= week &&
@@ -245,9 +259,7 @@ class BarkaBackendClient(context: Context) {
             allowed = body.optBoolean("allowed", false),
             accessRevision = body.optLong("access_revision", 0L),
             accessType = body.optString("access_type", "NONE"),
-            remainingSeconds = if (body.optBoolean("allowed", false) && body.optBoolean("unlimited", false))
-                com.barkatunnel.app.ui.home.ConnectionTimeFormatter.UNLIMITED_SECONDS
-            else body.optLong("remaining_seconds", 0L).coerceAtLeast(0L)
+            remainingSeconds = AccessPayload.remaining(body)
         )
     }
 

@@ -30,7 +30,7 @@ class GuideSectionActivity : AppCompatActivity() {
         for (paragraph in text.split("\n\n")) {
             val end = offset + (paragraph.indexOf('\n').takeIf { it >= 0 } ?: paragraph.length)
             styled.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), offset, end, 0)
-            styled.setSpan(android.text.style.ForegroundColorSpan(androidx.core.content.ContextCompat.getColor(this, R.color.barka_blue)), offset, end, 0)
+            styled.setSpan(android.text.style.ForegroundColorSpan(com.barkatunnel.app.ui.BrandTheme.color(this, R.color.barka_blue)), offset, end, 0)
             offset += paragraph.length + 2
         }
         findViewById<TextView>(R.id.guideSectionBody).text = styled

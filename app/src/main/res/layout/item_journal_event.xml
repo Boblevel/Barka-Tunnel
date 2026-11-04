@@ -16,7 +16,7 @@
         android:layout_height="24dp"
         android:gravity="center"
         android:text="●"
-        android:textColor="@color/barka_blue"
+        android:textColor="?attr/barkaAccent"
         android:textSize="13sp" />
 
     <LinearLayout

@@ -134,6 +134,13 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_suggestions_device_time
                 ON suggestions(device_id, created_at DESC);
 
+                CREATE TABLE IF NOT EXISTS device_moderation(
+                    device_id TEXT PRIMARY KEY,
+                    app_blocked INTEGER NOT NULL DEFAULT 0 CHECK(app_blocked IN (0,1)),
+                    suggestions_blocked INTEGER NOT NULL DEFAULT 0 CHECK(suggestions_blocked IN (0,1)),
+                    updated_at INTEGER NOT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS admin_state(
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL,

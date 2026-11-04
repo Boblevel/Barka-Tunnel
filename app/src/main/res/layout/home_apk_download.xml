@@ -7,17 +7,17 @@
     android:padding="14dp" android:orientation="vertical" android:visibility="gone">
     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
         android:text="@string/update_title" android:textStyle="bold" android:textSize="16sp"
-        android:textColor="@color/barka_blue" />
+        android:textColor="?attr/barkaAccent" />
     <TextView android:id="@+id/apkDownloadPercent" android:layout_width="match_parent"
         android:layout_height="wrap_content" android:gravity="end" android:text="0%"
-        android:textSize="18sp" android:textStyle="bold" android:textColor="@color/barka_blue" />
+        android:textSize="18sp" android:textStyle="bold" android:textColor="?attr/barkaAccent" />
     <ProgressBar android:id="@+id/apkDownloadProgress" style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent" android:layout_height="8dp" android:max="100"
-        android:progressTint="@color/barka_blue" />
+        android:progressTint="?attr/barkaAccent" />
     <TextView android:id="@+id/apkDownloadStatus" android:layout_width="match_parent"
         android:layout_height="wrap_content" android:layout_marginTop="6dp"
         android:textSize="13sp" android:textColor="@color/barka_text_secondary" />
     <com.google.android.material.button.MaterialButton android:id="@+id/apkDownloadAction"
         android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp"
-        android:text="@string/download_pause" app:cornerRadius="12dp" app:backgroundTint="@color/barka_blue" />
+        android:text="@string/download_pause" app:cornerRadius="12dp" app:backgroundTint="?attr/barkaAccent" />
 </LinearLayout>

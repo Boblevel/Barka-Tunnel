@@ -1,0 +1,20 @@
+<resources>
+    <attr name="barkaAccent" format="color" />
+    <attr name="barkaAccentLight" format="color" />
+    <style name="BarkaAccentOrange" parent="">
+        <item name="barkaAccent">#B54708</item><item name="barkaAccentLight">#FFF1E6</item>
+        <item name="colorPrimary">#B54708</item><item name="colorSecondary">#B54708</item>
+    </style>
+    <style name="BarkaAccentRed" parent="">
+        <item name="barkaAccent">#C52828</item><item name="barkaAccentLight">#FFF0F0</item>
+        <item name="colorPrimary">#C52828</item><item name="colorSecondary">#C52828</item>
+    </style>
+    <style name="BarkaAccentYellow" parent="">
+        <item name="barkaAccent">#826300</item><item name="barkaAccentLight">#FFF7CF</item>
+        <item name="colorPrimary">#826300</item><item name="colorSecondary">#826300</item>
+    </style>
+    <style name="BarkaAccentPurple" parent="">
+        <item name="barkaAccent">#7834C5</item><item name="barkaAccentLight">#F4EAFF</item>
+        <item name="colorPrimary">#7834C5</item><item name="colorSecondary">#7834C5</item>
+    </style>
+</resources>

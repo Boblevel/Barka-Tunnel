@@ -5,7 +5,7 @@
         <ImageButton android:id="@+id/toolBack" android:layout_width="48dp" android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_back_barka" android:contentDescription="@string/back" />
         <TextView android:id="@+id/toolTitle" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-            android:textColor="@color/barka_blue" android:textSize="20sp" android:textStyle="bold" android:gravity="center" />
+            android:textColor="?attr/barkaAccent" android:textSize="20sp" android:textStyle="bold" android:gravity="center" />
     </LinearLayout>
     <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="24dp" android:paddingBottom="24dp">
@@ -18,31 +18,31 @@
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
                 android:gravity="center" android:layout_marginTop="24dp" android:padding="24dp" android:background="@drawable/bg_card_final" android:animateLayoutChanges="true">
                 <ProgressBar android:id="@+id/toolProgress" android:layout_width="64dp" android:layout_height="64dp"
-                    android:indeterminate="true" android:indeterminateTint="@color/barka_blue" android:visibility="gone" />
+                    android:indeterminate="true" android:indeterminateTint="?attr/barkaAccent" android:visibility="gone" />
                 <TextView android:id="@+id/toolValue" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="—" android:textColor="@color/barka_blue" android:textSize="30sp" android:textStyle="bold" android:gravity="center"
+                    android:text="—" android:textColor="?attr/barkaAccent" android:textSize="30sp" android:textStyle="bold" android:gravity="center"
                     android:layout_marginTop="16dp" android:textIsSelectable="true" />
                 <LinearLayout android:id="@+id/shareDetails" android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="vertical" android:visibility="gone">
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:text="@string/share_address" android:textColor="@color/barka_text_secondary" android:textSize="14sp" android:layout_marginTop="16dp" />
                     <TextView android:id="@+id/shareAddress" android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:textColor="@color/barka_blue" android:textSize="24sp" android:textStyle="bold"
+                        android:textColor="?attr/barkaAccent" android:textSize="24sp" android:textStyle="bold"
                         android:textDirection="ltr" android:gravity="start" android:textIsSelectable="true" />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:text="@string/share_port" android:textColor="@color/barka_text_secondary" android:textSize="14sp" android:layout_marginTop="16dp" />
                     <TextView android:id="@+id/sharePort" android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:textColor="@color/barka_blue" android:textSize="22sp" android:textStyle="bold"
+                        android:textColor="?attr/barkaAccent" android:textSize="22sp" android:textStyle="bold"
                         android:textDirection="ltr" android:gravity="start" android:textIsSelectable="true" />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:text="@string/share_username" android:textColor="@color/barka_text_secondary" android:textSize="14sp" android:layout_marginTop="16dp" />
                     <TextView android:id="@+id/shareUsername" android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:textColor="@color/barka_blue" android:textSize="20sp" android:textStyle="bold"
+                        android:textColor="?attr/barkaAccent" android:textSize="20sp" android:textStyle="bold"
                         android:textDirection="ltr" android:gravity="start" android:textIsSelectable="true" />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:text="@string/share_password" android:textColor="@color/barka_text_secondary" android:textSize="14sp" android:layout_marginTop="16dp" />
                     <TextView android:id="@+id/sharePassword" android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:textColor="@color/barka_blue" android:textSize="16sp" android:textStyle="bold"
+                        android:textColor="?attr/barkaAccent" android:textSize="16sp" android:textStyle="bold"
                         android:textDirection="ltr" android:gravity="start" android:textIsSelectable="true" />
                 </LinearLayout>
                 <TextView android:id="@+id/toolStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -51,7 +51,7 @@
             </LinearLayout>
             <com.google.android.material.button.MaterialButton android:id="@+id/toolAction" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:minHeight="56dp" android:layout_marginTop="24dp" android:text="@string/tools_start"
-                android:textColor="@android:color/white" app:backgroundTint="@color/barka_blue" app:cornerRadius="18dp" />
+                android:textColor="@android:color/white" app:backgroundTint="?attr/barkaAccent" app:cornerRadius="18dp" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

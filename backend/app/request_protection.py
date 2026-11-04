@@ -68,6 +68,11 @@ async def protect_request(request: Request):
         body = await request.json()
     except ValueError:
         return
+    if isinstance(body, dict) and isinstance(body.get('device_id'), str):
+        from .moderation import app_blocked
+        with transaction() as cx:
+            if app_blocked(cx, body['device_id'].strip()):
+                raise HTTPException(403, 'Accès suspendu. Contact : barkatunnel@gmail.com')
     if isinstance(body, dict) and isinstance(body.get(field), str):
         identity = body[field].strip().casefold() if field == 'username' else body[field]
         consume_limits([(path + ':identity', identity, maximum, seconds)])

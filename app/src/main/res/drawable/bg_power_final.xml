@@ -3,7 +3,7 @@
     <item>
         <shape android:shape="oval">
             <solid android:color="@color/barka_card" />
-            <stroke android:width="6dp" android:color="@color/barka_blue" />
+            <stroke android:width="6dp" android:color="?attr/barkaAccent" />
         </shape>
     </item>
     <item

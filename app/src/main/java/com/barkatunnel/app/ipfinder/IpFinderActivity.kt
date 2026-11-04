@@ -296,8 +296,8 @@ class IpFinderActivity : AppCompatActivity() {
             else -> R.color.barka_red
         }))
         scanButton.visibility = if (compatible) View.GONE else View.VISIBLE
-        if (compatible) manualAirplaneButton.visibility = View.GONE
-        scanButton.isEnabled = !searching && currentIp != null
+        manualAirplaneButton.visibility = if (compatible) View.GONE else View.VISIBLE
+        scanButton.isEnabled = !searching
 
         // Historical search success is not evidence that the address is still active.
         val foundStillCurrent = compatible && currentIp == IpSearchService.foundIp

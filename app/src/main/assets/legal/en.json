@@ -1,0 +1,64 @@
+{
+  "privacy": [
+    [
+      "Operator and contact",
+      "Barka Tunnel is provided by RHAFF SERVICE. For privacy, access, correction or deletion requests, contact barkatunnel@gmail.com."
+    ],
+    [
+      "Data used",
+      "A device identifier links access rights, trials, subscriptions and restrictions. The server stores activity dates, payment references and status, activations, and submitted suggestions with the entered name. Reseller accounts use credentials and sign-in records."
+    ],
+    [
+      "VPN operation",
+      "With your Android permission, the VPN routes supported application traffic to the selected profile server. Network servers may process IP addresses, destinations and connection metadata. Protection depends on the protocol and profile; a VPN does not guarantee anonymity or the safety of visited sites."
+    ],
+    [
+      "Storage and recipients",
+      "Preferences, profiles, diagnostics and traffic counters are stored on your phone. History files are exported at your request. RHAFF SERVICE and necessary technical services process management data. Payment providers process information entered on their pages. External services such as WhatsApp and Telegram have their own policies."
+    ],
+    [
+      "Retention and deletion",
+      "Management data is retained to provide the service, handle payments, prevent abuse and meet applicable obligations. Request deletion by email; some transaction records may need to be retained. Uninstalling does not automatically delete server data. You can request access, correction or deletion, providing only the information needed to identify your records."
+    ],
+    [
+      "Permissions and transparency",
+      "Notifications and vibration follow your Android settings. Storage supports requested exports and downloads. APK installation requires your confirmation. Temporary technical diagnostics assist troubleshooting; do not publish credentials or configuration files. Review this notice when data processing changes."
+    ]
+  ],
+  "cookies": [
+    [
+      "Android application",
+      "Language, theme, settings and some operational states are stored locally. These technical records are not advertising cookies."
+    ],
+    [
+      "Web panels",
+      "Panels use browser session storage for authentication and navigation choices. Clearing this storage or signing out may end the session. Do not share a browser signed in to a panel."
+    ],
+    [
+      "External services and controls",
+      "Payment pages and external links may use their own cookies and storage. Read their policies before use. Manage cookies in your browser or clear local Android data; this may remove saved preferences and access details. Contact RHAFF SERVICE at barkatunnel@gmail.com."
+    ]
+  ],
+  "terms": [
+    [
+      "Purpose and permitted use",
+      "Barka Tunnel provides VPN connection, IP search and local traffic monitoring tools. Use only networks and services you are authorized to access, respecting applicable law and your operator’s terms. Free Internet access and a minimum speed are not guaranteed."
+    ],
+    [
+      "Access and subscriptions",
+      "Access depends on the activated offer and its duration. Check the displayed price and conditions before paying. Keep your transaction reference and contact support about payments. Do not share activation codes or credentials."
+    ],
+    [
+      "Suggestions and moderation",
+      "Suggestions must remain respectful. Insults, threats, spam or abuse may lead to suspension of suggestions or application access. Request a review at barkatunnel@gmail.com. Blocking does not automatically delete purchase records."
+    ],
+    [
+      "Technical limits",
+      "Availability depends on the network, servers and profile validity. PC sharing is an HTTP/HTTPS proxy for configured applications, not automatic hotspot-wide routing; UDP is not supported. Local counters may differ from operator billing."
+    ],
+    [
+      "Support and updates",
+      "RHAFF SERVICE — barkatunnel@gmail.com. Report incidents without posting secrets publicly. Features and these terms may evolve; mandatory consumer rights remain applicable."
+    ]
+  ]
+}
