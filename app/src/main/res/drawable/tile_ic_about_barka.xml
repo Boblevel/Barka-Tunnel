@@ -1,0 +1,5 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="44dp" android:height="44dp" android:viewportWidth="44" android:viewportHeight="44">
+    <path android:fillColor="?attr/barkaAccentLight" android:pathData="M12,0H32Q44,0 44,12V32Q44,44 32,44H12Q0,44 0,32V12Q0,0 12,0Z" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="?attr/barkaAccent" android:strokeWidth="2.2" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M22,10 A12,12 0,1 0,22,34 A12,12 0,1 0,22,10 M22,20 L22,29" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="?attr/barkaAccent" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M22,15 L22,16" />
+</vector>

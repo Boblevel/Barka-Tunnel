@@ -23,6 +23,18 @@
     [
       "Permissions et transparence",
       "Les notifications et la vibration signalent les événements selon vos réglages Android. Le stockage sert aux exports et téléchargements demandés. L’installation d’APK nécessite votre confirmation. Les diagnostics techniques temporaires servent au dépannage ; évitez de publier vos identifiants ou fichiers de configuration. Cette notice doit être relue après toute évolution du traitement des données."
+    ],
+    [
+      "Recherche IP et fonctionnement en arrière-plan",
+      "IP Finder utilise les informations réseau accessibles à l’application pour afficher et vérifier l’adresse IP. La recherche et le partage PC sont lancés par vous et peuvent continuer en arrière-plan avec une notification. Vous pouvez les arrêter depuis leurs commandes. Le son et la vibration dépendent aussi des autorisations et réglages du téléphone."
+    ],
+    [
+      "Suggestions et restrictions",
+      "Le contenu d’une suggestion, le nom renseigné et l’identifiant d’appareil sont transmis au service pour permettre une réponse administrative et la modération. Deux restrictions distinctes peuvent être enregistrées : suspension des suggestions ou suspension de l’accès à l’application. Une suspension ne supprime pas les données d’abonnement et ne constitue pas une demande de suppression."
+    ],
+    [
+      "Demander de l’aide ou exercer vos droits",
+      "Écrivez à barkatunnel@gmail.com en précisant votre demande et, si nécessaire, l’identifiant de l’appareil ou la référence de transaction concernée. Ne communiquez jamais de mot de passe, de code secret de paiement ni de configuration VPN privée. Pour une suppression, indiquez les données ou le compte concernés ; l’équipe pourra demander les éléments strictement nécessaires pour vérifier la demande."
     ]
   ],
   "cookies": [
@@ -37,6 +49,10 @@
     [
       "Services externes et choix",
       "Les pages de paiement et les liens externes peuvent utiliser leurs propres cookies et dispositifs de stockage. Consultez leurs politiques avant de les utiliser. Vous pouvez gérer les cookies dans votre navigateur et effacer les données locales Android ; cette opération peut supprimer vos préférences et accès enregistrés. Pour toute question : barkatunnel@gmail.com — RHAFF SERVICE."
+    ],
+    [
+      "Gérer les données du téléphone",
+      "Les réglages de Barka Tunnel permettent de modifier la langue et le thème. Les paramètres Android permettent d’effacer les données locales de l’application ; cela peut retirer les profils et les états enregistrés et nécessiter une nouvelle synchronisation. Cette action est distincte d’une demande de suppression des données détenues par le serveur."
     ]
   ],
   "terms": [
@@ -59,6 +75,14 @@
     [
       "Support et évolution",
       "RHAFF SERVICE — barkatunnel@gmail.com. Signalez les incidents sans transmettre de secrets dans des espaces publics. Les fonctionnalités et ces conditions peuvent évoluer ; les droits impératifs des utilisateurs restent applicables."
+    ],
+    [
+      "Utilisation du partage PC",
+      "Avant de démarrer, connectez Barka Tunnel au VPN et activez le point d’accès. Configurez l’adresse, le port et les identifiants affichés uniquement sur les appareils que vous autorisez. Gardez le mot de passe privé et arrêtez le partage après utilisation. Les réglages du proxy doivent aussi être appliqués dans les logiciels du PC qui en ont besoin."
+    ],
+    [
+      "Demander le réexamen d’une suspension",
+      "En cas de suspension, contactez barkatunnel@gmail.com et indiquez l’appareil concerné ainsi que le motif de votre demande. Le déblocage des suggestions et celui de l’application sont indépendants. Le déblocage ne renouvelle pas un abonnement expiré et ne rétablit pas un droit retiré pour un autre motif."
     ]
   ]
 }

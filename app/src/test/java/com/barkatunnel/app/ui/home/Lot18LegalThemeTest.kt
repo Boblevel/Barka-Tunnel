@@ -15,6 +15,10 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
+import android.view.View
+import android.widget.ScrollView
+import com.google.android.material.button.MaterialButton
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -56,6 +60,56 @@ class Lot18LegalThemeTest {
             if (policy == null) assertTrue(texts.contains(activity.getString(R.string.legal_privacy)))
             else assertTrue(texts.size >= 8)
             controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun legalCardsNavigateToTheirDocumentAndBackWithoutScrollbars() {
+        val controller = Robolectric.buildActivity(LegalActivity::class.java).setup()
+        val activity = controller.get()
+        val scroll = activity.findViewById<ScrollView>(R.id.legalScroll)
+        assertFalse(scroll.isVerticalScrollBarEnabled)
+        assertFalse(scroll.isHorizontalScrollBarEnabled)
+        for (key in listOf("cookies", "privacy", "terms")) {
+            val card = activity.findViewById<ViewGroup>(R.id.legalContent).findViewWithTag<MaterialButton>(key)
+            assertNotNull(card.icon)
+            assertTrue(card.performClick())
+            assertEquals(key, shadowOf(activity).nextStartedActivity.getStringExtra("policy"))
+        }
+        activity.findViewById<View>(R.id.legalBackButton).performClick()
+        assertTrue(activity.isFinishing)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun policiesKeepAllTextVisibleOnNarrowScreensWithLargeFontInEachLanguage() {
+        for (language in listOf("fr", "en", "es", "ar")) {
+            RuntimeEnvironment.setQualifiers("$language-port-mdpi")
+            for (policy in listOf(null, "cookies", "privacy", "terms")) {
+                val intent = Intent(RuntimeEnvironment.getApplication(), LegalActivity::class.java)
+                if (policy != null) intent.putExtra("policy", policy)
+                val controller = Robolectric.buildActivity(LegalActivity::class.java, intent).setup()
+                val activity = controller.get()
+                val root = activity.findViewById<ViewGroup>(android.R.id.content)
+                val texts = mutableListOf<TextView>()
+                fun collect(view: View) {
+                    if (view is TextView) texts.add(view)
+                    if (view is ViewGroup) for (i in 0 until view.childCount) collect(view.getChildAt(i))
+                }
+                collect(root)
+                texts.forEach { it.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, it.textSize * 1.3f) }
+                root.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(640, View.MeasureSpec.EXACTLY))
+                root.layout(0, 0, 320, 640)
+                for (text in texts.filter { it.text.isNotEmpty() }) {
+                    assertNotNull(text.layout)
+                    for (line in 0 until text.layout.lineCount) assertEquals(0, text.layout.getEllipsisCount(line))
+                    assertTrue("Clipped text: ${text.text}",
+                        text.height - text.compoundPaddingTop - text.compoundPaddingBottom >= text.layout.height)
+                }
+                val scroll = activity.findViewById<ScrollView>(R.id.legalScroll)
+                assertFalse(scroll.isVerticalScrollBarEnabled)
+                if (policy != null) assertTrue(scroll.getChildAt(0).height > scroll.height)
+                controller.pause().stop().destroy()
+            }
         }
     }
 }

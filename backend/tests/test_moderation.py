@@ -68,3 +68,26 @@ def test_unlimited_access_respects_moderation(tmp_path):
     c.post('/v1/suggestions', json={'device_id': DEVICE, 'request_id': str(uuid4()), 'message': 'Suggestion'})
     c.put('/v1/admin/moderation', headers=ADMIN, json={'device_id': DEVICE, 'scope': 'app', 'blocked': True})
     assert not services.access_state(DEVICE)['allowed']
+
+def test_suggestion_unblock_cannot_bypass_app_block_or_change_paid_subscription(tmp_path):
+    c, db, services = setup(tmp_path)
+    code = services.issue_activation_code('moderation-paid', '24h')
+    # Use a known paid plan from the service rather than fabricating client rights.
+    assert services.redeem_activation_code(DEVICE, code)[0]
+    request = {'device_id': DEVICE, 'request_id': str(uuid4()), 'message': 'Suggestion'}
+    assert c.post('/v1/suggestions', json=request).status_code == 200
+    with db.transaction() as cx:
+        before = dict(cx.execute('SELECT * FROM devices WHERE device_id=?', (DEVICE,)).fetchone())
+    for scope, blocked in [('app', True), ('suggestions', True), ('suggestions', False)]:
+        assert c.put('/v1/admin/moderation', headers=ADMIN, json={
+            'device_id': DEVICE, 'scope': scope, 'blocked': blocked}).status_code == 200
+    assert c.post('/v1/suggestions', json=request).status_code == 403
+    assert not services.access_state(DEVICE)['allowed']
+    with db.transaction() as cx:
+        after = dict(cx.execute('SELECT * FROM devices WHERE device_id=?', (DEVICE,)).fetchone())
+    assert after['subscription_expires_at'] == before['subscription_expires_at']
+    assert after['access_revision'] == before['access_revision'] + 1
+    assert c.put('/v1/admin/moderation', headers=ADMIN, json={
+        'device_id': DEVICE, 'scope': 'app', 'blocked': False}).status_code == 200
+    assert services.access_state(DEVICE)['allowed']
+    assert c.post('/v1/suggestions', json=request).status_code == 200

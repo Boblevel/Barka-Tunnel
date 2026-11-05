@@ -1,0 +1,12 @@
+<com.google.android.material.button.MaterialButton xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:layout_marginTop="12dp" android:minHeight="76dp"
+    android:gravity="start|center_vertical" android:paddingHorizontal="16dp"
+    android:paddingTop="16dp" android:paddingBottom="16dp"
+    android:insetTop="0dp" android:insetBottom="0dp"
+    android:textAllCaps="false" android:textColor="@color/barka_text"
+    android:textSize="16sp" android:textStyle="bold"
+    app:backgroundTint="@color/barka_card" app:cornerRadius="20dp"
+    app:iconGravity="start" app:iconSize="44dp" app:iconPadding="12dp" app:iconTint="@null"
+    app:strokeColor="@color/barka_border" app:strokeWidth="1dp" app:rippleColor="@color/barka_border" />

@@ -23,6 +23,18 @@
     [
       "Permissions and transparency",
       "Notifications and vibration follow your Android settings. Storage supports requested exports and downloads. APK installation requires your confirmation. Temporary technical diagnostics assist troubleshooting; do not publish credentials or configuration files. Review this notice when data processing changes."
+    ],
+    [
+      "IP search and background operation",
+      "IP Finder uses network information available to the app to display and check the IP address. You start IP search and PC sharing; they may continue in the background with a notification. You can stop them using their controls. Sound and vibration also depend on phone permissions and settings."
+    ],
+    [
+      "Suggestions and restrictions",
+      "The suggestion text, entered name and device identifier are sent to the service for administrative handling and moderation. Two separate restrictions may be recorded: suspension of suggestions or suspension of app access. A suspension does not delete subscription data and is not a deletion request."
+    ],
+    [
+      "Getting help and exercising your rights",
+      "Write to barkatunnel@gmail.com with your request and, if necessary, the relevant device identifier or transaction reference. Never send a password, payment secret or private VPN configuration. For deletion, specify the data or account concerned; the team may request only the information necessary to verify the request."
     ]
   ],
   "cookies": [
@@ -37,6 +49,10 @@
     [
       "External services and controls",
       "Payment pages and external links may use their own cookies and storage. Read their policies before use. Manage cookies in your browser or clear local Android data; this may remove saved preferences and access details. Contact RHAFF SERVICE at barkatunnel@gmail.com."
+    ],
+    [
+      "Managing data on your phone",
+      "Barka Tunnel settings let you change the language and theme. Android settings let you clear local app data; this may remove stored profiles and states and require a new synchronization. This action is separate from a request to delete data held by the server."
     ]
   ],
   "terms": [
@@ -59,6 +75,14 @@
     [
       "Support and updates",
       "RHAFF SERVICE — barkatunnel@gmail.com. Report incidents without posting secrets publicly. Features and these terms may evolve; mandatory consumer rights remain applicable."
+    ],
+    [
+      "Using PC sharing",
+      "Before starting, connect Barka Tunnel to the VPN and enable the hotspot. Configure the displayed address, port and credentials only on devices you authorize. Keep the password private and stop sharing after use. Proxy settings must also be applied in the PC software that needs them."
+    ],
+    [
+      "Requesting a suspension review",
+      "If access is suspended, contact barkatunnel@gmail.com with the relevant device and the reason for your request. Unblocking suggestions and unblocking the app are independent. Unblocking does not renew an expired subscription or restore access revoked for another reason."
     ]
   ]
 }

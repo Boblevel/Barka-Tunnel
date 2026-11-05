@@ -421,28 +421,34 @@
                 android:paddingBottom="16dp"
                 app:rippleColor="@color/barka_border" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/settings_about"
-                android:textColor="?attr/barkaAccent"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <TextView
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/aboutValue"
-                android:drawableEnd="@drawable/ic_legal_next"
-                android:drawablePadding="12dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/bg_network_selected"
-                android:padding="18dp"
-                android:text="@string/app_name"
+                android:minHeight="76dp"
+                android:layout_marginTop="12dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
+                android:text="@string/settings_about"
+                android:textAllCaps="false"
                 android:textColor="@color/barka_text"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/barka_card"
+                app:cornerRadius="20dp"
+                app:icon="@drawable/tile_ic_about_barka"
+                app:iconGravity="start"
+                app:iconSize="44dp"
+                app:iconPadding="12dp"
+                app:iconTint="@null"
+                app:strokeColor="@color/barka_border"
+                app:strokeWidth="1dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                app:rippleColor="@color/barka_border" />
+
         </LinearLayout>
     </ScrollView>
 

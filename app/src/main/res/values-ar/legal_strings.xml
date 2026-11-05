@@ -13,4 +13,6 @@
     <string name="moderation_retry">التحقق مجددًا</string>
     <string name="moderation_contact">تواصل</string>
     <string name="activation_no_active_time">تم استلام التفعيل، لكن لم يتم تأكيد مدة صالحة. حدّث حالة الوصول أو تواصل مع الدعم.</string>
+    <string name="legal_intro">معلومات عن Barka Tunnel وبياناتك وشروط الخدمة. اختر قسمًا لقراءة الوثيقة كاملة.</string>
+    <string name="legal_updated">آخر تحديث: 05/11/2026</string>
 </resources>

@@ -86,7 +86,9 @@ function moderationButtons(item){
   const blocked=!!item[scope+'_blocked'];const button=document.createElement('button');
   button.type='button';button.className=blocked?'secondary':'danger';button.textContent=(blocked?'DÉBLOQUER ':'BLOQUER ')+label;
   button.onclick=async()=>{
-   const detail=scope==='app'?'Accès à l’application et au VPN. Les droits d’abonnement ne seront pas supprimés.':'Envoi des suggestions uniquement. Le VPN restera utilisable.';
+   const detail=scope==='app'
+    ?(blocked?'Le blocage de l’application sera levé. Les autres restrictions et les dates d’abonnement resteront inchangées.':'Accès à l’application et au VPN. Les droits d’abonnement ne seront pas supprimés.')
+    :'Envoi des suggestions uniquement. Cette action ne modifie ni le blocage de l’application ni les droits VPN.';
    if(!confirm(button.textContent+' pour cet appareil ? '+detail))return;
    button.disabled=true;
    try{await api('/v1/admin/moderation',{method:'PUT',body:JSON.stringify({device_id:item.device_id,scope,blocked:!blocked})});await loadSuggestions(suggestionOffset);await loadModeration(moderationOffset)}

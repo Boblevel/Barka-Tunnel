@@ -38,12 +38,7 @@ class SettingsActivity : AppCompatActivity() {
             .remove("default_port")
             .apply()
 
-        findViewById<TextView>(R.id.aboutValue).text =
-            getString(R.string.settings_about_format, BuildConfig.VERSION_NAME)
-
-        findViewById<TextView>(R.id.aboutValue).apply {
-            isFocusable = true
-            minimumHeight = (48 * resources.displayMetrics.density).toInt()
+        findViewById<MaterialButton>(R.id.aboutValue).apply {
             setOnClickListener { startActivity(Intent(this@SettingsActivity, LegalActivity::class.java)) }
         }
 

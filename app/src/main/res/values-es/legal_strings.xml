@@ -13,4 +13,6 @@
     <string name="moderation_retry">Comprobar de nuevo</string>
     <string name="moderation_contact">Contactar</string>
     <string name="activation_no_active_time">Activación recibida, pero sin tiempo activo confirmado. Actualiza tu acceso o contacta con soporte.</string>
+    <string name="legal_intro">Información sobre Barka Tunnel, tus datos y las condiciones del servicio. Selecciona una sección para leer el documento completo.</string>
+    <string name="legal_updated">Actualizado: 05/11/2026</string>
 </resources>
