@@ -55,7 +55,26 @@ class HttpConnectBridgeTest {
                 assertTrue(client.getInputStream().bufferedReader().readLine().contains("502"))
             }
         } finally { bridge.close() }
-        try { Socket("127.0.0.1", port).close(); fail("Listener still open") } catch (_: java.net.ConnectException) { }
+        // The accept thread can still be leaving accept() when close() returns.
+        // Require a refused connection within a bounded deadline, not on the first probe.
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)
+        var refused = false
+        while (System.nanoTime() < deadline) {
+            try {
+                Socket().use { probe ->
+                    probe.connect(java.net.InetSocketAddress("127.0.0.1", port), 250)
+                }
+            } catch (_: java.net.ConnectException) {
+                refused = true
+                break
+            } catch (_: java.net.SocketTimeoutException) {
+                // A timed-out connection is not proof of release either.
+            } catch (_: java.net.SocketException) {
+                // A reset during shutdown is not proof that the listener is released.
+            }
+            Thread.sleep(10)
+        }
+        assertTrue("Listener still open after shutdown deadline", refused)
     }
 
     @Test fun preservesProxyRejectionAndReportsStatus() {
