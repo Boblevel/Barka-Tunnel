@@ -4,6 +4,15 @@ from test_saspay_resellers_updates import env, client_for
 from test_reseller_purchases import buyer, provider
 
 
+def assert_same_catalog(actual, expected):
+    # The response timestamp is live; every catalog field must remain identical.
+    assert type(actual['server_time']) is int
+    assert actual['server_time'] >= expected['server_time']
+    assert {k: v for k, v in actual.items() if k != 'server_time'} == {
+        k: v for k, v in expected.items() if k != 'server_time'
+    }
+
+
 def set_prices(client, **changes):
     current=client.get('/v1/admin/pricing').json()
     response=client.put('/v1/admin/pricing',json={'revision':current['revision'],'prices':{**current['prices'],**changes}})
@@ -17,17 +26,17 @@ def test_catalog_admin_only_save_and_persistent_seven_prices(env):
         initial=c.get('/v1/pricing');assert initial.headers['cache-control'].startswith('no-store')
         assert len(initial.json()['prices'])==7 and initial.json()['prices']['24h']==300
         saved=set_prices(c, **{'24h':450,'1w':900,'2w':1400,'1m':3000,'reseller_1m':6500,'reseller_2m':12500})
-        assert c.get('/v1/pricing').json()==saved
+        assert_same_catalog(c.get('/v1/pricing').json(), saved)
         assert c.get('/v1/admin/pricing',headers={'X-Admin-Token':'invalid'}).status_code==401
         assert c.put('/v1/admin/pricing',headers={'X-Admin-Token':'invalid'},json={'revision':saved['revision'],'prices':saved['prices']}).status_code==401
         assert c.put('/v1/admin/pricing',json={'revision':0,'prices':saved['prices']}).status_code==409
         db.init_db()
         from app import pricing
         importlib.reload(pricing)
-        assert pricing.get_catalog()==saved
+        assert_same_catalog(pricing.get_catalog(), saved)
         plans={p['id']:p for p in c.get('/v1/plans').json()}
         assert plans['24h']['amount']==450 and plans['1m']['duration_seconds']==30*86400
-        assert c.get('/v1/pricing').json()==saved
+        assert_same_catalog(c.get('/v1/pricing').json(), saved)
 
 
 @pytest.mark.parametrize('invalid',[0,-1,1.5,True,'500',10_000_001,None])
@@ -37,7 +46,7 @@ def test_invalid_price_cannot_partially_change_catalog(env,invalid):
         before=c.get('/v1/pricing').json()
         values={**before['prices'],'24h':invalid,'1m':9999}
         assert c.put('/v1/admin/pricing',json={'revision':0,'prices':values}).status_code==422
-        assert c.get('/v1/pricing').json()==before
+        assert_same_catalog(c.get('/v1/pricing').json(), before)
 
 
 @pytest.mark.parametrize('key',['missing','extra'])
@@ -144,3 +153,10 @@ def test_three_month_admin_code_grants_ninety_days(env):
         state=svc.access_state('three-month-admin-device')
         end=int(datetime.fromisoformat(state['expires_at'].replace('Z','+00:00')).timestamp())
         assert 90*86400 <= end-before <= 90*86400+2
+
+
+def test_catalog_comparison_allows_clock_tick_but_rejects_price_change():
+    before = {'prices': {'24h': 300}, 'revision': 0, 'server_time': 100}
+    assert_same_catalog({**before, 'server_time': 101}, before)
+    with pytest.raises(AssertionError):
+        assert_same_catalog({**before, 'prices': {'24h': 999}, 'server_time': 101}, before)
