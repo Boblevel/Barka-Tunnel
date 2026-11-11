@@ -35,4 +35,24 @@ class JournalDiagnosticTest {
         assertFalse(binder.safeDiagnostic("Diagnostic VLESS • config VLESS • WS=private.example/secret").contains("private"))
         assertTrue(binder.safeDiagnostic("Diagnostic VLESS • CONNECT • statut 403").contains("403"))
     }
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Test fun longDiagnosticsAreSelectableAndNotLimitedToTwoLines() {
+        val context = android.view.ContextThemeWrapper(RuntimeEnvironment.getApplication(), com.barkatunnel.app.R.style.Theme_BarkaTunnel)
+        AppLogStore.clear(context)
+        val list = LinearLayout(context)
+        val detail = "Diagnostic VLESS • route • " + "segment ".repeat(35)
+        AppLogStore.add(context, detail)
+        JournalUiBinder(context, list).refresh()
+        val text = list.getChildAt(0).findViewById<android.widget.TextView>(com.barkatunnel.app.R.id.eventMessage)
+        assertEquals(detail.trim(), text.text.toString())
+        assertEquals(Int.MAX_VALUE, text.maxLines)
+        assertTrue(text.isTextSelectable)
+        list.measure(android.view.View.MeasureSpec.makeMeasureSpec(320, android.view.View.MeasureSpec.EXACTLY),
+            android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED))
+        list.layout(0, 0, 320, list.measuredHeight)
+        assertTrue(text.layout.lineCount > 2)
+        assertTrue(text.height - text.compoundPaddingTop - text.compoundPaddingBottom >= text.layout.height)
+        AppLogStore.clear(context)
+    }
+
 }

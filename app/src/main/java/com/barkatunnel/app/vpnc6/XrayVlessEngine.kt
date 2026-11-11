@@ -24,11 +24,18 @@ class XrayVlessEngine(
         if (isCancelled()) throw InterruptedException("Connexion annulée.")
         val outboundAddress = config.ip?.takeIf { it.isNotBlank() }
             ?: config.address
-        AppLogStore.add(
-            context,
-            "Diagnostic VLESS • config VLESS • serveur=$outboundAddress:${config.port} • " +
-                "WS=${config.host}${config.path} • SNI=${config.sni} • sécurité=${config.security}."
-        )
+        val diagnosticProfile = listOf(outboundAddress, config.port.toString(), config.host,
+            config.path, config.sni, config.security, config.network, config.fingerprint.orEmpty(),
+            config.proxyHost.orEmpty(), config.proxyPort.toString()).joinToString("\n")
+        listOf(
+            "session=$socksPort • profil réseau=${ConnectionDiagnostics.fingerprint(diagnosticProfile)} • version=${com.barkatunnel.app.BuildConfig.VERSION_NAME}",
+            "destination=${ConnectionDiagnostics.host(outboundAddress)}:${config.port} • IP explicite=${!config.ip.isNullOrBlank()}",
+            "proxy=${ConnectionDiagnostics.host(config.proxyHost.orEmpty())}:${config.proxyPort ?: 0} • en-têtes=${config.proxyHeaders.size}",
+            "WS Host=${ConnectionDiagnostics.host(config.host)}",
+            "WS chemin • longueur=${config.path.length} • empreinte=${ConnectionDiagnostics.fingerprint(config.path)} • paramètres=${'?' in config.path}",
+            "SNI=${ConnectionDiagnostics.host(config.sni)} • TLS=${config.security == "tls"} • WS=${config.network == "ws"}",
+            "empreinte TLS=${ConnectionDiagnostics.host(config.fingerprint.orEmpty())} • pont CONNECT=${!config.proxyHost.isNullOrBlank() && config.proxyHeaders.isNotEmpty()}"
+        ).forEach { AppLogStore.add(context, "Diagnostic VLESS • $it.") }
 
         val xray = NativeCoreLocator.xray(context)
         if (!xray.canExecute() && !xray.setExecutable(true, false)) {
@@ -94,6 +101,18 @@ class XrayVlessEngine(
     override fun stop() {
         connectBridge?.close()
         connectBridge = null
+        if (process != null) {
+            val output = runCatching { logFile?.let { file -> java.io.RandomAccessFile(file, "r").use { input ->
+                val count = minOf(input.length(), 65_536L).toInt()
+                input.seek(input.length() - count)
+                val bytes = ByteArray(count)
+                input.readFully(bytes)
+                bytes.toString(Charsets.UTF_8)
+            } }.orEmpty() }.getOrDefault("")
+            ConnectionDiagnostics.nativeSummary(output).forEach {
+                AppLogStore.add(context, "Diagnostic VLESS • bilan moteur • $it.")
+            }
+        }
         ProcessCompat.stop(process)
         process = null
         configFile?.delete()

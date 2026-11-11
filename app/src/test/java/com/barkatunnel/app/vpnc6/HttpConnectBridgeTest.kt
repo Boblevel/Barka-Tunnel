@@ -98,6 +98,8 @@ class HttpConnectBridgeTest {
                         client.getOutputStream().write("CONNECT target.invalid:443 HTTP/1.1\r\n\r\n".toByteArray())
                         assertEquals("HTTP/1.1 403 Forbidden", client.getInputStream().bufferedReader().readLine())
                         assertTrue(diagnostic.poll(5, TimeUnit.SECONDS).orEmpty().startsWith("requête CONNECT •"))
+                        assertTrue(diagnostic.poll(5, TimeUnit.SECONDS).orEmpty().startsWith("route •"))
+                        assertTrue(diagnostic.poll(5, TimeUnit.SECONDS).orEmpty().startsWith("réponse proxy •"))
                         val rejection = diagnostic.poll(5, TimeUnit.SECONDS).orEmpty()
                         assertTrue(rejection.startsWith("proxy HTTP : statut 403 • délai="))
                         assertTrue(rejection.endsWith("Retry-After=absent"))
@@ -140,4 +142,39 @@ class HttpConnectBridgeTest {
                 "HTTP/1.1 429 Error\r\nRetry-After: secret-value\r\n\r\n".toByteArray()))
         }
     }
+    @Test fun reports429AsProxyRejectionBeforeTunnelAndSummarizesOnce() {
+        ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1")).use { upstream ->
+            upstream.soTimeout = 5000
+            val executor = Executors.newSingleThreadExecutor()
+            val messages = java.util.concurrent.CopyOnWriteArrayList<String>()
+            val response = "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 12\r\nSet-Cookie: private\r\nContent-Length: 0\r\n\r\n"
+            val future = executor.submit {
+                upstream.accept().use { remote ->
+                    remote.soTimeout = 5000
+                    val reader = remote.getInputStream().bufferedReader()
+                    while (reader.readLine()?.isNotEmpty() == true) { }
+                    remote.getOutputStream().write(response.toByteArray())
+                }
+            }
+            val bridge = HttpConnectBridge("127.0.0.1", upstream.localPort, "target.invalid", 443,
+                linkedMapOf("Connection" to "keep-alive", "Authorization" to "private")) { messages.add(it) }
+            try {
+                bridge.start()
+                Socket("127.0.0.1", bridge.port).use { client ->
+                    client.soTimeout = 5000
+                    client.getOutputStream().write("CONNECT target.invalid:443 HTTP/1.1\r\n\r\n".toByteArray())
+                    assertEquals(response, client.getInputStream().readBytes().toString(Charsets.ISO_8859_1))
+                }
+                future.get(5, TimeUnit.SECONDS)
+                bridge.close(); bridge.close()
+                assertEquals(1, messages.count { it.startsWith("bilan •") })
+                assertTrue(messages.any { it.contains("acceptées=0 • refusées=1 • HTTP429=1") })
+                assertTrue(messages.any { it.contains("avant TLS/WS/VLESS") })
+                assertTrue(messages.any { it.contains("Retry-After=12 s") })
+                assertTrue(messages.any { it.contains("en-tête 2/2 • Authorization") })
+                assertFalse(messages.joinToString().contains("private"))
+            } finally { bridge.close(); executor.shutdownNow() }
+        }
+    }
+
 }

@@ -59,9 +59,9 @@ class LegalActivity : AppCompatActivity() {
                 addView(body)
             }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         }
-        card(text(getString(R.string.settings_about_format, BuildConfig.VERSION_NAME), true),
+        if (policy != null) card(text(getString(R.string.settings_about_format, BuildConfig.VERSION_NAME), true),
             text("RHAFF SERVICE\nbarkatunnel@gmail.com"),
-            text(getString(if (policy == null) R.string.legal_intro else R.string.legal_updated)))
+            text(getString(R.string.legal_updated)))
         if (policy == null) {
             val icons = mapOf("cookies" to R.drawable.tile_ic_cookies_barka,
                 "privacy" to R.drawable.tile_ic_privacy_barka, "terms" to R.drawable.tile_ic_terms_barka)

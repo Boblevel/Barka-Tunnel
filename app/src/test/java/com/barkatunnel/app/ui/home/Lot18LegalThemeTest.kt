@@ -55,8 +55,9 @@ class Lot18LegalThemeTest {
                 if (view is ViewGroup) for (i in 0 until view.childCount) collect(view.getChildAt(i))
             }
             collect(activity.window.decorView)
-            assertTrue(texts.any { it.contains("RHAFF SERVICE") })
-            assertTrue(texts.any { it.contains("barkatunnel@gmail.com") })
+            assertEquals(policy != null, texts.any { it.contains("RHAFF SERVICE") })
+            assertEquals(policy != null, texts.any { it.contains("barkatunnel@gmail.com") })
+            if (policy == null) assertEquals(3, activity.findViewById<ViewGroup>(R.id.legalContent).childCount)
             if (policy == null) assertTrue(texts.contains(activity.getString(R.string.legal_privacy)))
             else assertTrue(texts.size >= 8)
             controller.pause().stop().destroy()

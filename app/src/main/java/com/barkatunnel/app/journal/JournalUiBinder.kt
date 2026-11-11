@@ -135,7 +135,13 @@ class JournalUiBinder(
             com.barkatunnel.app.ui.BrandTheme.color(context, presentation.colorRes)
         )
         row.findViewById<TextView>(R.id.eventTitle).text = presentation.title
-        row.findViewById<TextView>(R.id.eventMessage).text = presentation.message
+        row.findViewById<TextView>(R.id.eventMessage).apply {
+            text = presentation.message
+            if (event.type == EventType.DIAGNOSTIC) {
+                maxLines = Int.MAX_VALUE
+                setTextIsSelectable(true)
+            }
+        }
         row.findViewById<TextView>(R.id.eventTime).text = event.clock
         journalList.addView(row)
     }

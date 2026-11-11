@@ -11,6 +11,7 @@ import java.util.Collections
 import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Loopback HTTP proxy preserving configured CONNECT headers without implicit additions. */
 internal class HttpConnectBridge(
@@ -26,6 +27,11 @@ internal class HttpConnectBridge(
     private val workers = Executors.newFixedThreadPool(128)
     private val permits = Semaphore(64)
     private val requestReported = AtomicBoolean(false)
+    private val attempts = AtomicInteger()
+    private val accepted = AtomicInteger()
+    private val limited = AtomicInteger()
+    private val rejected = AtomicInteger()
+    private val summaryReported = AtomicBoolean(false)
     @Volatile private var closed = false
     val port: Int get() = listener.localPort
 
@@ -52,6 +58,7 @@ internal class HttpConnectBridge(
     private fun relay(client: Socket) {
         val remote = Socket()
         sockets.add(remote)
+        val requestId = attempts.incrementAndGet()
         var stage = "requête locale"
         var responseSent = false
         try {
@@ -62,11 +69,18 @@ internal class HttpConnectBridge(
             stage = "connexion au proxy"
             val startedAt = System.nanoTime()
             remote.connect(InetSocketAddress(proxyHost, proxyPort), 15_000)
+            val tcpMs = (System.nanoTime() - startedAt) / 1_000_000
             check(!closed)
             remote.soTimeout = 30_000
             val payload = connectRequest()
             if (requestReported.compareAndSet(false, true)) {
-                runCatching { reportFailure(requestDiagnostic(payload)) }
+                runCatching {
+                    reportFailure(requestDiagnostic(payload))
+                    reportFailure("route • proxy=${ConnectionDiagnostics.host(proxyHost)}:$proxyPort • cible=${ConnectionDiagnostics.host(targetHost)}:$targetPort")
+                    headers.entries.forEachIndexed { index, entry ->
+                        reportFailure("en-tête ${index + 1}/${headers.size} • ${ConnectionDiagnostics.header(entry.key, entry.value)}")
+                    }
+                }
             }
             remote.getOutputStream().write(payload)
             remote.getOutputStream().flush()
@@ -78,11 +92,21 @@ internal class HttpConnectBridge(
             client.getOutputStream().flush()
             responseSent = true
             if (status[1] != "200") {
+                rejected.incrementAndGet()
+                if (status[1] == "429") limited.incrementAndGet()
                 if (!closed) runCatching {
-                    reportFailure("proxy HTTP : statut ${status[1]} • délai=${(System.nanoTime() - startedAt) / 1_000_000} ms • ${responseDiagnostic(response)}")
+                    if (requestId == 1) {
+                        val fields = response.toString(Charsets.ISO_8859_1).split("\r\n").drop(1)
+                        val known = listOf("Server", "Via", "Retry-After", "Content-Type", "Content-Length", "Proxy-Authenticate")
+                            .filter { name -> fields.any { it.substringBefore(':').equals(name, true) } }
+                        reportFailure("réponse proxy • octets en-tête=${response.size} • champs présents=${known.joinToString(",").ifEmpty { "aucun champ reconnu" }} • contenu/valeurs masqués")
+                    }
+                    if (requestId <= 12) reportFailure("proxy HTTP : statut ${status[1]} • délai=${(System.nanoTime() - startedAt) / 1_000_000} ms • requête=$requestId • TCP=${tcpMs} ms • ${responseDiagnostic(response)}")
                 }
                 return
             }
+            accepted.incrementAndGet()
+            if (requestId <= 12) runCatching { reportFailure("requête=$requestId • CONNECT 200 accepté • TCP=${tcpMs} ms • total=${(System.nanoTime() - startedAt) / 1_000_000} ms • TLS/WS pas encore confirmés") }
             stage = "relais du tunnel"
             client.soTimeout = 0; remote.soTimeout = 0
             val upload = workers.submit {
@@ -92,7 +116,7 @@ internal class HttpConnectBridge(
             try { remote.getInputStream().copyTo(client.getOutputStream()) }
             finally { runCatching { client.close() }; runCatching { remote.close() }; upload.cancel(true) }
         } catch (error: Exception) {
-            if (!closed) runCatching { reportFailure("$stage : ${error.javaClass.simpleName}") }
+            if (!closed && requestId <= 12) runCatching { reportFailure("requête=$requestId • $stage : ${error.javaClass.simpleName}") }
             if (!responseSent) runCatching { client.getOutputStream().write("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray()) }
         } finally { sockets.remove(remote); runCatching { remote.close() } }
     }
@@ -140,6 +164,10 @@ internal class HttpConnectBridge(
 
     override fun close() {
         closed = true
+        if (summaryReported.compareAndSet(false, true)) runCatching {
+            reportFailure("bilan • requêtes=${attempts.get()} • acceptées=${accepted.get()} • refusées=${rejected.get()} • HTTP429=${limited.get()}")
+            if (limited.get() > 0 && accepted.get() == 0) reportFailure("blocage observé : proxy HTTP 429 avant TLS/WS/VLESS • motif interne non déterminé")
+        }
         runCatching { listener.close() }
         synchronized(sockets) { sockets.toList() }.forEach { runCatching { it.close() } }
         workers.shutdownNow()
