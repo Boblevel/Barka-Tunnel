@@ -167,6 +167,7 @@ class AdminCodeListItem(BaseModel):
 
 
 class AdminResellerCreateRequest(BaseModel):
+    quota_limit: Literal[30, 70] = 30
     username: str = Field(min_length=1, max_length=200)
     expires_at: datetime
 
@@ -201,10 +202,12 @@ class ResellerLoginRequest(BaseModel):
 
 
 class ResellerGenerateSubscriptionRequest(BaseModel):
+    request_id: str | None = Field(default=None, min_length=16, max_length=64, pattern=r"^[a-zA-Z0-9-]+$")
     plan_id: Literal["24h", "1w", "2w", "1m"]
 
 
 class ResellerGenerateTestRequest(BaseModel):
+    request_id: str | None = Field(default=None, min_length=16, max_length=64, pattern=r"^[a-zA-Z0-9-]+$")
     model_config = {"extra": "forbid"}
     duration_hours: int = Field(default=2, strict=True)
 

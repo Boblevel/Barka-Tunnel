@@ -68,7 +68,7 @@ class JournalUiBinder(
 
         val type = when {
             value.startsWith("diagnostic vpn") ||
-                value.startsWith("diagnostic vless") -> EventType.DIAGNOSTIC
+                value.startsWith("diagnostic vless") -> return null
             value.startsWith("diagnostic moov") ||
                 value.startsWith("diagnostic orange") ||
                 value.startsWith("diagnostic telecel") -> return null

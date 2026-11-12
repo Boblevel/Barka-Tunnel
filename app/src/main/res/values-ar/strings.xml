@@ -302,7 +302,7 @@
     <string name="vpn_share_title">مشاركة VPN مع الكمبيوتر</string>
     <string name="vpn_speed_title">اختبار سرعة VPN</string>
     <string name="vpn_share_help">صل VPN ثم صل الكمبيوتر بنقطة اتصال الهاتف. ابدأ المشاركة واضبط وكيل الكمبيوتر بالعنوان والمنفذ وبيانات الدخول المعروضة. تستخدم VPN فقط التطبيقات التي تعتمد هذا الوكيل (TCP دون UDP). راجع الدليل للتفاصيل.</string>
-    <string name="vpn_speed_help">قياس مباشر عبر VPN: زمن استجابة HTTPS والتنزيل والرفع إلى Cloudflare. يستهلك نحو 2.5 ميغابايت كحد أقصى. تعتمد النتيجة على الشبكة والخادم. يمكنك إيقافه في أي وقت.</string>
+    <string name="vpn_speed_help">اختبر اتصال Wi-Fi أو بيانات الهاتف أو VPN. يستهلك الاختبار نحو 3 ميغابايت من البيانات.</string>
     <string name="tools_ready">جاهز</string>
     <string name="tools_start">بدء</string>
     <string name="tools_stop">إيقاف</string>
@@ -320,8 +320,8 @@
     <string name="price_offer_week">أسبوع — %1$s XOF</string>
     <string name="price_offer_two_weeks">أسبوعان — %1$s XOF</string>
     <string name="price_offer_month">شهر — %1$s XOF</string>
-    <string name="price_reseller_month">شهر — %1$s XOF\nقابل للتجديد</string>
-    <string name="price_reseller_two_months">شهران — %1$s XOF\nقابل للتجديد</string>
+    <string name="price_reseller_month">شهر واحد — %1$s XOF\n30 رمزًا • المدة حسب الاختيار</string>
+    <string name="price_reseller_two_months">شهر واحد — %1$s XOF\n70 رمزًا • المدة حسب الاختيار</string>
     <string name="consumption_title">استهلاكي</string>
     <string name="settings_rate_app">تقييم التطبيق</string>
     <string name="browser_unavailable">لا يوجد متصفح متاح على هذا الهاتف.</string>
@@ -344,8 +344,8 @@
     <string name="access_unlimited">غير محدود</string>
     <string name="reseller_title">أن تصبح موزعًا</string>
     <string name="reseller_choose">اختر عرض الموزع</string>
-    <string name="reseller_month">شهر — 5 000 XOF\nقابل للتجديد</string>
-    <string name="reseller_two_months">شهران — 10 000 XOF\nقابل للتجديد</string>
+    <string name="reseller_month">شهر واحد — 5 000 XOF\n30 رمزًا • المدة حسب الاختيار</string>
+    <string name="reseller_two_months">شهر واحد — 10 000 XOF\n70 رمزًا • المدة حسب الاختيار</string>
     <string name="reseller_help">ادفع قيمة العرض للحصول على حساب موزع Barka Tunnel.</string>
     <string name="reseller_after_payment">تظهر بيانات الدخول هنا تلقائيًا بعد تأكيد الدفع.</string>
     <string name="reseller_verify">التحقق من الدفع</string>
@@ -396,4 +396,5 @@
     <string name="guide_10_text">بدء القياس\nصل VPN وافتح الإعدادات → اختبار سرعة VPN واضغط بدء. راقب المراحل المتحركة.\n\nالنتائج\nيُعرض زمن استجابة HTTPS بالمللي ثانية والتنزيل والرفع بالميغابت في الثانية. يمر الاختبار عبر VPN ويستخدم نحو 2.5 ميغابايت كحد أقصى. تعتمد النتيجة على الشبكة والخادم والحركة المتزامنة ولا تضمن سرعة ثابتة.\n\nتوفير البيانات\nتجنب تكرار الاختبار دون حاجة. يلغي إيقاف القياس. قطع VPN يوقف الاختبار دون الانتقال إلى اتصال مباشر.</string>
     <string name="guide_11_text">الشراء أو التجديد\nافتح أن تصبح موزعًا واختر المدة وتحقق من السعر. تعرض العروض النشطة عدًا تنازليًا. أكمل الدفع وعد للتطبيق لاستلام بيانات الحساب.\n\nفتح اللوحة\nاستخدم الرابط وبيانات الدخول المعروضة واحفظها بأمان. يعتمد الوصول على صلاحية الحساب؛ تواصل مع الدعم عند التجميد أو انتهاء الصلاحية.\n\nإنشاء الرموز\nاختر اشتراكًا أو تجربة ساعتين أو 3 أو 6 ساعات. تحقق من المدة قبل إنشاء الرمز. يفعّل العميل الرمز المستلم في رمز التفعيل؛ هذا المسار مختلف عن التفعيل التلقائي للمشتريات داخل التطبيق.</string>
     <string name="guide_12_text">التحقق من الإصدار\nاستخدم البحث عن التحديثات في الإعدادات أو الدعوة داخل التطبيق.\n\nالتنزيل\nعند توفر تنزيل داخلي يظهر التقدم في الرئيسية. بعد الانقطاع عد للاستئناف إذا سمح الخادم. لا تمسح بيانات التطبيق أثناء العملية.\n\nالتثبيت\nاتبع تأكيد التثبيت في Android. إن طُلب، اسمح لـ Barka Tunnel بتثبيت التحديث ثم عد. يتحكم Android بهذا الإذن.\n\nبعد التثبيت\nافتح Barka Tunnel وتحقق من الإصدار في حول التطبيق واترك المزامنة تكتمل. إذا رفض Android إصدارًا أقدم، استشر الدعم قبل إزالة التطبيق لتجنب فقدان البيانات المحلية.</string>
+    <string name="settings_whatsapp_channel">قناة واتساب الرسمية</string>
 </resources>

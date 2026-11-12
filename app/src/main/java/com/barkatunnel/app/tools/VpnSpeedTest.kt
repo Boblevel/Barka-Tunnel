@@ -12,11 +12,11 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Bounded measurements through VPN SOCKS. No direct route or automatic retry. */
-class VpnSpeedTest(port: Int, private val vpnAlive: () -> Boolean) : AutoCloseable {
+/** Bounded measurements on the selected connection; never switch routes during a test. */
+class VpnSpeedTest(port: Int?, private val vpnAlive: () -> Boolean) : AutoCloseable {
     private val cancelled = AtomicBoolean(false)
     private val client = OkHttpClient.Builder()
-        .proxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", port)))
+        .proxy(if (port != null) Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", port)) else Proxy.NO_PROXY)
         .connectTimeout(20, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS).callTimeout(90, TimeUnit.SECONDS)
         .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).build()

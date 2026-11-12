@@ -286,7 +286,7 @@
                 android:layout_height="@dimen/home_power_size"
                 android:layout_gravity="center_horizontal"
                 android:background="@drawable/bg_power_final"
-                android:elevation="5dp"
+                android:elevation="0dp"
                 android:gravity="center"
                 android:text=""
                 android:textColor="?attr/barkaAccent"

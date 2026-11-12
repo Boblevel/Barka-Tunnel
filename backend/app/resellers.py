@@ -15,6 +15,7 @@ from .admin_ops import delete_activation_code, list_activation_codes
 from .config import settings
 from .db import connect, transaction
 from .plans import get_plan
+from . import reseller_quotas
 from .security import activation_code_for_source, code_hash
 from .services import now_ts, iso
 from .reseller_audit import record_event
@@ -155,7 +156,9 @@ def public_reseller_account(row) -> dict:
     return _public_account(row)
 
 
-def create_reseller(username: str, expires_at: datetime) -> dict:
+def create_reseller(username: str, expires_at: datetime, quota_limit: int = 30) -> dict:
+    if type(quota_limit) is not int or quota_limit not in (30, 70):
+        raise ValueError("Choisissez 30 ou 70 codes par mois.")
     normalized_username = username.strip().lower()
     expiry = _expiry_timestamp(expires_at)
     nonce = secrets.token_hex(32)
@@ -187,6 +190,8 @@ def create_reseller(username: str, expires_at: datetime) -> dict:
                 "SELECT * FROM reseller_accounts WHERE id=?",
                 (cursor.lastrowid,),
             ).fetchone()
+            period = reseller_quotas.current_period(cx, row, now)
+            cx.execute("UPDATE reseller_quota_periods SET code_limit=? WHERE id=?", (quota_limit, period['id']))
     except Exception as exc:
         if "UNIQUE constraint failed" in str(exc):
             raise ValueError("Ce nom d'utilisateur existe déjà.") from exc
@@ -437,7 +442,7 @@ def logout_reseller(authorization: str | None) -> None:
         )
 
 
-def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int) -> str:
+def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int, request_id: str | None = None) -> str:
     source_ref = f"RESELLER:{reseller_id}:{plan_id}:{uuid.uuid4().hex}"
     code = activation_code_for_source(source_ref)
     now = now_ts()
@@ -445,7 +450,7 @@ def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int) 
         now = now_ts()
         account = cx.execute(
             """
-            SELECT id FROM reseller_accounts
+            SELECT * FROM reseller_accounts
             WHERE id=? AND deleted_at IS NULL AND status='active' AND expires_at>?
             """,
             (reseller_id, now),
@@ -454,6 +459,19 @@ def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int) 
             if code_suspended(cx, reseller_id, now):
                 raise PermissionError(RENEWAL_MESSAGE)
             raise PermissionError("Sous-panel expiré, gelé ou supprimé.")
+        if request_id:
+            previous = cx.execute("SELECT plan_id,source_ref FROM reseller_generation_requests WHERE reseller_id=? AND request_id=?", (reseller_id, request_id)).fetchone()
+            if previous:
+                if previous['plan_id'] != plan_id:
+                    raise ValueError("Cette demande correspond déjà à une autre durée.")
+                return activation_code_for_source(previous['source_ref'])
+        if not plan_id.startswith("test_"):
+            period = reseller_quotas.current_period(cx, account, now)
+            if period is None or period['used'] >= period['code_limit']:
+                raise PermissionError("Quota mensuel atteint. Les codes de test restent disponibles.")
+            cx.execute("UPDATE reseller_quota_periods SET used=used+1 WHERE id=?", (period['id'],))
+        if request_id:
+            cx.execute("INSERT INTO reseller_generation_requests VALUES(?,?,?,?)", (reseller_id, request_id, plan_id, source_ref))
         cx.execute(
             """
             INSERT INTO activation_codes(
@@ -474,7 +492,7 @@ def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int) 
     return code
 
 
-def generate_reseller_subscription(reseller_id: int, plan_id: str) -> str:
+def generate_reseller_subscription(reseller_id: int, plan_id: str, request_id: str | None = None) -> str:
     plan = get_plan(plan_id)
     if not plan:
         raise ValueError("Offre inconnue.")
@@ -482,13 +500,14 @@ def generate_reseller_subscription(reseller_id: int, plan_id: str) -> str:
         reseller_id,
         plan_id,
         int(plan["duration_seconds"]),
+        request_id,
     )
 
 
-def generate_reseller_test(reseller_id: int, duration_hours: int = 2) -> str:
+def generate_reseller_test(reseller_id: int, duration_hours: int = 2, request_id: str | None = None) -> str:
     if type(duration_hours) is not int or duration_hours not in (2, 3, 6):
         raise ValueError("Durée de test autorisée : 2, 3 ou 6 heures.")
-    return _issue_reseller_code(reseller_id, f"test_{duration_hours}h", duration_hours * 3600)
+    return _issue_reseller_code(reseller_id, f"test_{duration_hours}h", duration_hours * 3600, request_id)
 
 
 def list_reseller_codes(reseller_id: int, limit: int = 200, offset: int = 0) -> list[dict]:
@@ -506,6 +525,14 @@ def reset_reseller_stats(reseller_id: int) -> str:
             cx.execute("INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", (f"reseller_stats_{reseller_id}_{suffix}", str(value), now))
         record_event(cx, reseller_id, "stats_reset")
     return iso(now)
+
+
+def reseller_quota(reseller_id: int) -> dict:
+    with transaction() as cx:
+        account = cx.execute("SELECT * FROM reseller_accounts WHERE id=?", (reseller_id,)).fetchone()
+        if not account:
+            raise ValueError("Sous-panel introuvable.")
+        return reseller_quotas.summary(cx, account, now_ts())
 
 
 def reseller_dashboard_stats(reseller_id: int) -> dict:

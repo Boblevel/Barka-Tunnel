@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import Field
 from .models import DeviceRequest
 from .db import connect, transaction
-from . import services, saspay, resellers
+from . import services, saspay, resellers, reseller_quotas
 from .reseller_audit import record_event
 from .reseller_access import settle_reseller_pauses
 from .pricing import get_catalog, check_expected_amount
@@ -23,6 +23,7 @@ class OwnerRequest(DeviceRequest):
 class StartRequest(OwnerRequest):
     expected_amount: int | None = Field(default=None, strict=True, ge=1, le=10_000_000)
     months: Literal[1, 2]
+    quota_limit: Literal[30, 70] | None = None
     request_id: str = Field(min_length=32, max_length=64, pattern=r'^[a-zA-Z0-9-]+$')
 
 class StatusRequest(OwnerRequest):
@@ -62,6 +63,7 @@ def fulfill(cx, payment):
     if order['fulfilled_at'] is not None:
         return
     now = services.now_ts()
+    period_start = now
     target = order['reseller_id']
     if target is None:
         bound = cx.execute('SELECT reseller_id FROM reseller_purchase_owners WHERE owner_hash=?', (order['owner_hash'],)).fetchone()
@@ -72,6 +74,8 @@ def fulfill(cx, payment):
             # Preserve the paid receipt for support; never recreate an admin-deleted panel.
             cx.execute("UPDATE reseller_purchases SET fulfillment_error='Sous-panel supprimé. Contactez le support avec la référence du paiement.' WHERE reference=?", (payment['reference'],))
             return
+        reseller_quotas.current_period(cx, account, now)
+        period_start = max(now, int(account['expires_at']))
         settle_reseller_pauses(cx, target, now)
         expiry = add_months(max(now, account['expires_at']), order['months'])
         cx.execute('UPDATE reseller_accounts SET expires_at=?, updated_at=? WHERE id=?', (expiry, now, target))
@@ -86,6 +90,8 @@ def fulfill(cx, payment):
                               VALUES(?,?,?,'active',?,?,?,?)''',
                             (username, resellers._encode(resellers._password_digest(password,salt)), resellers._encode(salt), add_months(now,order['months']), now,now,nonce)).lastrowid
         record_event(cx,target,'created',detail='Achat dans l’application')
+    if order['quota_limit'] is not None:
+        reseller_quotas.grant_month(cx, target, period_start, add_months(period_start, 1), int(order['quota_limit']))
     cx.execute('INSERT OR IGNORE INTO reseller_purchase_owners(owner_hash,reseller_id) VALUES(?,?)',(order['owner_hash'],target))
     cx.execute('UPDATE reseller_purchases SET reseller_id=?,fulfilled_at=?,fulfillment_error=NULL WHERE reference=?',(target,now,payment['reference']))
 
@@ -120,6 +126,12 @@ def restore(body: RestoreRequest, response: Response):
         cx.execute('INSERT OR IGNORE INTO reseller_purchase_owners VALUES(?,?)',(owner,row['id']))
     return {'account':account_for_owner(owner)}
 
+@router.post('/start-monthly')
+async def start_monthly(body: StartRequest, response: Response):
+    if body.quota_limit is None:
+        raise HTTPException(422, 'Choisissez une offre de 30 ou 70 codes par mois.')
+    return await start(body, response)
+
 @router.post('/start')
 async def start(body: StartRequest, response: Response):
     response.headers['Cache-Control']='no-store'
@@ -141,15 +153,17 @@ async def start(body: StartRequest, response: Response):
                 bound = None
             if bound and bound['status']!='active':
                 raise HTTPException(403,'Sous-panel désactivé par l’administration. Contactez le support.')
-            amount = get_catalog(cx)['prices']['reseller_'+str(body.months)+'m']
+            offer = (1 if body.quota_limit == 30 else 2) if body.quota_limit is not None else body.months
+            duration_months = 1 if body.quota_limit is not None else body.months
+            amount = get_catalog(cx)['prices']['reseller_'+str(offer)+'m']
             check_expected_amount(amount, body.expected_amount)
             now=services.now_ts();reference='BTR-'+uuid.uuid4().hex
-            cx.execute("INSERT INTO payments(reference,device_id,plan_id,amount,currency,status,created_at,updated_at) VALUES(?,?,?,?,'XOF','creating',?,?)",(reference,body.device_id,'reseller_'+str(body.months)+'m',amount,now,now))
-            cx.execute('INSERT INTO reseller_purchases(reference,owner_hash,request_id,months,reseller_id) VALUES(?,?,?,?,?)',(reference,owner,body.request_id,body.months,bound['id'] if bound else None))
+            cx.execute("INSERT INTO payments(reference,device_id,plan_id,amount,currency,status,created_at,updated_at) VALUES(?,?,?,?,'XOF','creating',?,?)",(reference,body.device_id,'reseller_'+str(offer)+'m',amount,now,now))
+            cx.execute('INSERT INTO reseller_purchases(reference,owner_hash,request_id,months,reseller_id,quota_limit) VALUES(?,?,?,?,?,?)',(reference,owner,body.request_id,duration_months,bound['id'] if bound else None,body.quota_limit))
             created=True
     if created:
         try:
-            provider=await saspay.create_payment(amount=amount,currency='XOF',description=f'Barka Tunnel — Sous-panel {body.months} mois',external_reference=reference)
+            provider=await saspay.create_payment(amount=amount,currency='XOF',description=f'Barka Tunnel — Sous-panel {duration_months} mois',external_reference=reference)
             from urllib.parse import urlsplit
             url=str(provider['checkout_url']); parsed=urlsplit(url)
             if parsed.scheme!='https' or not parsed.hostname:raise saspay.SasPayError('Lien de paiement invalide')

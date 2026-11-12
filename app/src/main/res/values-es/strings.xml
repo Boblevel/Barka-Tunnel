@@ -302,7 +302,7 @@
     <string name="vpn_share_title">Compartir VPN con PC</string>
     <string name="vpn_speed_title">Probar velocidad del VPN</string>
     <string name="vpn_share_help">Conecta el VPN y el PC al punto de acceso del teléfono. Inicia la función y configura el proxy en el PC con la dirección, puerto y credenciales mostrados. Solo las aplicaciones que usan ese proxy pasan por el VPN (TCP, sin UDP). Consulta la guía para más detalles.</string>
-    <string name="vpn_speed_help">Medición en directo mediante el VPN: latencia HTTPS, descarga y subida a Cloudflare. Usa hasta unos 2,5 MB. El resultado depende de la red y el servidor. Puedes detenerlo en cualquier momento.</string>
+    <string name="vpn_speed_help">Prueba tu conexión Wi-Fi, datos móviles o VPN. La prueba utiliza aproximadamente 3 MB de datos.</string>
     <string name="tools_ready">Listo</string>
     <string name="tools_start">Iniciar</string>
     <string name="tools_stop">Detener</string>
@@ -320,8 +320,8 @@
     <string name="price_offer_week">1 SEMANA — %1$s XOF</string>
     <string name="price_offer_two_weeks">2 SEMANAS — %1$s XOF</string>
     <string name="price_offer_month">1 MES — %1$s XOF</string>
-    <string name="price_reseller_month">1 MES — %1$s XOF\nRenovable</string>
-    <string name="price_reseller_two_months">2 MESES — %1$s XOF\nRenovable</string>
+    <string name="price_reseller_month">1 MES — %1$s XOF\n30 códigos • Duración a elegir</string>
+    <string name="price_reseller_two_months">1 MES — %1$s XOF\n70 códigos • Duración a elegir</string>
     <string name="consumption_title">Mi consumo</string>
     <string name="settings_rate_app">Valorar la aplicación</string>
     <string name="browser_unavailable">No hay navegador disponible en este teléfono.</string>
@@ -344,8 +344,8 @@
     <string name="access_unlimited">Ilimitado</string>
     <string name="reseller_title">Ser revendedor</string>
     <string name="reseller_choose">Elige tu oferta de revendedor</string>
-    <string name="reseller_month">1 MES — 5 000 XOF\nRenovable</string>
-    <string name="reseller_two_months">2 MESES — 10 000 XOF\nRenovable</string>
+    <string name="reseller_month">1 MES — 5 000 XOF\n30 códigos • Duración a elegir</string>
+    <string name="reseller_two_months">1 MES — 10 000 XOF\n70 códigos • Duración a elegir</string>
     <string name="reseller_help">Paga tu oferta para obtener tu cuenta de revendedor Barka Tunnel.</string>
     <string name="reseller_after_payment">Tus credenciales aparecerán aquí automáticamente al confirmar el pago.</string>
     <string name="reseller_verify">VERIFICAR PAGO</string>
@@ -396,4 +396,5 @@
     <string name="guide_10_text">Iniciar\nConecta el VPN, abre AJUSTES → PROBAR VELOCIDAD DEL VPN y toca INICIAR. Observa las fases animadas.\n\nResultados\nLa latencia HTTPS se mide en milisegundos; descarga y subida en Mbps. La prueba pasa por el VPN y usa hasta unos 2,5 MB. Depende de la red, servidor y tráfico simultáneo; no garantiza una velocidad constante.\n\nAhorrar datos\nEvita pruebas innecesarias. DETENER cancela la medición. Una desconexión del VPN interrumpe el test sin pasar a Internet directo.</string>
     <string name="guide_11_text">Comprar o renovar\nAbre SER REVENDEDOR, selecciona la duración y revisa el precio. Las promociones muestran una cuenta atrás. Completa el pago y vuelve a la aplicación para obtener los datos de la cuenta.\n\nAcceder al panel\nUsa el enlace y las credenciales mostrados. Guárdalos de forma segura. El acceso depende de la validez de la cuenta; contacta con soporte si se congela o caduca.\n\nCrear códigos\nElige una suscripción o una prueba de 2, 3 o 6 horas. Comprueba la duración antes de generar. Un cliente activa un código recibido en CÓDIGO DE ACTIVACIÓN; esto es distinto de la activación automática de compras en la aplicación.</string>
     <string name="guide_12_text">Buscar versión\nUsa la búsqueda de actualizaciones en Ajustes o la invitación de la aplicación.\n\nDescargar\nSi se ofrece descarga interna, verás el progreso en Inicio. Tras una interrupción vuelve para reanudar cuando el servidor lo permita. No borres los datos de la aplicación durante el proceso.\n\nInstalar\nSigue la confirmación de instalación de Android. Si lo solicita, permite a Barka Tunnel instalar la actualización y vuelve. Android controla ese permiso.\n\nDespués\nAbre Barka Tunnel, comprueba la versión en ACERCA DE y deja sincronizar. Si Android rechaza una versión anterior, consulta al soporte antes de desinstalar para evitar perder datos locales.</string>
+    <string name="settings_whatsapp_channel">Canal oficial de WhatsApp</string>
 </resources>

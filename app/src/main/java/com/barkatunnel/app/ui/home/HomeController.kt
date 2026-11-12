@@ -8,6 +8,7 @@ class HomeController(
 
     private val stateLock = Any()
     private var state = HomeScreenState()
+    private var accessGeneration = 0L
     private var servers: List<VpnServer> = emptyList()
 
     fun currentState(): HomeScreenState = synchronized(stateLock) { state }
@@ -20,7 +21,7 @@ class HomeController(
 
     fun syncAccess(access: HomeAccessState): HomeControllerResult {
         return HomeControllerResult.State(
-            updateState { it.copy(access = access) }
+            updateState { accessGeneration++; it.copy(access = access) }
         )
     }
 
@@ -33,15 +34,17 @@ class HomeController(
     }
 
     fun refreshAccess(): HomeControllerResult {
+        val generation = synchronized(stateLock) { accessGeneration }
         val access = runtime.accessController.refreshAccess()
         return HomeControllerResult.State(
-            updateState { it.copy(access = access) }
+            updateState { if (generation == accessGeneration) it.copy(access = access) else it }
         )
     }
 
     fun startFreeTrial(): HomeControllerResult {
+        val generation = synchronized(stateLock) { accessGeneration }
         val access = runtime.accessController.startFreeTrial()
-        updateState { it.copy(access = access) }
+        updateState { if (generation == accessGeneration) { accessGeneration++; it.copy(access = access) } else it }
         return access.notice?.let { HomeControllerResult.Message(it) }
             ?: HomeControllerResult.State(currentState())
     }
@@ -80,14 +83,15 @@ class HomeController(
             return HomeControllerResult.State(currentState())
         }
 
+        val generation = synchronized(stateLock) { accessGeneration }
         val refreshedAccess = runtime.accessController.prepareConnectionAccess()
-        updateState { it.copy(access = refreshedAccess) }
+        updateState { if (generation == accessGeneration) it.copy(access = refreshedAccess) else it }
 
         if (isCancellationRequested()) {
             return HomeControllerResult.State(currentState())
         }
 
-        if (!refreshedAccess.allowed) {
+        if (!currentState().access.allowed) {
             updateState { it.copy(connection = HomeConnectionState.Disconnected) }
             return HomeControllerResult.Message(
                 "Aucun accès actif."

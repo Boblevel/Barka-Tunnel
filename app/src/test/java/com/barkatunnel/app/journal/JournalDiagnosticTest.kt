@@ -16,11 +16,11 @@ class JournalDiagnosticTest {
         val context = RuntimeEnvironment.getApplication()
         return JournalUiBinder(context, LinearLayout(context))
     }
-    @Test fun diagnosticsBecomeVisibleWithoutChangingOtherEvents() {
+    @Test fun diagnosticsAreHiddenWithoutChangingOtherEvents() {
         val binder = binder()
         val parse = JournalUiBinder::class.java.getDeclaredMethod("toJournalEvent", String::class.java).apply { isAccessible = true }
-        assertNotNull(parse.invoke(binder, "[10:00:00] Diagnostic VLESS • CONNECT • proxy HTTP : statut 403"))
-        assertNotNull(parse.invoke(binder, "[10:00:01] Diagnostic VPN • tentative 1 • délai dépassé"))
+        assertNull(parse.invoke(binder, "[10:00:00] Diagnostic VLESS • CONNECT • proxy HTTP : statut 403"))
+        assertNull(parse.invoke(binder, "[10:00:01] Diagnostic VPN • tentative 1 • délai dépassé"))
         assertNotNull(parse.invoke(binder, "[10:00:02] VPN connecté • ORANGE BF"))
         assertNull(parse.invoke(binder, "[10:00:03] Profils à jour"))
     }
@@ -35,24 +35,13 @@ class JournalDiagnosticTest {
         assertFalse(binder.safeDiagnostic("Diagnostic VLESS • config VLESS • WS=private.example/secret").contains("private"))
         assertTrue(binder.safeDiagnostic("Diagnostic VLESS • CONNECT • statut 403").contains("403"))
     }
-    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
-    @Test fun longDiagnosticsAreSelectableAndNotLimitedToTwoLines() {
-        val context = android.view.ContextThemeWrapper(RuntimeEnvironment.getApplication(), com.barkatunnel.app.R.style.Theme_BarkaTunnel)
+    @Test fun temporaryDiagnosticsDoNotEvictNormalJournalEntries() {
+        val context = RuntimeEnvironment.getApplication()
         AppLogStore.clear(context)
-        val list = LinearLayout(context)
-        val detail = "Diagnostic VLESS • route • " + "segment ".repeat(35)
-        AppLogStore.add(context, detail)
-        JournalUiBinder(context, list).refresh()
-        val text = list.getChildAt(0).findViewById<android.widget.TextView>(com.barkatunnel.app.R.id.eventMessage)
-        assertEquals(detail.trim(), text.text.toString())
-        assertEquals(Int.MAX_VALUE, text.maxLines)
-        assertTrue(text.isTextSelectable)
-        list.measure(android.view.View.MeasureSpec.makeMeasureSpec(320, android.view.View.MeasureSpec.EXACTLY),
-            android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED))
-        list.layout(0, 0, 320, list.measuredHeight)
-        assertTrue(text.layout.lineCount > 2)
-        assertTrue(text.height - text.compoundPaddingTop - text.compoundPaddingBottom >= text.layout.height)
+        AppLogStore.add(context, "VPN connecté • ORANGE BF")
+        repeat(300) { AppLogStore.add(context, "Diagnostic VLESS • CONNECT • statut 429") }
+        assertTrue(AppLogStore.getAll(context).contains("VPN connecté"))
+        assertFalse(AppLogStore.getAll(context).contains("Diagnostic"))
         AppLogStore.clear(context)
     }
-
 }

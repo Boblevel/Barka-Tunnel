@@ -3,8 +3,8 @@
     <string name="access_unlimited">Illimité</string>
     <string name="reseller_title">Devenir Revendeur</string>
     <string name="reseller_choose">Choisissez votre offre revendeur</string>
-    <string name="reseller_month">1 MOIS — 5 000 XOF\nRenouvelable</string>
-    <string name="reseller_two_months">2 MOIS — 10 000 XOF\nRenouvelable</string>
+    <string name="reseller_month">1 MOIS — 5 000 XOF\n30 codes • Durée au choix</string>
+    <string name="reseller_two_months">1 MOIS — 10 000 XOF\n70 codes • Durée au choix</string>
     <string name="reseller_help">Payez votre offre pour obtenir votre compte revendeur Barka Tunnel.</string>
     <string name="reseller_after_payment">Après confirmation du paiement, vos identifiants apparaissent ici automatiquement.</string>
     <string name="reseller_verify">VÉRIFIER LE PAIEMENT</string>

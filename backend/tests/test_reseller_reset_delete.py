@@ -57,7 +57,7 @@ def test_delete_preserves_stacked_credit_and_gift(env,monkeypatch):
     now=services.now_ts()
     for module in (services,ops,rs):monkeypatch.setattr(module,'now_ts',lambda:now)
     device='stacked-credit-device'
-    ca=rs.generate_reseller_subscription(a['id'],'24h');cb=rs.generate_reseller_test(b['id']);ca2=rs.generate_reseller_test(a['id'])
+    ca=rs.generate_reseller_subscription(a['id'],'24h');cb=rs.generate_reseller_test(b['id']);ca2=rs.generate_reseller_subscription(a['id'],'24h')
     for code in (ca,cb,ca2):assert services.redeem_activation_code(device,code)[0]
     services.start_trial(device);rs.delete_reseller(a['id']);state=services.access_state(device)
     assert state['remaining_seconds']==14400 and state['access_revision']==1

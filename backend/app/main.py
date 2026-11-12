@@ -92,6 +92,7 @@ from .resellers import (
     public_reseller_account,
     reactivate_reseller,
     reseller_dashboard_stats,
+    reseller_quota,
     reset_reseller_stats,
     require_reseller,
     update_reseller_expiry,
@@ -551,7 +552,7 @@ def admin_resellers_list():
 )
 def admin_reseller_create(body: AdminResellerCreateRequest):
     try:
-        return create_reseller(body.username, body.expires_at)
+        return create_reseller(body.username, body.expires_at, body.quota_limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -677,16 +678,23 @@ def reseller_codes_list(
     return list_reseller_codes(int(account["id"]), limit, offset)
 
 
+@app.get("/v1/reseller/quota")
+def reseller_remaining_quota(account: dict = Depends(require_reseller)):
+    return reseller_quota(int(account["id"]))
+
+
 @app.post("/v1/reseller/codes/subscription")
 def reseller_subscription_code(
     body: ResellerGenerateSubscriptionRequest,
     account: dict = Depends(require_reseller),
 ):
     try:
-        code = generate_reseller_subscription(int(account["id"]), body.plan_id)
+        code = generate_reseller_subscription(int(account["id"]), body.plan_id, body.request_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-    return {"plan_id": body.plan_id, "code": code}
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"plan_id": body.plan_id, "code": code, "quota": reseller_quota(int(account["id"]))}
 
 
 @app.post("/v1/reseller/codes/test")
@@ -696,10 +704,12 @@ def reseller_test_code(
 ):
     hours = body.duration_hours if body is not None else 2
     try:
-        code = generate_reseller_test(int(account["id"]), hours)
+        code = generate_reseller_test(int(account["id"]), hours, body.request_id if body else None)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-    return {"plan_id": f"test_{hours}h", "duration_seconds": hours * 3600, "code": code}
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"plan_id": f"test_{hours}h", "duration_seconds": hours * 3600, "code": code, "quota": reseller_quota(int(account["id"]))}
 
 
 @app.post(

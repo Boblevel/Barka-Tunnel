@@ -23,7 +23,9 @@ class ResellerPurchaseUiTest {
         try {
             val views=texts(activity.findViewById(android.R.id.content))
             assertTrue(views.any { it.text.toString().contains("1 MOIS — 5 000 XOF") })
-            assertTrue(views.any { it.text.toString().contains("2 MOIS — 10 000 XOF") })
+            assertTrue(views.any { it.text.toString().contains("1 MOIS — 10 000 XOF") })
+            assertTrue(activity.findViewById<TextView>(R.id.resellerMonth).text.contains("30 codes"))
+            assertTrue(activity.findViewById<TextView>(R.id.resellerTwoMonths).text.contains("70 codes"))
             val account=JSONObject().put("panel_url","https://example.org/reseller").put("username","rev-example").put("password","sample-password").put("expires_at","2026-11-15")
             assertEquals(View.GONE,activity.findViewById<View>(R.id.resellerCredentialsCard).visibility)
             val render=ResellerPurchaseActivity::class.java.getDeclaredMethod("render",JSONObject::class.java).apply { isAccessible=true }
@@ -45,7 +47,7 @@ class ResellerPurchaseUiTest {
             val views=texts(activity.findViewById(android.R.id.content))
             assertTrue(views.any { it.text.toString()=="Become a Reseller" })
             assertTrue(views.any { it.text.toString().contains("1 MONTH — 5,000 XOF") })
-            assertTrue(views.any { it.text.toString().contains("2 MONTHS — 10,000 XOF") })
+            assertTrue(views.any { it.text.toString().contains("1 MONTH — 10,000 XOF") })
             assertNotNull(activity.findViewById<View>(R.id.resellerMonth).background)
             val render=ResellerPurchaseActivity::class.java.getDeclaredMethod("render",JSONObject::class.java).apply { isAccessible=true }
             render.invoke(activity,JSONObject().put("status","pending").put("message","Paiement en attente de confirmation."))

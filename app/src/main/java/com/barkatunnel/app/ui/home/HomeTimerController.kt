@@ -15,6 +15,7 @@ class HomeTimerController(
     private var accessStartedElapsed = 0L
     private var connectionStartedElapsed = 0L
     private var connectionRunning = false
+    private val accessUpdateVersion = java.util.concurrent.atomic.AtomicLong(0)
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -39,7 +40,9 @@ class HomeTimerController(
      */
     fun syncAccessRemaining(remainingSeconds: Long) {
         val safeSeconds = remainingSeconds.coerceAtLeast(0L)
+        val version = accessUpdateVersion.incrementAndGet()
         runOnMain {
+            if (version != accessUpdateVersion.get()) return@runOnMain
             accessBaseSeconds = safeSeconds
             accessStartedElapsed = SystemClock.elapsedRealtime()
             onAccessTick(accessBaseSeconds)

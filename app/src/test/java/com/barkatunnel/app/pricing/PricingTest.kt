@@ -126,7 +126,7 @@ class PricingTest {
     }
     @Test @Config(qualifiers="en") fun labelsUseEnglishAndCurrentAmount() {
         assertEquals("24 HOURS — 450 XOF",PricingLabels.offer(context,"24h",450))
-        assertTrue(PricingLabels.offer(context,"reseller_1m",5000).contains("Renewable"))
+        assertTrue(PricingLabels.offer(context,"reseller_1m",5000).contains("30 codes"))
     }
     @Test fun journalStillScrollsWithoutScrollbarOrEdgeEffect() {
         fun find(view: View): ScrollView? {

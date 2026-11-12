@@ -18,6 +18,11 @@ object HomeAccessSnapshotStore {
         save(context, state)
         return state
     }
+    @Synchronized fun saveTrial(context: Context, state: HomeAccessState, generation: Long, startedNow: Boolean): HomeAccessState {
+        if (generation != activationGeneration) return restore(context) ?: state
+        if (startedNow) saveActivation(context, state) else save(context, state)
+        return state
+    }
     private val processSession = java.util.UUID.randomUUID().toString()
     private fun boot(context: Context): Int = runCatching {
         if (android.os.Build.VERSION.SDK_INT >= 24)

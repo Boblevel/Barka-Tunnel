@@ -43,11 +43,15 @@ def settle_device_pause(cx, device_id, now):
 
 
 def settle_reseller_pauses(cx, reseller_id, now):
-    query = "SELECT DISTINCT redeemed_device_id FROM activation_codes WHERE status='redeemed' AND deleted_at IS NULL AND created_by_reseller_id IS NOT NULL AND redeemed_device_id IS NOT NULL"
-    params = ()
+    query = """SELECT DISTINCT a.redeemed_device_id FROM activation_codes a
+        JOIN reseller_accounts r ON r.id=a.created_by_reseller_id
+        WHERE a.status='redeemed' AND a.deleted_at IS NULL
+          AND a.redeemed_device_id IS NOT NULL AND r.deleted_at IS NULL
+          AND r.expires_at<=? AND a.applied_until>MAX(COALESCE(a.applied_from,a.redeemed_at),r.expires_at)"""
+    params = (now,)
     if reseller_id is not None:
-        query += " AND created_by_reseller_id=?"
-        params = (reseller_id,)
+        query += " AND a.created_by_reseller_id=?"
+        params += (reseller_id,)
     for row in cx.execute(query,params).fetchall():
         settle_device_pause(cx,row[0],now)
 

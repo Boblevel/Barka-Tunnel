@@ -31,7 +31,7 @@ class CheckoutBackendShadow {
         calls.add(action)
         return when(action) {
             "account" -> JSONObject()
-            "start" -> JSONObject().put("payment_reference", "BTR-return-test").put("status", "pending")
+            "start", "start-monthly" -> JSONObject().put("payment_reference", "BTR-return-test").put("status", "pending")
                 .put("checkout_url", "https://example.org/checkout").put("amount", 5000 * payload.getInt("months"))
             "cancel" -> {
                 if (result == "offline") throw BarkaBackendException("Connectez-vous à un réseau, puis réessayez.")
@@ -73,7 +73,7 @@ class ResellerCheckoutReturnTest {
             assertNotNull(shadowOf(a).nextStartedActivity)
             assertFalse(a.findViewById<View>(R.id.resellerTwoMonths).isEnabled)
             controller.pause().resume();idle(a)
-            assertEquals(listOf("account","start","cancel"),CheckoutBackendShadow.calls.toList())
+            assertEquals(listOf("account","start-monthly","cancel"),CheckoutBackendShadow.calls.toList())
             val state=ResellerPurchaseStore.read(a)
             assertEquals(before,state.getString("owner_key"))
             assertFalse(state.has("reference"));assertFalse(state.has("request_id"))

@@ -16,8 +16,35 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 @Config(sdk = [28], application = Application::class, qualifiers = "fr-port-mdpi")
 class NavigationViewportTest {
+    @Test fun portraitScreensShowAllMenuOptionsWithoutScrolling() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        activity.setTheme(R.style.Theme_BarkaTunnel)
+        try {
+            for ((width, height) in listOf(260 to 568, 280 to 640, 324 to 800, 420 to 900, 500 to 320, 260 to 480)) {
+                val root = activity.layoutInflater.inflate(R.layout.dialog_side_menu, null) as ViewGroup
+                root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                root.layout(0, 0, width, height)
+                val scroll = root.getChildAt(1) as ScrollView
+                scroll.scrollTo(0, 10000)
+                val body = scroll.getChildAt(0) as ViewGroup
+                val dimensions = (0 until body.childCount).map { body.getChildAt(it) }.joinToString { "${it.id}:${it.measuredWidth}x${it.measuredHeight}@${it.top}" }
+                assertEquals("Drawer $width x $height header=${root.getChildAt(0).measuredHeight} viewport=${scroll.measuredHeight} body=${body.measuredHeight} children=$dimensions", 0, scroll.scrollY)
+                for (id in listOf(R.id.menuHome, R.id.menuGuide, R.id.menuSubscription,
+                    R.id.menuActivation, R.id.menuIpFinder, R.id.menuSettings, R.id.menuReseller,
+                    R.id.menuSupport, R.id.menuSuggestions)) {
+                    val item = root.findViewById<TextView>(id)
+                    assertTrue(item.height >= 48)
+                    assertTrue(item.bottom <= scroll.height)
+                }
+            }
+        } finally { controller.pause().stop().destroy() }
+    }
+
     @Test fun drawerHeaderStaysFixedWhileEveryOptionRemainsReachable() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
@@ -36,7 +63,7 @@ class NavigationViewportTest {
                 assertEquals(View.OVER_SCROLL_NEVER, scroll.overScrollMode)
                 assertFalse(scroll.isVerticalScrollBarEnabled)
                 assertTrue(scroll.height > 0)
-                assertTrue(scroll.scrollY > 0)
+                assertEquals(0, scroll.scrollY)
                 assertEquals(width, header.width)
             }
         } finally { controller.pause().stop().destroy() }

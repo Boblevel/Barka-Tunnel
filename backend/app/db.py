@@ -226,10 +226,27 @@ def init_db() -> None:
                     UNIQUE(owner_hash, request_id)
                 );
 
+                CREATE TABLE IF NOT EXISTS reseller_quota_periods(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reseller_id INTEGER NOT NULL REFERENCES reseller_accounts(id),
+                    starts_at INTEGER NOT NULL, ends_at INTEGER NOT NULL,
+                    code_limit INTEGER NOT NULL CHECK(code_limit IN (30,70)),
+                    used INTEGER NOT NULL DEFAULT 0 CHECK(used>=0),
+                    UNIQUE(reseller_id, starts_at)
+                );
+                CREATE TABLE IF NOT EXISTS reseller_generation_requests(
+                    reseller_id INTEGER NOT NULL REFERENCES reseller_accounts(id),
+                    request_id TEXT NOT NULL, plan_id TEXT NOT NULL, source_ref TEXT NOT NULL,
+                    PRIMARY KEY(reseller_id, request_id)
+                );
                 CREATE INDEX IF NOT EXISTS idx_reseller_sessions_lookup
                 ON reseller_sessions(token_hash, expires_at);
                 """
             )
+
+            purchase_columns = {row["name"] for row in cx.execute("PRAGMA table_info(reseller_purchases)")}
+            if "quota_limit" not in purchase_columns:
+                cx.execute("ALTER TABLE reseller_purchases ADD COLUMN quota_limit INTEGER CHECK(quota_limit IN (30,70))")
 
             suggestion_columns = {row["name"] for row in cx.execute("PRAGMA table_info(suggestions)")}
             if "sender_name" not in suggestion_columns:

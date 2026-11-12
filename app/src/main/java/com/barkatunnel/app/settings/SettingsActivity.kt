@@ -161,6 +161,13 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/barkaTunnel")))
         }
 
+        findViewById<MaterialButton>(R.id.whatsappChannelButton).setOnClickListener {
+            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://whatsapp.com/channel/0029VbDyDwTGZNClQT3tQ51v"))) }
+            catch (_: android.content.ActivityNotFoundException) {
+                android.widget.Toast.makeText(this, R.string.browser_unavailable, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+
         findViewById<MaterialButton>(R.id.shopButton).setOnClickListener {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://rhaffservice.com/")))

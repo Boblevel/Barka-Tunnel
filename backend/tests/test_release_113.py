@@ -31,11 +31,11 @@ def test_stacked_codes_survive_restart(env,monkeypatch):
     db,svc,rs,ops,_,_,a=env;clock=svc.now_ts()
     for module in (svc,rs,ops):monkeypatch.setattr(module,'now_ts',lambda:clock)
     device='stacked-paused-device'
-    for _ in range(2):assert svc.redeem_activation_code(device,rs.generate_reseller_test(a['id']))[0]
+    for _ in range(2):assert svc.redeem_activation_code(device,rs.generate_reseller_subscription(a['id'], '24h'))[0]
     with db.transaction() as cx:cx.execute('UPDATE reseller_accounts SET expires_at=? WHERE id=?',(clock+10,a['id']))
     clock+=10000;assert not svc.access_state(device)['allowed'];db.init_db();clock+=10000
     rs.update_reseller_expiry(a['id'],datetime.fromtimestamp(clock+86400,timezone.utc))
-    assert svc.access_state(device)['remaining_seconds']==14400-10
+    assert svc.access_state(device)['remaining_seconds']==172800-10
 
 @pytest.mark.parametrize('remove_panel',[False,True])
 def test_delete_preserves_other_credit(env,monkeypatch,remove_panel):

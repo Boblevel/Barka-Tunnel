@@ -17,6 +17,7 @@ object AppLogStore {
         context: Context,
         message: String
     ) {
+        if (message.trimStart().startsWith("Diagnostic ", ignoreCase = true)) return
         val prefs = context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE

@@ -69,6 +69,18 @@ def test_unlimited_access_respects_moderation(tmp_path):
     c.put('/v1/admin/moderation', headers=ADMIN, json={'device_id': DEVICE, 'scope': 'app', 'blocked': True})
     assert not services.access_state(DEVICE)['allowed']
 
+def test_blocked_author_cannot_consume_an_activation_code(tmp_path):
+    c, db, services = setup(tmp_path)
+    c.post('/v1/suggestions', json={'device_id': DEVICE, 'request_id': str(uuid4()), 'message': 'Suggestion'})
+    code = services.issue_activation_code('moderation-new-code', '24h')
+    payload = {'device_id': DEVICE, 'scope': 'app', 'blocked': True}
+    assert c.put('/v1/admin/moderation', headers=ADMIN, json=payload).status_code == 200
+    assert not services.redeem_activation_code(DEVICE, code)[0]
+    with db.connect() as cx:
+        assert cx.execute('SELECT status FROM activation_codes WHERE code_hash=?', (services.code_hash(code),)).fetchone()[0] == 'issued'
+    assert c.put('/v1/admin/moderation', headers=ADMIN, json={**payload, 'blocked': False}).status_code == 200
+    assert services.redeem_activation_code(DEVICE, code)[0]
+
 def test_suggestion_unblock_cannot_bypass_app_block_or_change_paid_subscription(tmp_path):
     c, db, services = setup(tmp_path)
     code = services.issue_activation_code('moderation-paid', '24h')

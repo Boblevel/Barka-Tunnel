@@ -1,0 +1,7 @@
+<resources>
+    <style name="BarkaFlatButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:elevation">0dp</item>
+        <item name="android:translationZ">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+</resources>

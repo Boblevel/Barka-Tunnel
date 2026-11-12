@@ -122,7 +122,7 @@ class ResellerPurchaseActivity : AppCompatActivity() {
                 if(isDestroyed || isFinishing)return@runOnUiThread
                 result.onSuccess(done).onFailure {
                     if (it.message == "PRICING_CHANGED" && state.optString("reference").isBlank()) {
-                        for (key in listOf("request_id", "months", "amount")) state.remove(key)
+                        for (key in listOf("request_id", "months", "amount", "quota_limit")) state.remove(key)
                         ResellerPurchaseStore.write(this, state)
                         showStatus("")
                         PricingSync.refresh(this)
@@ -141,10 +141,10 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             return
         }
         if(state.optString("request_id").isBlank()) {
-            state.put("request_id",UUID.randomUUID().toString()).put("months",months).put("amount",displayedPrices.getValue("reseller_${months}m"))
+            state.put("request_id",UUID.randomUUID().toString()).put("months",months).put("quota_limit",if (months == 1) 30 else 70).put("amount",displayedPrices.getValue("reseller_${months}m"))
             ResellerPurchaseStore.write(this,state)
         }
-        request({ api("start",payload().put("request_id",state.getString("request_id")).put("months",state.getInt("months")).apply { if (state.has("amount")) put("expected_amount",state.getInt("amount")) }) }) {
+        request({ api(if (state.has("quota_limit")) "start-monthly" else "start",payload().put("request_id",state.getString("request_id")).put("months",state.getInt("months")).apply { if (state.has("quota_limit")) put("quota_limit",state.getInt("quota_limit")); if (state.has("amount")) put("expected_amount",state.getInt("amount")) }) }) {
             val ref=it.optString("payment_reference")
             if(ref.isBlank()) { showStatus(getString(R.string.reseller_incomplete));return@request }
             state.put("reference",ref)
@@ -200,7 +200,7 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         if(paymentState in listOf("paid","failed","error")) {
             if(paymentState!="paid" || result.optJSONObject("account")!=null || result.optBoolean("account_deleted")) {
                 state.put("last_receipt", result)
-                for(key in listOf("reference","checkout_url","request_id","months","amount"))state.remove(key)
+                for(key in listOf("reference","checkout_url","request_id","months","amount","quota_limit"))state.remove(key)
                 returningFromCheckout = false
                 handler.removeCallbacksAndMessages(null)
                 ResellerPurchaseStore.write(this,state)
@@ -232,7 +232,13 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             }
         }
         for ((key,id) in listOf("reseller_1m" to R.id.resellerMonth, "reseller_2m" to R.id.resellerTwoMonths)) {
-            findViewById<TextView>(id).text = PricingLabels.offer(this, key, displayedPrices.getValue(key))
+            val pendingLegacy = !state.has("quota_limit") &&
+                (state.optString("reference").isNotBlank() || state.optString("request_id").isNotBlank()) &&
+                key == "reseller_${state.optInt("months", 1)}m"
+            findViewById<TextView>(id).text = if (pendingLegacy)
+                getString(R.string.price_reseller_legacy, state.optInt("months", 1),
+                    java.text.NumberFormat.getIntegerInstance().format(displayedPrices.getValue(key)))
+            else PricingLabels.offer(this, key, displayedPrices.getValue(key))
         }
     }
 

@@ -30,10 +30,14 @@ class VpnToolsActivity : AppCompatActivity() {
     private var isShare = false
     private var epoch = 0L
     private var port: Int? = null
+    private var speedNetwork: android.net.Network? = null
+    private val connectivity get() = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+    private fun speedConnectionAlive() = if (port != null) vpnAlive() else
+        speedNetwork != null && connectivity.activeNetwork == speedNetwork && BarkaVpnService.connectedSocksPort() == null
     private val monitor = object : Runnable {
         override fun run() {
             if (isShare) renderSharing()
-            if (speed != null && !vpnAlive()) stop(getString(R.string.tools_vpn_required))
+            if (speed != null && !speedConnectionAlive()) stop(getString(R.string.speed_network_error))
             if (isShare || speed != null) handler.postDelayed(this, 1000)
         }
     }
@@ -81,7 +85,7 @@ class VpnToolsActivity : AppCompatActivity() {
     private fun start() {
         port = BarkaVpnService.connectedSocksPort()
         epoch = BarkaVpnService.connectionSnapshot().connectedAtElapsedMs
-        if (!vpnAlive()) { status.setText(R.string.tools_vpn_required); return }
+        if (isShare && !vpnAlive()) { status.setText(R.string.tools_vpn_required); return }
         if (isShare) {
             refreshAddresses()
             val selected = localAddresses.getOrNull(addresses.selectedItemPosition)
@@ -91,7 +95,9 @@ class VpnToolsActivity : AppCompatActivity() {
                     .putExtra("address", selected.hostAddress))
             } catch (_: Exception) { status.setText(R.string.tools_share_failed); return }
         } else {
-            val test = VpnSpeedTest(port!!, ::vpnAlive)
+            speedNetwork = connectivity.activeNetwork
+            if (!speedConnectionAlive()) { status.setText(R.string.speed_network_error); return }
+            val test = VpnSpeedTest(port, ::speedConnectionAlive)
             speed = test; val token = ++generation
             value.text = "0.00 Mbps"; progress.visibility = View.VISIBLE
             Thread {
@@ -108,7 +114,7 @@ class VpnToolsActivity : AppCompatActivity() {
                     } }
                 } catch (error: Exception) {
                     val detail = when {
-                        !vpnAlive() -> getString(R.string.tools_vpn_required)
+                        !speedConnectionAlive() -> getString(R.string.speed_network_error)
                         error is java.net.SocketTimeoutException -> getString(R.string.speed_timeout)
                         error is javax.net.ssl.SSLException -> getString(R.string.speed_tls_error)
                         error.message?.startsWith("HTTP_") == true -> getString(R.string.speed_http_error, error.message!!.removePrefix("HTTP_"))

@@ -375,9 +375,6 @@ class MainActivity : AppCompatActivity() {
             runHomeAction {
                 try {
                     val result = controller.startFreeTrial()
-                    timerController.syncAccessRemaining(
-                        controller.currentState().access.remainingSeconds
-                    )
                     result
                 } catch (error: Exception) {
                     HomeControllerResult.Message(error.message ?: getString(R.string.trial_not_available_device))
@@ -401,12 +398,6 @@ class MainActivity : AppCompatActivity() {
                 successMessage = getString(R.string.access_refreshed)
             ) {
                 val accessResult = controller.refreshAccess()
-
-                if (accessResult is HomeControllerResult.State) {
-                    timerController.syncAccessRemaining(
-                        accessResult.value.access.remainingSeconds
-                    )
-                }
 
                 accessResult
             }
@@ -844,7 +835,7 @@ class MainActivity : AppCompatActivity() {
 
                         if (accessResult is HomeControllerResult.State) {
                             timerController.syncAccessRemaining(
-                                accessResult.value.access.remainingSeconds
+                                controller.currentState().access.remainingSeconds
                             )
                         }
                     }
@@ -1195,6 +1186,9 @@ class MainActivity : AppCompatActivity() {
                     connectButton.isEnabled = true
                 }
                 handleHomeResult(result)
+                homeController?.currentState()?.access?.let {
+                    timerController.syncAccessRemaining(it.remainingSeconds)
+                }
 
                 if (
                     successMessage != null &&

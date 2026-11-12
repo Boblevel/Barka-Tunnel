@@ -103,6 +103,7 @@ class HomeAccessController private constructor(
         },
         trialAction = {
             try {
+                val generation = HomeAccessSnapshotStore.activationGeneration
                 val trial = backendClient.startTrial()
                 val state = HomeAccessState(
                     allowed = trial.access.allowed,
@@ -114,8 +115,7 @@ class HomeAccessController private constructor(
                     },
                     notice = trial.message.takeUnless { trial.startedNow }
                 )
-                HomeAccessSnapshotStore.save(context, state)
-                state
+                HomeAccessSnapshotStore.saveTrial(context, state, generation, trial.startedNow)
             } catch (e: Exception) {
                 HomeAccessSnapshotStore.restore(context) ?: HomeAccessState(
                     allowed = false,

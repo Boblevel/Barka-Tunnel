@@ -24,8 +24,8 @@ def verify(live: Path, stage: Path) -> None:
         if name not in expected and name not in target:
             raise SystemExit('ARRÊT : fichier VPS non prévu : ' + name)
     for name in ('app/saspay.py', 'app/config.py', 'app/security.py', 'app/services.py'):
-        # Version lot 18 : modération indépendante ; fonctions de paiement conservées.
-        expected_hash = '314ced5316747eb551e924f5b22c101ee623d238fd87c17e42ff16336d829f42' if name == "app/services.py" else baseline[name]
+        # Version lot 21 : activation et tests ; fonctions de paiement conservées.
+        expected_hash = '88dd67eef44aac67d7c5d1b1378c1ec13f782c0226393f67832b69a975301ca4' if name == "app/services.py" else baseline[name]
         approved_target = expected_hash if isinstance(expected_hash, list) else [expected_hash]
         if hashlib.sha256((stage / name).read_bytes()).hexdigest() not in approved_target:
             raise SystemExit('ARRÊT : intégration SasPay différente de celle fournie : ' + name)

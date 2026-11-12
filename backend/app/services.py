@@ -266,6 +266,8 @@ def _redeem_shared_code(cx, device_id: str, hashed: str, now: int) -> tuple[bool
         (row["id"], device_id),
     ).fetchone()
     if existing:
+        if int(existing["applied_until"] or 0) <= now:
+            return False, "Ce code Redeem a expiré sur cet appareil."
         return True, "Ce code Redeem a déjà été utilisé sur cet appareil."
 
     usage_count = int(cx.execute(
@@ -333,7 +335,10 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
             (hashed,),
         ).fetchone()
 
-        if not row:
+        current_device = cx.execute("SELECT access_disabled FROM devices WHERE device_id=?", (device_id,)).fetchone()
+        if bool(current_device["access_disabled"]) or app_blocked(cx, device_id):
+            message = "Accès désactivé par l’administration."
+        elif not row:
             shared_result = _redeem_shared_code(cx, device_id, hashed, now)
             if shared_result is None:
                 success = False
@@ -348,14 +353,22 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
             message = "Ce code est gelé : le sous-panel du revendeur a expiré. Contactez votre revendeur pour son réabonnement."
         elif row["status"] == "redeemed":
             if row["redeemed_device_id"] == device_id:
-                success = True
-                message = "Ce code est déjà actif sur cet appareil."
+                unlimited = row["plan_id"] == "unlimited" and row["created_by_reseller_id"] is None
+                success = unlimited or int(row["applied_until"] or 0) > now
+                message = "Ce code est déjà actif sur cet appareil." if success else "Ce code a expiré sur cet appareil."
             else:
                 success = False
                 message = "Ce code a déjà été utilisé."
         elif row["status"] != "issued":
             success = False
             message = "Ce code a été désactivé."
+        elif str(row["plan_id"]).startswith("test_") and cx.execute(
+            """SELECT 1 FROM activation_codes WHERE redeemed_device_id=?
+               AND status='redeemed' AND deleted_at IS NULL
+               AND plan_id IN ('test_2h','test_3h','test_6h') AND applied_until>? LIMIT 1""",
+            (device_id, now),
+        ).fetchone():
+            message = "Un code de test est déjà actif. Attendez sa fin avant d’en activer un autre."
         elif row["plan_id"] == "unlimited" and row["created_by_reseller_id"] is None:
             cx.execute(
                 """UPDATE activation_codes SET status='redeemed', redeemed_at=?,
@@ -404,7 +417,10 @@ def redeem_activation_code(device_id: str, code: str) -> tuple[bool, str, dict]:
             success = True
             message = "Abonnement activé avec succès."
 
-    return success, message, access_state(device_id)
+    access = access_state(device_id)
+    if success and (not access["allowed"] or (int(access["remaining_seconds"]) <= 0 and not access.get("unlimited"))):
+        return False, "Aucun temps actif. Actualisez votre accès ou contactez l’administration.", access
+    return success, message, access
 
 
 def create_payment_record(device_id: str, plan_id: str) -> str:
