@@ -13,7 +13,7 @@ from .db import connect, transaction
 from . import services, saspay, resellers, reseller_quotas
 from .reseller_audit import record_event
 from .reseller_access import settle_reseller_pauses
-from .pricing import get_catalog, check_expected_amount
+from .pricing import get_catalog, check_expected_amount, require_payments_enabled
 
 router = APIRouter(prefix='/v1/reseller-purchases')
 
@@ -144,6 +144,7 @@ async def start(body: StartRequest, response: Response):
         if existing:
             reference=existing['reference']
         else:
+            require_payments_enabled("reseller", cx)
             pending=cx.execute("SELECT 1 FROM reseller_purchases r JOIN payments p ON p.reference=r.reference WHERE r.owner_hash=? AND p.status IN ('creating','pending')",(owner,)).fetchone()
             if pending:raise HTTPException(409,'Un paiement est déjà en cours. Vérifiez sa confirmation.')
             bound=cx.execute('SELECT a.* FROM reseller_purchase_owners o JOIN reseller_accounts a ON a.id=o.reseller_id WHERE o.owner_hash=?',(owner,)).fetchone()

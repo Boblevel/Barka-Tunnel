@@ -5,7 +5,9 @@ object VpnProfilePolicy {
     private val expected = mapOf(
         "moov_tiktok" to VpnProfileProtocol.SSH_TLS,
         "moov_bf" to VpnProfileProtocol.SLOWDNS,
+        "moov_bf_v2" to VpnProfileProtocol.SLOWDNS,
         "orange_bf" to VpnProfileProtocol.VLESS,
+        "orange_bf_v2" to VpnProfileProtocol.VLESS,
         "telecel_bf" to VpnProfileProtocol.UDP,
         "global_world" to VpnProfileProtocol.VLESS
     )

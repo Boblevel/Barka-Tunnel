@@ -49,6 +49,44 @@ class PricingTest {
         }while(System.nanoTime()<end)
         fail("Callback did not complete")
     }
+    @Test fun paymentSwitchUpdatesVisibleSubscriptionAndCanBeReenabled() {
+        PricingStore.save(context,catalog(1).put("subscription_payments_enabled",false))
+        val c=Robolectric.buildActivity(SubscriptionActivity::class.java).setup()
+        try {
+            assertFalse(c.get().findViewById<View>(R.id.payButton).isEnabled)
+            PricingStore.save(context,catalog(2).put("subscription_payments_enabled",true))
+            shadowOf(Looper.getMainLooper()).idle()
+            assertTrue(c.get().findViewById<View>(R.id.payButton).isEnabled)
+        } finally {c.pause().stop().destroy()}
+    }
+    @Test fun disablingNewPaymentsPreservesPendingCheckout() {
+        PendingPaymentStore.save(context,"BT-existing","24h","https://example.org/checkout",300)
+        PricingStore.save(context,catalog(1).put("subscription_payments_enabled",false))
+        val c=Robolectric.buildActivity(SubscriptionActivity::class.java).setup()
+        try {
+            settle(c.get(),"checkingPayment")
+            assertTrue(c.get().findViewById<View>(R.id.payButton).isEnabled)
+            assertEquals("BT-existing",PendingPaymentStore.reference(context))
+        } finally {c.pause().stop().destroy()}
+    }
+    @Test fun resellerPaymentSwitchCanBeReenabledOnScreen() {
+        PricingStore.save(context,catalog(1).put("reseller_payments_enabled",false))
+        val c=Robolectric.buildActivity(ResellerPurchaseActivity::class.java).setup()
+        try {
+            settle(c.get(),"busy")
+            assertFalse(c.get().findViewById<View>(R.id.resellerPay).isEnabled)
+            PricingStore.save(context,catalog(2).put("reseller_payments_enabled",true))
+            shadowOf(Looper.getMainLooper()).idle()
+            assertTrue(c.get().findViewById<View>(R.id.resellerPay).isEnabled)
+        } finally {c.pause().stop().destroy()}
+    }
+    @Test fun paymentSwitchesHaveIndependentBackwardCompatibleDefaults() {
+        assertTrue(PricingStore.parse(catalog(1)).subscriptionPaymentsEnabled)
+        assertTrue(PricingStore.parse(catalog(1)).resellerPaymentsEnabled)
+        val disabled=PricingStore.parse(catalog(2).put("reseller_payments_enabled",false))
+        assertTrue(disabled.subscriptionPaymentsEnabled)
+        assertFalse(disabled.resellerPaymentsEnabled)
+    }
     @Test fun oldCatalogPreservesCustomPricesAndAddsThreeMonths() {
         val legacy = catalog(8,777).also { it.getJSONObject("prices").remove("3m") }
         PricingStore.save(context,legacy)

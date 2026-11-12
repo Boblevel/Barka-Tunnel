@@ -293,4 +293,5 @@
     <string name="subscription_three_months">3 MOIS — 6 000 XOF</string>
     <string name="price_offer_three_months">3 MOIS — %1$s XOF</string>
     <string name="settings_whatsapp_channel">Canal WhatsApp officiel</string>
+    <string name="payments_paused">Paiements temporairement désactivés</string>
 </resources>

@@ -97,6 +97,60 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/optionMoovV2"
+        android:layout_width="match_parent"
+        android:layout_height="90dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_card_final"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+
+        <ImageView
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="Moov Africa"
+            android:scaleType="fitCenter"
+            android:src="@drawable/moov_africa_official" />
+
+        <TextView
+            android:id="@+id/optionMoovV2Name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="MOOV-AFRICA BF V2"
+            android:textColor="@color/barka_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="15dp"
+            android:layout_marginEnd="4dp"
+            android:contentDescription="@string/burkina_faso"
+            android:src="@drawable/ic_flag_bf" />
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="15dp"
+            android:layout_marginEnd="4dp"
+            android:contentDescription="@string/niger"
+            android:src="@drawable/ic_flag_ne" />
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="15dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@string/togo"
+            android:src="@drawable/ic_flag_tg" />
+
+        <ImageView android:id="@+id/optionMoovV2Check"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="3dp"
+            android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/optionTiktok"
         android:layout_width="match_parent"
         android:layout_height="90dp"
@@ -173,6 +227,46 @@
             android:src="@drawable/ic_flag_bf" />
 
         <ImageView android:id="@+id/optionOrangeCheck"
+            android:layout_width="38dp" android:layout_height="38dp" android:padding="3dp"
+            android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/optionOrangeV2"
+        android:layout_width="match_parent"
+        android:layout_height="90dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_card_final"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+
+        <ImageView
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="Orange BF"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_operator_orange" />
+
+        <TextView
+            android:id="@+id/optionOrangeV2Name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="ORANGE BF V2"
+            android:textColor="@color/barka_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:layout_width="26dp"
+            android:layout_height="18dp"
+            android:layout_marginEnd="10dp"
+            android:contentDescription="@string/burkina_faso"
+            android:src="@drawable/ic_flag_bf" />
+
+        <ImageView android:id="@+id/optionOrangeV2Check"
             android:layout_width="38dp" android:layout_height="38dp" android:padding="3dp"
             android:src="@drawable/ic_selection_empty" android:importantForAccessibility="no" />
     </LinearLayout>

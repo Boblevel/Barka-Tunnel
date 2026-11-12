@@ -34,6 +34,8 @@ class PricingUpdate(BaseModel):
     revision: int = Field(strict=True, ge=0)
     prices: dict[str, Amount]
     promotions: dict[str, Promotion] | None = None
+    subscription_payments_enabled: bool | None = Field(default=None, strict=True)
+    reseller_payments_enabled: bool | None = Field(default=None, strict=True)
 
     @model_validator(mode='after')
     def valid_promotions(self):
@@ -69,7 +71,14 @@ def get_catalog(cx=None):
         if promo['starts_at'] <= now < promo['ends_at']:
             effective[key] = promo['amount']
     return {'revision': saved.revision, 'currency': 'XOF', 'prices': effective,
-            'base_prices': saved.prices, 'promotions': promotions, 'server_time': now}
+            'base_prices': saved.prices, 'promotions': promotions, 'server_time': now,
+            'subscription_payments_enabled': saved.subscription_payments_enabled is not False,
+            'reseller_payments_enabled': saved.reseller_payments_enabled is not False}
+
+
+def require_payments_enabled(kind, cx=None):
+    if not get_catalog(cx)[kind + '_payments_enabled']:
+        raise HTTPException(403, 'Les paiements sont temporairement désactivés pour cette offre.')
 
 
 def public_plans():
@@ -90,6 +99,7 @@ def create_subscription_quote(device_id, plan_id, expected_amount=None):
     now = int(time.time())
     reference = f'BT-{now}-{uuid.uuid4().hex[:10].upper()}'
     with transaction() as cx:
+        require_payments_enabled('subscription', cx)
         amount = get_catalog(cx)['prices'][plan_id]
         check_expected_amount(amount, expected_amount)
         cx.execute("""INSERT INTO payments(reference,device_id,plan_id,amount,currency,status,created_at,updated_at)
@@ -117,7 +127,9 @@ def save_pricing(body: PricingUpdate, response: Response):
         promotions = body.promotions if body.promotions is not None else current['promotions']
         try:
             validated = PricingUpdate.model_validate({'revision': current['revision'] + 1,
-                                                       'prices': body.prices, 'promotions': promotions})
+                                                       'prices': body.prices, 'promotions': promotions,
+                                                       **{key: getattr(body, key) if getattr(body, key) is not None else current[key]
+                                                          for key in ('subscription_payments_enabled', 'reseller_payments_enabled')}})
         except ValueError as exc:
             raise HTTPException(422, 'Adaptez ou retirez la promotion avant de réduire le tarif normal.') from exc
         saved = validated.model_dump()

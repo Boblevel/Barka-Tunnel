@@ -98,8 +98,8 @@ def test_vpn_profiles_are_seeded_and_secrets_require_access(tmp_path):
     importlib.reload(vpn_profiles)
 
     catalog = vpn_profiles.list_catalog()
-    assert [item["network_id"] for item in catalog] == ["moov_bf", "moov_tiktok", "orange_bf", "telecel_bf", "global_world"]
-    assert [item["protocol"] for item in catalog] == ["SLOWDNS", "SSH_TLS", "VLESS", "UDP", "VLESS"]
+    assert [item["network_id"] for item in catalog] == ["moov_bf", "moov_bf_v2", "moov_tiktok", "orange_bf", "orange_bf_v2", "telecel_bf", "global_world"]
+    assert [item["protocol"] for item in catalog] == ["SLOWDNS", "SLOWDNS", "SSH_TLS", "VLESS", "VLESS", "UDP", "VLESS"]
     assert all(item["enabled"] is False for item in catalog)
 
     device = "device-vpnprofile-abcdef"

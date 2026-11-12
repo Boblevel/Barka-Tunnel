@@ -362,6 +362,15 @@ def init_db() -> None:
             }, ensure_ascii=False, separators=(',', ':')), now))
             from .profile_defaults import migrate_capture_defaults
             migrate_capture_defaults(cx, now)
+            for source, target, label in (
+                ("moov_bf", "moov_bf_v2", "MOOV-AFRICA BF V2"),
+                ("orange_bf", "orange_bf_v2", "ORANGE BF V2"),
+            ):
+                cx.execute("""INSERT OR IGNORE INTO vpn_profiles(
+                    network_id, display_name, protocol, enabled, maintenance,
+                    priority, version, config_json, updated_at)
+                    SELECT ?, ?, protocol, enabled, maintenance, priority, 1, config_json, ?
+                    FROM vpn_profiles WHERE network_id=?""", (target, label, now, source))
             cx.execute(
                 """
                 INSERT OR IGNORE INTO app_update(

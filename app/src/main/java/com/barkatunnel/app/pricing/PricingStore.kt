@@ -6,7 +6,8 @@ import org.json.JSONObject
 
 data class Promotion(val amount: Int, val startsAt: Long, val endsAt: Long)
 data class PriceCatalog(val revision: Long, val prices: Map<String, Int>,
-    val promotions: Map<String, Promotion> = emptyMap(), val serverTime: Long = 0)
+    val promotions: Map<String, Promotion> = emptyMap(), val serverTime: Long = 0,
+    val subscriptionPaymentsEnabled: Boolean = true, val resellerPaymentsEnabled: Boolean = true)
 
 object PricingStore {
     private const val PREFS = "barka_price_catalog"
@@ -39,7 +40,8 @@ object PricingStore {
         }
         val effective = prices.toMutableMap()
         promotions.forEach { (key, promotion) -> if (now >= promotion.startsAt && now < promotion.endsAt) effective[key] = promotion.amount }
-        return PriceCatalog((revision as Number).toLong(), effective, promotions, now)
+        return PriceCatalog((revision as Number).toLong(), effective, promotions, now,
+            body.optBoolean("subscription_payments_enabled", true), body.optBoolean("reseller_payments_enabled", true))
     }
 
     fun read(context: Context): PriceCatalog = runCatching {

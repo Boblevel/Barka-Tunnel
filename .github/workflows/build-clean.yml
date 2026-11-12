@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - main
+      - validation/lot22-141
+
+concurrency:
+  group: barka-production-deploy
+  cancel-in-progress: false
 
 jobs:
   build-clean:
@@ -62,6 +67,8 @@ jobs:
           set -euo pipefail
           python -m pip install --disable-pip-version-check -r backend/requirements.txt
           PYTHONPATH=backend python -m pytest backend/tests -q
+          node backend/tests/panel_lot21.test.cjs
+          node backend/tests/panel_lot22.test.cjs
 
       - name: Préparer les moteurs natifs C6
         shell: bash
@@ -185,11 +192,15 @@ jobs:
 
           REMOTE_RESULT="$(ssh -p "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
             "$BARKA_VPS_USER@$BARKA_VPS_HOST" \
-            "BARKA_DEPLOY_SHA='$GITHUB_SHA' BARKA_REMOTE_APK='$REMOTE_TMP' BARKA_REMOTE_BACKEND='$REMOTE_BACKEND' BARKA_BACKEND_SHA256='$BACKEND_SHA256' BARKA_FINAL_APK='$REMOTE_APK' bash -s" <<'REMOTE_SCRIPT'
+            "BARKA_DEPLOY_SHA='$GITHUB_SHA' BARKA_EXPECTED_APK_SHA='$LOCAL_SHA256' BARKA_REMOTE_APK='$REMOTE_TMP' BARKA_REMOTE_BACKEND='$REMOTE_BACKEND' BARKA_BACKEND_SHA256='$BACKEND_SHA256' BARKA_FINAL_APK='$REMOTE_APK' bash -s" <<'REMOTE_SCRIPT'
           set -euo pipefail
           BARKA_BACKEND_ROOT="/opt/Barka-Tunnel/backend"
-          BARKA_BACKUP_ROOT="$(mktemp -d /tmp/BarkaBackendBackup.XXXXXX)"
+          exec 9>/tmp/barka-backend-deploy.lock
+          flock -n 9 || { echo "Un déploiement est déjà en cours."; exit 1; }
+          install -d -m 700 /opt/Barka-Tunnel/backups
+          BARKA_BACKUP_ROOT="$(mktemp -d /opt/Barka-Tunnel/backups/lot22.XXXXXX)"
 
+          test "$(sha256sum "$BARKA_REMOTE_APK" | awk '{print $1}')" = "$BARKA_EXPECTED_APK_SHA"
           test -f "$BARKA_BACKEND_ROOT/.env"
           test -d "$BARKA_BACKEND_ROOT/data"
           test -f "$BARKA_BACKEND_ROOT/docker-compose.yml"
@@ -203,11 +214,16 @@ jobs:
 
           install -d -m 700 "$BARKA_BACKUP_ROOT"
           cp -a "$BARKA_BACKEND_ROOT/app" "$BARKA_BACKUP_ROOT/app"
+          docker exec barka-backend python -c 'import sqlite3; from app.config import settings; src=sqlite3.connect("file:"+settings.database_path+"?mode=ro", uri=True); dst=sqlite3.connect("/tmp/barka-predeploy.db"); src.backup(dst); dst.close(); src.close()'
+          docker cp barka-backend:/tmp/barka-predeploy.db "$BARKA_BACKUP_ROOT/database.sqlite"
+          chmod 600 "$BARKA_BACKUP_ROOT/database.sqlite"
+          docker exec barka-backend rm -f /tmp/barka-predeploy.db
+          if test -f "$BARKA_FINAL_APK"; then cp -a "$BARKA_FINAL_APK" "$BARKA_BACKUP_ROOT/BarkaTunnel.apk"; fi
 
           if ! (
             tar -xzf "$BARKA_REMOTE_BACKEND" -C "$BARKA_BACKEND_ROOT" &&
             cd "$BARKA_BACKEND_ROOT" &&
-            docker compose up -d --build &&
+            docker compose up -d --build --no-deps barka-backend &&
             curl -fsS --retry 10 --retry-delay 2 --retry-all-errors \
               http://127.0.0.1:8085/health | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") and d.get("payment_configured") else 1)'
           ); then
@@ -215,17 +231,18 @@ jobs:
             cp -a "$BARKA_BACKUP_ROOT/app" "$BARKA_BACKEND_ROOT/app"
             (
               cd "$BARKA_BACKEND_ROOT"
-              docker compose up -d --build
+              docker compose up -d --build --no-deps barka-backend
             )
             echo "Le nouveau backend a échoué : ancienne version restaurée."
             exit 1
           fi
 
           install -d -m 755 "$(dirname "$BARKA_FINAL_APK")"
-          install -m 644 "$BARKA_REMOTE_APK" "$BARKA_FINAL_APK"
+          install -m 644 "$BARKA_REMOTE_APK" "${BARKA_FINAL_APK}.new"
+          mv -f "${BARKA_FINAL_APK}.new" "$BARKA_FINAL_APK"
           APK_SHA256="$(sha256sum "$BARKA_FINAL_APK" | awk '{print $1}')"
           rm -f "$BARKA_REMOTE_APK" "$BARKA_REMOTE_BACKEND"
-          rm -rf "$BARKA_BACKUP_ROOT"
+          echo "Sauvegarde conservée : $BARKA_BACKUP_ROOT"
           echo "BACKEND_DEPLOYED=$BARKA_DEPLOY_SHA"
           echo "APK_SHA256=$APK_SHA256"
           REMOTE_SCRIPT

@@ -13,7 +13,7 @@ class SshTlsProfileTest {
     @Test fun defaultPortsAndReassignment() {
         val parsed=VpnProfileConfigParser.parse(VpnProfileProtocol.SSH_TLS,config) as VpnProfileConfig.SshTls
         assertEquals(443,parsed.port);assertEquals(7300,parsed.udpGwPort)
-        for(network in listOf("moov_bf","moov_tiktok","orange_bf","telecel_bf","global_world"))
+        for(network in listOf("moov_bf","moov_bf_v2","moov_tiktok","orange_bf","orange_bf_v2","telecel_bf","global_world"))
             for(protocol in VpnProfileProtocol.entries)assertTrue(VpnProfilePolicy.validate(network,protocol))
         assertFalse(VpnProfilePolicy.validate("unknown",VpnProfileProtocol.SSH_TLS))
     }

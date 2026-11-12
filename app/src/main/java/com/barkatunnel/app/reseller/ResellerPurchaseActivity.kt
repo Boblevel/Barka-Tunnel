@@ -140,6 +140,9 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             refresh()
             return
         }
+        if(state.optString("request_id").isBlank() && !PricingStore.read(this).resellerPaymentsEnabled) {
+            showStatus(getString(R.string.payments_paused)); return
+        }
         if(state.optString("request_id").isBlank()) {
             state.put("request_id",UUID.randomUUID().toString()).put("months",months).put("quota_limit",if (months == 1) 30 else 70).put("amount",displayedPrices.getValue("reseller_${months}m"))
             ResellerPurchaseStore.write(this,state)
@@ -225,6 +228,10 @@ class ResellerPurchaseActivity : AppCompatActivity() {
     }
     private fun renderPrices() {
         if (busy || !::plans.isInitialized || isDestroyed) return
+        val enabled = PricingStore.read(this).resellerPaymentsEnabled || state.optString("request_id").isNotBlank()
+        pay.isEnabled = !busy && state.optString("reference").isBlank() && enabled
+        if (state.optString("reference").isBlank())
+            pay.setText(if (!enabled) R.string.payments_paused else if (account == null) R.string.subscription_pay else R.string.reseller_renew)
         displayedPrices = PricingStore.read(this).prices.toMutableMap().apply {
             if (state.optString("reference").isNotBlank() || state.optString("request_id").isNotBlank()) {
                 val key = "reseller_${state.optInt("months", months)}m"

@@ -25,6 +25,7 @@ class SubscriptionActivity : AppCompatActivity() {
 
     private var priceListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var displayedPrices = PricingStore.defaults
+    private var creatingPayment = false
     private var selectedPlanId: String = "24h"
     private var selectedAmount: Int = 300
     private lateinit var payButton: MaterialButton
@@ -87,6 +88,7 @@ class SubscriptionActivity : AppCompatActivity() {
     }
 
     private fun startPayment() {
+        if (creatingPayment) return
         PendingPaymentStore.confirmedCode(this)?.let { activatePaidCode(it); return }
         if (PendingPaymentStore.reference(this) != null) {
             checkPendingPayment()
@@ -97,8 +99,13 @@ class SubscriptionActivity : AppCompatActivity() {
             }
             return
         }
+        if (!PricingStore.read(this).subscriptionPaymentsEnabled) {
+            Toast.makeText(this, R.string.payments_paused, Toast.LENGTH_LONG).show()
+            return
+        }
         val purchasePlanId = selectedPlanId
         val purchaseAmount = selectedAmount
+        creatingPayment = true
         payButton.isEnabled = false
         AppLogStore.add(
             this,
@@ -117,7 +124,8 @@ class SubscriptionActivity : AppCompatActivity() {
                 )
                 if (!saved) {
                     runOnUiThread {
-                        payButton.isEnabled = true
+                        creatingPayment = false
+                        renderPrices()
                         val previous = PendingPaymentStore.confirmedCode(this)
                         if (previous != null) activatePaidCode(previous)
                         else Toast.makeText(this, R.string.payment_action_retry, Toast.LENGTH_LONG).show()
@@ -130,6 +138,7 @@ class SubscriptionActivity : AppCompatActivity() {
                 )
 
                 runOnUiThread {
+                    creatingPayment = false
                     payButton.isEnabled = true
                     syncPendingPlan()
                     startActivity(
@@ -139,6 +148,7 @@ class SubscriptionActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 AppLogStore.add(this, "Paiement • Échec de création.")
                 runOnUiThread {
+                    creatingPayment = false
                     payButton.isEnabled = true
                     renderPrices()
                     if (e.message == "PRICING_CHANGED") {
@@ -293,7 +303,11 @@ class SubscriptionActivity : AppCompatActivity() {
     }
 
     private fun renderPrices() {
-        if (!::payButton.isInitialized || !payButton.isEnabled || isDestroyed) return
+        if (!::payButton.isInitialized || creatingPayment || isDestroyed) return
+        val enabled = PricingStore.read(this).subscriptionPaymentsEnabled ||
+            PendingPaymentStore.reference(this) != null || PendingPaymentStore.confirmedCode(this) != null
+        payButton.isEnabled = enabled
+        payButton.setText(if (enabled) R.string.subscription_pay else R.string.payments_paused)
         val pendingPlan = PendingPaymentStore.planId(this)
         displayedPrices = PricingStore.read(this).prices.toMutableMap().apply {
             if (PendingPaymentStore.reference(this@SubscriptionActivity) != null && pendingPlan in this) {

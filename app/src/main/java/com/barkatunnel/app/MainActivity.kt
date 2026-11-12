@@ -880,7 +880,11 @@ class MainActivity : AppCompatActivity() {
         val checkGlobal = dialog.findViewById<android.widget.ImageView>(R.id.optionGlobalCheck)
         val nameGlobal = dialog.findViewById<TextView>(R.id.optionGlobalName)
         val nameTiktok = dialog.findViewById<TextView>(R.id.optionTiktokName)
+        val checkMoovV2 = dialog.findViewById<android.widget.ImageView>(R.id.optionMoovV2Check)
+        val nameMoovV2 = dialog.findViewById<TextView>(R.id.optionMoovV2Name)
         val checkMoov = dialog.findViewById<android.widget.ImageView>(R.id.optionMoovCheck)
+        val checkOrangeV2 = dialog.findViewById<android.widget.ImageView>(R.id.optionOrangeV2Check)
+        val nameOrangeV2 = dialog.findViewById<TextView>(R.id.optionOrangeV2Name)
         val checkOrange = dialog.findViewById<android.widget.ImageView>(R.id.optionOrangeCheck)
         val checkTelecel = dialog.findViewById<android.widget.ImageView>(R.id.optionTelecelCheck)
         val nameMoov = dialog.findViewById<TextView>(R.id.optionMoovName)
@@ -896,18 +900,22 @@ class MainActivity : AppCompatActivity() {
         }
         showAvailability(nameTiktok, "moov_tiktok", "MOOV FORFAIT TIKTOK")
         showAvailability(nameMoov, "moov_bf", "MOOV-AFRICA BF")
+        showAvailability(nameMoovV2, "moov_bf_v2", "MOOV-AFRICA BF V2")
         showAvailability(nameOrange, "orange_bf", "ORANGE BF")
+        showAvailability(nameOrangeV2, "orange_bf_v2", "ORANGE BF V2")
         showAvailability(nameTelecel, "telecel_bf", "TELECEL BF")
         showAvailability(nameGlobal, "global_world", "GLOBAL MONDIAL")
 
         fun updateSelection(id: String?) {
             checkTiktok.setImageResource(if (id == "moov_tiktok") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
             checkMoov.setImageResource(if (id == "moov_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+            checkMoovV2.setImageResource(if (id == "moov_bf_v2") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
             checkOrange.setImageResource(if (id == "orange_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
+            checkOrangeV2.setImageResource(if (id == "orange_bf_v2") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
             checkTelecel.setImageResource(if (id == "telecel_bf") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
             checkGlobal.setImageResource(if (id == "global_world") R.drawable.ic_selection_badge else R.drawable.ic_selection_empty)
-            listOf(R.id.optionMoov to "moov_bf", R.id.optionTiktok to "moov_tiktok",
-                R.id.optionOrange to "orange_bf", R.id.optionTelecel to "telecel_bf",
+            listOf(R.id.optionMoov to "moov_bf", R.id.optionMoovV2 to "moov_bf_v2", R.id.optionTiktok to "moov_tiktok",
+                R.id.optionOrange to "orange_bf", R.id.optionOrangeV2 to "orange_bf_v2", R.id.optionTelecel to "telecel_bf",
                 R.id.optionGlobal to "global_world").forEach { (viewId, networkId) ->
                 val row = dialog.findViewById<View>(viewId)
                 val maintenance = vpnProfileRepository.isMaintenance(networkId)
@@ -962,9 +970,13 @@ class MainActivity : AppCompatActivity() {
 
         dialog.findViewById<android.view.View>(R.id.optionMoov)
             .setOnClickListener { select("moov_bf") }
+        dialog.findViewById<android.view.View>(R.id.optionMoovV2)
+            .setOnClickListener { select("moov_bf_v2") }
 
         dialog.findViewById<android.view.View>(R.id.optionOrange)
             .setOnClickListener { select("orange_bf") }
+        dialog.findViewById<android.view.View>(R.id.optionOrangeV2)
+            .setOnClickListener { select("orange_bf_v2") }
 
         dialog.findViewById<android.view.View>(R.id.optionTelecel)
             .setOnClickListener { select("telecel_bf") }
@@ -984,7 +996,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showOrangeIpWarningIfNeeded(currentCellularIp: String?) {
-        val shouldWarn = selectedNetwork?.id == "orange_bf" &&
+        val shouldWarn = selectedNetwork?.id in listOf("orange_bf", "orange_bf_v2") &&
             !currentCellularIp.isNullOrBlank() &&
             !IpFinderActivity.isIpCompatible(this, currentCellularIp)
 
@@ -1875,14 +1887,14 @@ class MainActivity : AppCompatActivity() {
         val visualState = when {
             isVpnInterfaceIp -> NetworkIpVisualState.VALID
             cellularIp == null -> NetworkIpVisualState.NEUTRAL
-            selectedNetwork?.id == "orange_bf" -> {
+            selectedNetwork?.id in listOf("orange_bf", "orange_bf_v2") -> {
                 if (IpFinderActivity.isIpCompatible(this, cellularIp)) {
                     NetworkIpVisualState.VALID
                 } else {
                     NetworkIpVisualState.INVALID
                 }
             }
-            selectedNetwork?.id == "moov_bf" || selectedNetwork?.id == "telecel_bf" -> {
+            selectedNetwork?.id in listOf("moov_bf", "moov_bf_v2") || selectedNetwork?.id == "telecel_bf" -> {
                 if (NetworkIpProvider.isTenNetworkAtLeast100(cellularIp)) {
                     NetworkIpVisualState.VALID
                 } else {
@@ -1942,7 +1954,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         val drawable = when (network?.id) {
             "moov_tiktok" -> R.drawable.ic_tiktok_official
-            "orange_bf" -> R.drawable.ic_operator_orange
+            "orange_bf", "orange_bf_v2" -> R.drawable.ic_operator_orange
             "telecel_bf" -> R.drawable.ic_operator_telecel
             "global_world" -> R.drawable.global_africa_red
             else -> R.drawable.moov_africa_official
@@ -1955,7 +1967,7 @@ class MainActivity : AppCompatActivity() {
         val global = network?.id == "global_world"
         networkFlagBurkina.setImageResource(if (global) R.drawable.ic_global_world else R.drawable.ic_flag_bf)
         networkFlagBurkina.contentDescription = if (global) getString(R.string.global_coverage) else getString(R.string.burkina_faso)
-        val showMoovCountries = network?.id == "moov_bf"
+        val showMoovCountries = network?.id in listOf("moov_bf", "moov_bf_v2")
         networkFlagNiger.visibility = if (showMoovCountries) {
             android.view.View.VISIBLE
         } else {

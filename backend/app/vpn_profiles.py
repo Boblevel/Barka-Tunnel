@@ -7,8 +7,10 @@ from .services import access_state, iso, now_ts
 
 EXPECTED_PROTOCOL = {
     "moov_bf": "SLOWDNS",
+        "moov_bf_v2": "SLOWDNS",
     "moov_tiktok": "SSH_TLS",
     "orange_bf": "VLESS",
+        "orange_bf_v2": "VLESS",
     "telecel_bf": "UDP",
     "global_world": "VLESS",
 }

@@ -536,7 +536,7 @@ class IpFinderActivity : AppCompatActivity() {
 
         private fun usesOrangeRules(context: Context): Boolean =
             context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE)
-                .getString("selected_network_id", null) == "orange_bf"
+                .getString("selected_network_id", null) in listOf("orange_bf", "orange_bf_v2")
 
         private fun loadSearchPattern(context: Context): String {
             if (usesOrangeRules(context)) return OrangeIpPolicy.PATTERNS

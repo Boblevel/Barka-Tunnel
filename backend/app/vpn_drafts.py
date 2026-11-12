@@ -24,7 +24,7 @@ class DraftSave(BaseModel):
 
 class DraftApply(BaseModel):
     revision: str = Field(min_length=64, max_length=64)
-    network_ids: list[str] | None = Field(default=None, min_length=1, max_length=5)
+    network_ids: list[str] | None = Field(default=None, min_length=1, max_length=7)
 
 
 def _snapshot(cx):
