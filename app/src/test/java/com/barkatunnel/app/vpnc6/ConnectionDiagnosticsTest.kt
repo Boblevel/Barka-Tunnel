@@ -16,11 +16,12 @@ class ConnectionDiagnosticsTest {
         assertTrue(ConnectionDiagnostics.header("Connection", "keep-alive").contains("keep-alive"))
         assertNotEquals(ConnectionDiagnostics.fingerprint("profile-a"), ConnectionDiagnostics.fingerprint("profile-b"))
     }
-    @Test fun nativeClassificationDoesNotRepeatSensitiveRawMessages() {
-        val result = ConnectionDiagnostics.nativeSummary("secret password x509: private.invalid websocket: bad handshake token=private")
-        assertEquals(2, result.size)
+    @Test fun nativeErrorsRemainDetailedWithoutTokens() {
+        val result = ConnectionDiagnostics.nativeSummary("x509: proxy.invalid websocket: bad handshake token=private")
+        assertEquals(3, result.size)
         assertFalse(result.joinToString().contains("private"))
-        assertTrue(ConnectionDiagnostics.nativeSummary("custom error secret").single().contains("non classée"))
+        assertTrue(result.joinToString().contains("proxy.invalid"))
+        assertTrue(ConnectionDiagnostics.nativeSummary("custom transport error").single().contains("custom transport error"))
         assertTrue(ConnectionDiagnostics.nativeSummary("").single().contains("aucune erreur"))
     }
 }

@@ -62,13 +62,14 @@ class JournalUiBinder(
         val value = message.lowercase()
         val networkName = NETWORK_NAME.find(message)?.value
 
-        if (value.contains("permission") || value.contains("appuie sur le bouton pour arrêter")) {
+        if (!value.startsWith("diagnostic ") &&
+            (value.contains("permission") || value.contains("appuie sur le bouton pour arrêter"))) {
             return null
         }
 
         val type = when {
             value.startsWith("diagnostic vpn") ||
-                value.startsWith("diagnostic vless") -> return null
+                value.startsWith("diagnostic vless") -> EventType.DIAGNOSTIC
             value.startsWith("diagnostic moov") ||
                 value.startsWith("diagnostic orange") ||
                 value.startsWith("diagnostic telecel") -> return null
@@ -114,17 +115,8 @@ class JournalUiBinder(
         )
     }
 
-    // Temporary LOT17 diagnostics: remove after the network fix is confirmed.
-    internal fun safeDiagnostic(message: String): String {
-        if (message.startsWith("Diagnostic VLESS • config VLESS", ignoreCase = true)) {
-            return "Diagnostic VLESS • configuration chargée (identifiants masqués)."
-        }
-        return message
-            .replace(Regex("""(?i)[a-z][a-z0-9+.-]*://\S+"""), "[adresse masquée]")
-            .replace(Regex("""(?i)\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b"""), "[UUID masqué]")
-            .replace(Regex("""(?i)(authorization|password|passwd|token|secret|uuid|username|pubkey|public[_ -]?key)\s*[:=].*"""), "$1=[masqué]")
-            .take(400)
-    }
+    // Temporary detailed Global mondial journal; never expose credentials.
+    internal fun safeDiagnostic(message: String): String = DiagnosticRedactor.clean(message)
 
     private fun addEventRow(event: JournalEvent) {
         val row = LayoutInflater.from(context)
@@ -264,7 +256,7 @@ class JournalUiBinder(
     )
 
     companion object {
-        private const val MAX_VISIBLE_EVENTS = 80
+        private const val MAX_VISIBLE_EVENTS = 600
         private val LOG_LINE = Regex("^\\[([^]]+)]\\s*(.*)$")
         private val PING_VALUE = Regex("Ping\\s*:\\s*(\\d+)\\s*ms", RegexOption.IGNORE_CASE)
         private val NETWORK_NAME = Regex(

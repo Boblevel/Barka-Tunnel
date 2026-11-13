@@ -56,5 +56,25 @@ vm.runInContext(code,context);
   assert.equal(elements.get('generateSubscriptionButton').disabled,false);
   context.renderQuota({...quota,used:30,remaining:0,revision:1});
   assert.equal(elements.get('quotaNumber').textContent,45,'Pre-reset response must not undo reset');
+  // Older mobile browsers expose secure random bytes but not randomUUID.
+  context.crypto={getRandomValues:require('node:crypto').webcrypto.getRandomValues.bind(require('node:crypto').webcrypto)};
+  await context.generateSubscription();
+  assert.match(calls.at(-1).request_id,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.equal(elements.get('generateSubscriptionButton').disabled,false);
+  // A lost response must be recovered even after selecting another duration.
+  fail=true;
+  await context.generateSubscription();
+  const interrupted=calls.at(-1);
+  elements.get('plan').value='2w';
+  fail=false;
+  await context.generateSubscription();
+  assert.equal(calls.at(-1).request_id,interrupted.request_id);
+  assert.equal(calls.at(-1).plan_id,interrupted.plan_id);
+  assert.equal(elements.get('plan').value,interrupted.plan_id);
+  assert.equal(storage.size,0);
+  elements.get('plan').value='2w';
+  await context.generateSubscription();
+  assert.notEqual(calls.at(-1).request_id,interrupted.request_id);
+  assert.equal(calls.at(-1).plan_id,'2w');
   console.log('Panel: quota colors, stale responses, double click, tests and retry passed.');
 })().catch(error=>{console.error(error);process.exitCode=1});

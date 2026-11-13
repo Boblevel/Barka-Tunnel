@@ -103,3 +103,17 @@ def test_suggestion_unblock_cannot_bypass_app_block_or_change_paid_subscription(
         'device_id': DEVICE, 'scope': 'app', 'blocked': False}).status_code == 200
     assert services.access_state(DEVICE)['allowed']
     assert c.post('/v1/suggestions', json=request).status_code == 200
+
+
+def test_blocked_author_display_uses_name_but_keeps_internal_identity(tmp_path):
+    c, db, _ = setup(tmp_path)
+    request={'device_id':DEVICE,'request_id':str(uuid4()),'sender_name':'Auteur test','message':'Message'}
+    assert c.post('/v1/suggestions',json=request).status_code==200
+    assert c.put('/v1/admin/moderation',headers=ADMIN,json={'device_id':DEVICE,'scope':'app','blocked':True}).status_code==200
+    item=c.get('/v1/admin/moderation',headers=ADMIN).json()['items'][0]
+    assert item['sender_name']=='Auteur test'
+    assert item['device_id']==DEVICE
+    assert c.post('/v1/admin/suggestions/reset',headers=ADMIN,json={'confirmation':'SUPPRIMER'}).status_code==200
+    item=c.get('/v1/admin/moderation',headers=ADMIN).json()['items'][0]
+    assert item['sender_name'] is None and item['app_blocked']==1
+    assert c.put('/v1/admin/moderation',headers=ADMIN,json={'device_id':DEVICE,'scope':'app','blocked':False}).status_code==200

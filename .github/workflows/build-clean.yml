@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - validation/lot23-141
+      - validation/lot24-141
 
 concurrency:
   group: barka-production-deploy
@@ -204,7 +204,7 @@ jobs:
           exec 9>/tmp/barka-backend-deploy.lock
           flock -n 9 || { echo "Un déploiement est déjà en cours."; exit 1; }
           install -d -m 700 /opt/Barka-Tunnel/backups
-          BARKA_BACKUP_ROOT="$(mktemp -d /opt/Barka-Tunnel/backups/lot23.XXXXXX)"
+          BARKA_BACKUP_ROOT="$(mktemp -d /opt/Barka-Tunnel/backups/lot24.XXXXXX)"
 
           test "$(sha256sum "$BARKA_REMOTE_APK" | awk '{print $1}')" = "$BARKA_EXPECTED_APK_SHA"
           test -f "$BARKA_BACKEND_ROOT/.env"

@@ -10,14 +10,18 @@ object AppLogStore {
 
     private const val PREFS = "barka_journal"
     private const val KEY_LOGS = "logs"
-    private const val MAX_LINES = 250
+    private const val MAX_LINES = 600
 
     @Synchronized
     fun add(
         context: Context,
         message: String
     ) {
-        if (message.trimStart().startsWith("Diagnostic ", ignoreCase = true)) return
+        val diagnostic = message.trimStart().startsWith("Diagnostic ", ignoreCase = true)
+        if (diagnostic && !message.startsWith("Diagnostic VLESS", ignoreCase = true) &&
+            !(message.startsWith("Diagnostic VPN", ignoreCase = true) &&
+                context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE)
+                    .getString("selected_network_id", null) == "global_world")) return
         val prefs = context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
@@ -28,7 +32,8 @@ object AppLogStore {
             Locale.getDefault()
         )
 
-        val line = "[${formatter.format(Date())}] $message"
+        val safeMessage = if (diagnostic) DiagnosticRedactor.clean(message) else message
+        val line = "[${formatter.format(Date())}] $safeMessage"
 
         val current = prefs
             .getString(KEY_LOGS, "")

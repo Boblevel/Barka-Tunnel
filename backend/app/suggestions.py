@@ -140,7 +140,7 @@ def moderation_status(body: DeviceRequest, response: Response):
 def moderation_list(response: Response, offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
     response.headers['Cache-Control'] = 'no-store'
     with transaction() as cx:
-        rows = cx.execute('SELECT * FROM device_moderation WHERE app_blocked=1 OR suggestions_blocked=1 ORDER BY updated_at DESC,device_id LIMIT ? OFFSET ?', (limit, offset)).fetchall()
+        rows = cx.execute('SELECT m.*, (SELECT s.sender_name FROM suggestions s WHERE s.device_id=m.device_id ORDER BY s.id DESC LIMIT 1) AS sender_name FROM device_moderation m WHERE app_blocked=1 OR suggestions_blocked=1 ORDER BY updated_at DESC,device_id LIMIT ? OFFSET ?', (limit, offset)).fetchall()
         return {'items': [dict(row) for row in rows]}
 
 

@@ -28,11 +28,11 @@ class XrayVlessEngine(
             config.path, config.sni, config.security, config.network, config.fingerprint.orEmpty(),
             config.proxyHost.orEmpty(), config.proxyPort.toString()).joinToString("\n")
         listOf(
-            "session=$socksPort • profil réseau=${ConnectionDiagnostics.fingerprint(diagnosticProfile)} • version=${com.barkatunnel.app.BuildConfig.VERSION_NAME}",
+            "session=$socksPort • profil réseau=${ConnectionDiagnostics.fingerprint(diagnosticProfile)} • version=${com.barkatunnel.app.BuildConfig.VERSION_NAME} • Android API=${android.os.Build.VERSION.SDK_INT}",
             "destination=${ConnectionDiagnostics.host(outboundAddress)}:${config.port} • IP explicite=${!config.ip.isNullOrBlank()}",
             "proxy=${ConnectionDiagnostics.host(config.proxyHost.orEmpty())}:${config.proxyPort ?: 0} • en-têtes=${config.proxyHeaders.size}",
             "WS Host=${ConnectionDiagnostics.host(config.host)}",
-            "WS chemin • longueur=${config.path.length} • empreinte=${ConnectionDiagnostics.fingerprint(config.path)} • paramètres=${'?' in config.path}",
+            "WS chemin=${com.barkatunnel.app.journal.DiagnosticRedactor.clean(config.path)} • longueur=${config.path.length} • empreinte=${ConnectionDiagnostics.fingerprint(config.path)} • paramètres=${'?' in config.path}",
             "SNI=${ConnectionDiagnostics.host(config.sni)} • TLS=${config.security == "tls"} • WS=${config.network == "ws"}",
             "empreinte TLS=${ConnectionDiagnostics.host(config.fingerprint.orEmpty())} • pont CONNECT=${!config.proxyHost.isNullOrBlank() && config.proxyHeaders.isNotEmpty()}"
         ).forEach { AppLogStore.add(context, "Diagnostic VLESS • $it.") }
@@ -109,7 +109,7 @@ class XrayVlessEngine(
                 input.readFully(bytes)
                 bytes.toString(Charsets.UTF_8)
             } }.orEmpty() }.getOrDefault("")
-            ConnectionDiagnostics.nativeSummary(output).forEach {
+            ConnectionDiagnostics.nativeSummary(output.replace(config.uuid, "[UUID masqué]", ignoreCase = true)).forEach {
                 AppLogStore.add(context, "Diagnostic VLESS • bilan moteur • $it.")
             }
         }

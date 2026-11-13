@@ -45,6 +45,12 @@ class NavigationViewportTest {
         } finally { controller.pause().stop().destroy() }
     }
 
+    @Test fun largerTextKeepsAllOptionsReachableWithoutScrolling() {
+        org.robolectric.RuntimeEnvironment.setFontScale(1.5f)
+        try { portraitScreensShowAllMenuOptionsWithoutScrolling() }
+        finally { org.robolectric.RuntimeEnvironment.setFontScale(1f) }
+    }
+
     @Test fun drawerHeaderStaysFixedWhileEveryOptionRemainsReachable() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()

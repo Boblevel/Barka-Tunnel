@@ -2,7 +2,7 @@ package com.barkatunnel.app.vpnc6
 
 import java.security.MessageDigest
 
-/** Bounded metadata only: never log credentials, arbitrary native output or HTTP bodies. */
+/** Bounded technical metadata and sanitized native errors for temporary diagnosis. */
 internal object ConnectionDiagnostics {
     fun fingerprint(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }.take(16)
@@ -34,8 +34,9 @@ internal object ConnectionDiagnostics {
             "unexpected eof" to "fermeture prématurée (EOF)",
             "failed to read response header" to "réponse amont illisible ou absente"
         )
-        return categories.filterKeys { it in text }.values.toList().ifEmpty {
-            listOf(if (output.isBlank()) "aucune erreur native disponible" else "sortie native non classée (contenu masqué)")
-        }
+        val classified = categories.filterKeys { it in text }.values.toList()
+        val details = output.lineSequence().filter { it.isNotBlank() }.toList().takeLast(40)
+            .map { com.barkatunnel.app.journal.DiagnosticRedactor.clean(it) }.toList()
+        return (classified + details).ifEmpty { listOf("aucune erreur native disponible") }
     }
 }

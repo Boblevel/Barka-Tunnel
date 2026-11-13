@@ -16,12 +16,13 @@ class JournalDiagnosticTest {
         val context = RuntimeEnvironment.getApplication()
         return JournalUiBinder(context, LinearLayout(context))
     }
-    @Test fun diagnosticsAreHiddenWithoutChangingOtherEvents() {
+    @Test fun globalDiagnosticsAreVisibleWithoutChangingOtherEvents() {
         val binder = binder()
         val parse = JournalUiBinder::class.java.getDeclaredMethod("toJournalEvent", String::class.java).apply { isAccessible = true }
-        assertNull(parse.invoke(binder, "[10:00:00] Diagnostic VLESS • CONNECT • proxy HTTP : statut 403"))
-        assertNull(parse.invoke(binder, "[10:00:01] Diagnostic VPN • tentative 1 • délai dépassé"))
+        assertNotNull(parse.invoke(binder, "[10:00:00] Diagnostic VLESS • CONNECT • proxy HTTP : statut 403"))
+        assertNotNull(parse.invoke(binder, "[10:00:01] Diagnostic VPN • tentative 1 • délai dépassé"))
         assertNotNull(parse.invoke(binder, "[10:00:02] VPN connecté • ORANGE BF"))
+        assertNotNull(parse.invoke(binder, "[10:00:03] Diagnostic VLESS • permission denied"))
         assertNull(parse.invoke(binder, "[10:00:03] Profils à jour"))
     }
     @Test fun secretsAndConfigurationAreNotShown() {
@@ -41,7 +42,10 @@ class JournalDiagnosticTest {
         AppLogStore.add(context, "VPN connecté • ORANGE BF")
         repeat(300) { AppLogStore.add(context, "Diagnostic VLESS • CONNECT • statut 429") }
         assertTrue(AppLogStore.getAll(context).contains("VPN connecté"))
-        assertFalse(AppLogStore.getAll(context).contains("Diagnostic"))
+        assertTrue(AppLogStore.getAll(context).contains("Diagnostic VLESS"))
+        AppLogStore.add(context, "Diagnostic VLESS • token=PRIVATE • statut 429")
+        assertFalse(AppLogStore.getAll(context).contains("PRIVATE"))
+        assertTrue(AppLogStore.getAll(context).contains("statut 429"))
         AppLogStore.clear(context)
     }
 }

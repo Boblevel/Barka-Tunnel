@@ -21,6 +21,8 @@ class AdaptiveSideMenuLayout @JvmOverloads constructor(
         val items = scroll.getChildAt(0) as AdaptiveMenuContent
         val compact = MeasureSpec.getSize(heightMeasureSpec) < dp(780)
         val heading = header.getChildAt(1) as LinearLayout
+        for (i in 0 until heading.childCount)
+            (heading.getChildAt(i) as? TextView)?.includeFontPadding = true
         (heading.getChildAt(0) as TextView).textSize = if (compact) 16f else 19f
         (heading.getChildAt(1) as TextView).textSize = if (compact) 11f else 12f
         (heading.getChildAt(1).layoutParams as LayoutParams).topMargin = dp(if (compact) 3 else 5)
@@ -32,6 +34,7 @@ class AdaptiveSideMenuLayout @JvmOverloads constructor(
         for (i in 0 until items.childCount) {
             val child = items.getChildAt(i)
             if (child !is TextView || child.visibility == View.GONE) continue
+            child.includeFontPadding = true
             val section = child.id == View.NO_ID
             val params = child.layoutParams as LayoutParams
             params.height = if (section && !compact) dp(40) else LayoutParams.WRAP_CONTENT
@@ -57,6 +60,15 @@ class AdaptiveSideMenuLayout @JvmOverloads constructor(
                 child.compoundDrawablePadding = dp(6)
                 child.setPadding(dp(4), 0, dp(4), 0)
             }
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        }
+        if (items.measuredHeight > scroll.measuredHeight) {
+            // Preserve labels and 48dp touch targets on short, enlarged-text screens.
+            (heading.getChildAt(1).layoutParams as LayoutParams).topMargin = 0
+            for (i in 0 until heading.childCount)
+                (heading.getChildAt(i) as? TextView)?.includeFontPadding = false
+            for (i in 0 until items.childCount)
+                (items.getChildAt(i) as? TextView)?.includeFontPadding = false
             super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         }
     }
