@@ -234,6 +234,11 @@ def init_db() -> None:
                     used INTEGER NOT NULL DEFAULT 0 CHECK(used>=0),
                     UNIQUE(reseller_id, starts_at)
                 );
+                CREATE TABLE IF NOT EXISTS reseller_quota_adjustments(
+                    period_id INTEGER PRIMARY KEY REFERENCES reseller_quota_periods(id),
+                    custom_limit INTEGER CHECK(custom_limit>=0 AND custom_limit<=100000),
+                    revision INTEGER NOT NULL DEFAULT 0
+                );
                 CREATE TABLE IF NOT EXISTS reseller_generation_requests(
                     reseller_id INTEGER NOT NULL REFERENCES reseller_accounts(id),
                     request_id TEXT NOT NULL, plan_id TEXT NOT NULL, source_ref TEXT NOT NULL,

@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - validation/lot22-141
+      - validation/lot23-141
 
 concurrency:
   group: barka-production-deploy
@@ -69,6 +69,7 @@ jobs:
           PYTHONPATH=backend python -m pytest backend/tests -q
           node backend/tests/panel_lot21.test.cjs
           node backend/tests/panel_lot22.test.cjs
+          node backend/tests/panel_lot23.test.cjs
 
       - name: Préparer les moteurs natifs C6
         shell: bash
@@ -141,9 +142,14 @@ jobs:
       - name: Preparer APK telechargeable
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           APK_SOURCE="app/build/outputs/apk/release/app-release.apk"
           test -f "$APK_SOURCE"
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -name apksigner -type f | sort -V | tail -n 1)"
+          test -n "$APK_SIGNER"
+          "$APK_SIGNER" verify --verbose --print-certs "$APK_SOURCE" | tee apk-verification.txt
+          grep -Fq '012ff8a1b08a66dd72d1741da1da44054bc307a20a4bf2be3c7de51b8383100c' apk-verification.txt
+          python3 -c 'import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); bad=z.testzip(); sys.exit("APK corrompu: "+bad if bad else 0)' "$APK_SOURCE"
           cp "$APK_SOURCE" BarkaTunnel-release.apk
           sha256sum BarkaTunnel-release.apk
 
@@ -198,7 +204,7 @@ jobs:
           exec 9>/tmp/barka-backend-deploy.lock
           flock -n 9 || { echo "Un déploiement est déjà en cours."; exit 1; }
           install -d -m 700 /opt/Barka-Tunnel/backups
-          BARKA_BACKUP_ROOT="$(mktemp -d /opt/Barka-Tunnel/backups/lot22.XXXXXX)"
+          BARKA_BACKUP_ROOT="$(mktemp -d /opt/Barka-Tunnel/backups/lot23.XXXXXX)"
 
           test "$(sha256sum "$BARKA_REMOTE_APK" | awk '{print $1}')" = "$BARKA_EXPECTED_APK_SHA"
           test -f "$BARKA_BACKEND_ROOT/.env"
@@ -237,6 +243,8 @@ jobs:
             exit 1
           fi
 
+          docker exec barka-backend python -m app.duration_audit
+
           install -d -m 755 "$(dirname "$BARKA_FINAL_APK")"
           install -m 644 "$BARKA_REMOTE_APK" "${BARKA_FINAL_APK}.new"
           mv -f "${BARKA_FINAL_APK}.new" "$BARKA_FINAL_APK"
@@ -253,5 +261,8 @@ jobs:
 
           test -n "$REMOTE_SHA256" || { echo "SHA256 distant absent"; exit 1; }
           test "$LOCAL_SHA256" = "$REMOTE_SHA256" || { echo "SHA256 distant incorrect"; exit 1; }
-          echo "APK publié: https://api.rhaffservice.com/downloads/BarkaTunnel.apk"
+          curl --fail --location --retry 3 --max-time 180 \
+            "https://api.rhaffservice.com/downloads/BarkaTunnel.apk?build=$GITHUB_SHA" -o published-check.apk
+          test "$(sha256sum published-check.apk | awk '{print $1}')" = "$LOCAL_SHA256" || { echo "Le téléchargement public ne correspond pas à l’APK vérifié"; exit 1; }
+          echo "APK publié et téléchargement vérifié: https://api.rhaffservice.com/downloads/BarkaTunnel.apk?build=$GITHUB_SHA"
           echo "SHA256=$REMOTE_SHA256"

@@ -1,0 +1,10 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../app/admin_panel.py'),'utf8');
+const line=source.split('\n').find(l=>l.startsWith('function renderRedeemRows('));
+const context=vm.createContext({esc:String,statusLabel:String,formatDurationSeconds:String,creationDate:String,formatDate:String,redeemActionButtons:()=>''});
+vm.runInContext(line,context);
+const base={code:'EXAMPLE',status:'active',duration_seconds:3600,usage_count:1,max_users:3,created_at:'2026-11-13'};
+assert.match(context.renderRedeemRows([{...base,all_users_finished:true}],''),/code-row expired/);
+assert.match(context.renderRedeemRows([{...base,all_users_finished:true}],''),/Tous les utilisateurs ont terminé/);
+assert.doesNotMatch(context.renderRedeemRows([{...base,all_users_finished:false}],''),/code-row expired/);
+console.log('Redeem: all users finished red, active user normal.');

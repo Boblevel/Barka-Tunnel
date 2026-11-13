@@ -527,6 +527,30 @@ def reset_reseller_stats(reseller_id: int) -> str:
     return iso(now)
 
 
+def adjust_reseller_quota(reseller_id: int, *, limit: int | None = None, reset: bool = False) -> dict:
+    if limit is not None and (type(limit) is not int or not 0 <= limit <= 100000):
+        raise ValueError("Le quota doit être un entier entre 0 et 100000.")
+    with transaction() as cx:
+        account = cx.execute("SELECT * FROM reseller_accounts WHERE id=? AND deleted_at IS NULL", (reseller_id,)).fetchone()
+        if not account:
+            raise ValueError("Sous-panel introuvable.")
+        now = now_ts()
+        if int(account['expires_at']) <= now:
+            raise ValueError("Renouvelez le sous-panel avant de modifier son quota.")
+        period = reseller_quotas.current_period(cx, account, now)
+        if period is None:
+            raise ValueError("Renouvelez le sous-panel avant de modifier son quota.")
+        cx.execute("INSERT OR IGNORE INTO reseller_quota_adjustments(period_id) VALUES(?)", (period['id'],))
+        if limit is not None:
+            cx.execute("UPDATE reseller_quota_adjustments SET custom_limit=? WHERE period_id=?", (limit, period['id']))
+        if reset:
+            cx.execute("UPDATE reseller_quota_periods SET used=0 WHERE id=?", (period['id'],))
+        cx.execute("UPDATE reseller_quota_adjustments SET revision=revision+1 WHERE period_id=?", (period['id'],))
+        record_event(cx, reseller_id, "quota_reset" if reset else "quota_customized",
+                     detail=f"Cycle {period['starts_at']} ; consommés avant={period['used']} ; plafond={limit if limit is not None else period['code_limit']}")
+        return reseller_quotas.summary(cx, account, now)
+
+
 def reseller_quota(reseller_id: int) -> dict:
     with transaction() as cx:
         account = cx.execute("SELECT * FROM reseller_accounts WHERE id=?", (reseller_id,)).fetchone()

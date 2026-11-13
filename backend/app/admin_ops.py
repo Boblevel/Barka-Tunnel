@@ -271,6 +271,7 @@ def list_redeem_codes(limit: int | None = 100, *, connection=None, offset: int =
                 "duration_seconds": int(row["duration_seconds"]),
                 "max_users": int(row["max_users"]),
                 "usage_count": usage_count,
+                "all_users_finished": usage_count > 0 and active_usage_count == 0,
                 "created_at": iso(int(row["created_at"])),
                 "last_redeemed_at": iso(row["last_redeemed_at"]),
                 "last_expires_at": iso(row["last_expires_at"]),

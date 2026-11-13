@@ -101,6 +101,7 @@ class AdminRedeemCodeListItem(BaseModel):
     status: Literal["active", "revoked", "expired"]
     duration_seconds: int
     max_users: int
+    all_users_finished: bool = False
     usage_count: int
     created_at: str
     last_redeemed_at: str | None = None
@@ -180,6 +181,10 @@ class AdminResellerCreateRequest(BaseModel):
         if not value or any(ord(c) < 32 or ord(c) == 127 for c in value):
             raise ValueError("Indiquez un nom non vide, sur une seule ligne.")
         return value
+
+
+class AdminResellerQuotaRequest(BaseModel):
+    limit: int = Field(strict=True, ge=0, le=100000)
 
 
 class AdminResellerExpiryRequest(BaseModel):

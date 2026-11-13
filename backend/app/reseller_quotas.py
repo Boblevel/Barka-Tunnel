@@ -18,7 +18,7 @@ def current_period(cx, account, now: int):
         (account['id'], now, now),
     ).fetchone()
     if row:
-        return row
+        return effective_period(cx, row)
     if int(account['expires_at']) <= now:
         return None
     previous = cx.execute(
@@ -40,8 +40,8 @@ def current_period(cx, account, now: int):
         "INSERT INTO reseller_quota_periods(reseller_id,starts_at,ends_at,code_limit,used) VALUES(?,?,?,?,?)",
         (account['id'], start, end, limit, used),
     )
-    return cx.execute("SELECT * FROM reseller_quota_periods WHERE reseller_id=? AND starts_at=?",
-                      (account['id'], start)).fetchone()
+    return effective_period(cx, cx.execute("SELECT * FROM reseller_quota_periods WHERE reseller_id=? AND starts_at=?",
+                      (account['id'], start)).fetchone())
 
 
 def grant_month(cx, reseller_id: int, start: int, end: int, limit: int):
@@ -57,4 +57,13 @@ def summary(cx, account, now: int) -> dict:
         return {'limit': 0, 'used': 0, 'remaining': 0, 'starts_at': None, 'ends_at': None}
     return {'limit': period['code_limit'], 'used': period['used'],
             'remaining': max(0, period['code_limit'] - period['used']),
-            'starts_at': period['starts_at'], 'ends_at': period['ends_at']}
+            'starts_at': period['starts_at'], 'ends_at': period['ends_at'], 'revision': period['revision']}
+
+
+def effective_period(cx, row):
+    result = dict(row)
+    adjustment = cx.execute("SELECT * FROM reseller_quota_adjustments WHERE period_id=?", (row['id'],)).fetchone()
+    result['revision'] = adjustment['revision'] if adjustment else 0
+    if adjustment and adjustment['custom_limit'] is not None:
+        result['code_limit'] = adjustment['custom_limit']
+    return result

@@ -59,6 +59,7 @@ from .models import (
     AdminCodeRevokeResponse,
     AdminResellerCreateRequest,
     AdminResellerExpiryRequest,
+    AdminResellerQuotaRequest,
     AdminStatsResetRequest,
     AppUpdateAdminResponse,
     AppUpdateAdminUpsert,
@@ -77,6 +78,7 @@ from .pricing import router as pricing_router, public_plans, create_subscription
 from .security import require_admin, verify_saspay_signature
 from .resellers import (
     create_reseller,
+    adjust_reseller_quota,
     reseller_credentials,
     reset_reseller_password,
     renew_reseller_month,
@@ -609,6 +611,30 @@ def admin_reseller_credentials(reseller_id: int, response: Response):
         return reseller_credentials(reseller_id)
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
+
+
+@app.get("/v1/admin/resellers/{reseller_id}/quota", dependencies=[Depends(require_admin)])
+def admin_reseller_quota(reseller_id: int):
+    try:
+        return reseller_quota(reseller_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.put("/v1/admin/resellers/{reseller_id}/quota", dependencies=[Depends(require_admin)])
+def admin_reseller_quota_update(reseller_id: int, body: AdminResellerQuotaRequest):
+    try:
+        return adjust_reseller_quota(reseller_id, limit=body.limit)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/v1/admin/resellers/{reseller_id}/quota/reset", dependencies=[Depends(require_admin)])
+def admin_reseller_quota_reset(reseller_id: int, body: AdminStatsResetRequest):
+    try:
+        return adjust_reseller_quota(reseller_id, reset=True)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @app.post("/v1/admin/resellers/{reseller_id}/password", dependencies=[Depends(require_admin)])
