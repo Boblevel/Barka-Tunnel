@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
 @Config(application = Application::class, sdk = [29])
 class JournalClipboardTest {
     @Test fun copiesAllStoredLinesInOrderWithoutDeletingThem() {
-        val context = RuntimeEnvironment.getApplication<Application>()
+        val context = RuntimeEnvironment.getApplication()
         val text = (1..600).joinToString("\n") { "[12:00:00] Ligne $it" }
         context.getSharedPreferences("barka_journal", Context.MODE_PRIVATE).edit().putString("logs", text).commit()
         JournalClipboard.copyAll(context)
@@ -25,7 +25,7 @@ class JournalClipboardTest {
     }
 
     @Test fun emptyJournalKeepsExistingClipboardAndCredentialsStayMasked() {
-        val context = RuntimeEnvironment.getApplication<Application>()
+        val context = RuntimeEnvironment.getApplication()
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("Existing", "keep"))
         AppLogStore.clear(context)

@@ -369,6 +369,8 @@ def init_db() -> None:
             migrate_capture_defaults(cx, now)
             from .global_profiles import migrate as migrate_global_profiles
             migrate_global_profiles(cx, now)
+            from .darkness_profile import migrate as migrate_darkness
+            migrate_darkness(cx, now)
             for source, target, label in (
                 ("moov_bf", "moov_bf_v2", "MOOV-AFRICA BF V2"),
                 ("orange_bf", "orange_bf_v2", "ORANGE BF V2"),

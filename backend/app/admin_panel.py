@@ -216,7 +216,7 @@ function refreshProtocolFields(el){
  if(el.dataset.id==='global_world'&&cfg.global_profiles){
   const label=document.createElement('label');label.textContent='Configuration GLOBAL MONDIAL';
   const select=document.createElement('select');select.className='global-profile-select';
-  const names={fp_events:'FP EVENTS — Mux',am2_d3:'AM2 D3 — sans Mux',previous:'Dernière configuration du panel',draft:'Brouillon conservé'};
+  const names={darkness_export:'DARKNESS — configuration fournie',fp_events:'FP EVENTS — Mux',am2_d3:'AM2 D3 — sans Mux',previous:'Dernière configuration du panel',draft:'Brouillon conservé'};
   for(const key of Object.keys(cfg.global_profiles)){const o=document.createElement('option');o.value=key;o.textContent=names[key]||key;select.appendChild(o)}
   select.value=cfg.active_global_profile;
   select.addEventListener('change',()=>{const current=JSON.parse(el.querySelector('.config').value);const {global_profiles:bank,active_global_profile,...fields}=current;bank[active_global_profile]=fields;

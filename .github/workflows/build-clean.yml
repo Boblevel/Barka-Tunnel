@@ -8,6 +8,7 @@ on:
       - validation/lot25-141
       - validation/lot26-141
       - validation/lot27-141
+      - validation/lot29-complet
 
 concurrency:
   group: barka-production-deploy
