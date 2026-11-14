@@ -1,0 +1,4 @@
+<resources>
+    <string name="copy_journal_description">Copiar todo el registro</string>
+    <string name="journal_copied">Registro copiado.</string>
+</resources>

@@ -1,0 +1,4 @@
+<resources>
+    <string name="copy_journal_description">Copy the entire log</string>
+    <string name="journal_copied">Log copied.</string>
+</resources>

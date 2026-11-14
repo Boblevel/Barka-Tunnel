@@ -532,6 +532,8 @@ class MainActivity : AppCompatActivity() {
         )
         journalPage.findViewById<android.view.View>(R.id.journalBackButton)
             .setOnClickListener { openHome() }
+        journalPage.findViewById<MaterialButton>(R.id.copyJournalButton)
+            .setOnClickListener { com.barkatunnel.app.journal.JournalClipboard.copyAll(this) }
         journalPage.findViewById<MaterialButton>(R.id.clearJournalButton)
             .setOnClickListener {
                 AppLogStore.clear(this)

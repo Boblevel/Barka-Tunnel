@@ -1,0 +1,4 @@
+<resources>
+    <string name="copy_journal_description">نسخ السجل بالكامل</string>
+    <string name="journal_copied">تم نسخ السجل.</string>
+</resources>

@@ -21,3 +21,15 @@ console.log('Global profile switching and independent edits passed.');
 const cert=box.querySelector('[data-config-key="verify_cert_name"]');cert.value='independent.example';cert.events.input();
 host=box.querySelector('[data-config-key="host"]');host.value='new.example';host.events.input();
 assert.equal(cert.value,'independent.example');assert.equal(JSON.parse(json.value).verify_cert_name,'independent.example');
+// Orange editors must not expose Global controls or erase saved settings.
+for(const id of ['orange_bf','orange_bf_v2']){
+ el.dataset.id=id;
+ const original=JSON.stringify({...bank.am2_d3,proxy_host:'keep.example',proxy_port:8080,proxy_headers:{Test:'kept'},proxy_payload:'kept',mux:true});
+ json.value=original;ctx.refreshProtocolFields(el);
+ const inputs=box.children.flatMap(e=>e.children);
+ for(const key of ['verify_cert_name','proxy_host','proxy_port','proxy_headers','proxy_payload'])assert.equal(inputs.find(e=>e.dataset.configKey===key),undefined);
+ assert.equal(inputs.find(e=>e.type==='checkbox'),undefined);
+ assert.equal(json.value,original);
+ assert.ok(inputs.find(e=>e.dataset.configKey==='host'));
+}
+console.log('Orange and Orange V2 hide Global controls without changing saved JSON.');

@@ -233,6 +233,7 @@ function refreshProtocolFields(el){
  if(!fields.length)return;
  const note=document.createElement('p');note.className='small';note.textContent='Modifiez les champs, enregistrez ce profil puis validez en bas. Les autres paramètres sont conservés. Les ports doivent être compris entre 1 et 65535.';box.appendChild(note);
  for(const [key,title,type='text',fallback='',aliases=[]] of fields){
+  if(['orange_bf','orange_bf_v2'].includes(el.dataset.id)&&['verify_cert_name','proxy_host','proxy_port'].includes(key))continue;
   const label=document.createElement('label');label.textContent=title;
   const choices={network:['ws'],security:['tls','none'],encryption:['none']}[type];
   const input=document.createElement(choices?'select':'input');
@@ -256,7 +257,7 @@ function refreshProtocolFields(el){
   }catch{input.setCustomValidity('Configuration invalide : vérifiez le JSON ou l’adresse.')}});
   label.appendChild(input);box.appendChild(label);
  }
- if(protocol==='VLESS'){
+ if(protocol==='VLESS'&&!['orange_bf','orange_bf_v2'].includes(el.dataset.id)){
   const ml=document.createElement('label');ml.textContent='Mux';const mux=document.createElement('input');mux.type='checkbox';mux.checked=cfg.mux===true;
   mux.addEventListener('change',()=>{const c=JSON.parse(el.querySelector('.config').value);c.mux=mux.checked;el.querySelector('.config').value=JSON.stringify(c,null,2);markServiceDirty(el)});ml.appendChild(mux);box.appendChild(ml);
   const rl=document.createElement('label');rl.textContent='Payload CONNECT complet (prioritaire sur les en-têtes)';const raw=document.createElement('textarea');raw.dataset.configKey='proxy_payload';raw.value=cfg.proxy_payload||'';

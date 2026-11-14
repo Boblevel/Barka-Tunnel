@@ -32,6 +32,9 @@ class JournalActivity : AppCompatActivity() {
             closeJournal()
         }
 
+        findViewById<MaterialButton>(R.id.copyJournalButton).setOnClickListener {
+            JournalClipboard.copyAll(this)
+        }
         findViewById<MaterialButton>(R.id.clearJournalButton).setOnClickListener {
             AppLogStore.clear(this)
             refreshLogs()

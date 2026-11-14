@@ -378,6 +378,8 @@ def init_db() -> None:
                     priority, version, config_json, updated_at)
                     SELECT ?, ?, protocol, enabled, maintenance, priority, 1, config_json, ?
                     FROM vpn_profiles WHERE network_id=?""", (target, label, now, source))
+            from .orange_v2_repair import repair as repair_orange_v2
+            repair_orange_v2(cx, now)
             cx.execute(
                 """
                 INSERT OR IGNORE INTO app_update(
