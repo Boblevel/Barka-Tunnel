@@ -14,11 +14,11 @@ def test_global_profile_is_seeded_private_and_never_overwritten(tmp_path):
     assert global_profile['enabled'] is False
     assert global_profile['protocol'] == 'VLESS'
     cfg = global_profile['config']
-    assert cfg['host'] == 'sangoku-149521136708.us-central1.run.app'
+    assert cfg['host'] == 'vless-pass-1h-1794589051-ndsghtfh6q-ew.a.run.app'
     assert cfg['proxy_host'] == '157.240.9.39'
     assert cfg['proxy_port'] == 8080
-    assert cfg['proxy_headers']['X-Connected-To'] == '34.143.72.2'
-    assert cfg['proxy_headers']['X-Iorg-Bsid'] == '@AM2_D3'
+    assert 'x-connected-to' not in cfg['proxy_headers']
+    assert cfg['proxy_headers']['x-iorg-bsid'] == '@FP_EVENTS'
     services.start_trial('global-device-12345678')
     with pytest.raises(LookupError):
         vpn_profiles.get_profile_for_device('global-device-12345678', 'global_world')

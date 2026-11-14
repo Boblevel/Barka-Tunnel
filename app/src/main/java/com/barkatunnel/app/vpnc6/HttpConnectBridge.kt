@@ -20,6 +20,7 @@ internal class HttpConnectBridge(
     private val targetHost: String,
     private val targetPort: Int,
     private val headers: Map<String, String>,
+    private val payloadTemplate: String? = null,
     private val reportFailure: (String) -> Unit = {}
 ) : AutoCloseable {
     private val listener = ServerSocket()
@@ -27,6 +28,7 @@ internal class HttpConnectBridge(
     private val workers = Executors.newFixedThreadPool(128)
     private val permits = Semaphore(64)
     private val requestReported = AtomicBoolean(false)
+    private val retryAfterNanos = java.util.concurrent.atomic.AtomicLong()
     private val attempts = AtomicInteger()
     private val accepted = AtomicInteger()
     private val limited = AtomicInteger()
@@ -66,6 +68,8 @@ internal class HttpConnectBridge(
             client.soTimeout = 30_000
             val request = readHeader(client.getInputStream()).toString(Charsets.ISO_8859_1)
             require(request.substringBefore("\r\n") == "CONNECT $authority HTTP/1.1")
+            while (!closed && System.nanoTime() < retryAfterNanos.get()) Thread.sleep(100)
+            check(!closed)
             stage = "connexion au proxy"
             val startedAt = System.nanoTime()
             remote.connect(InetSocketAddress(proxyHost, proxyPort), 15_000)
@@ -93,7 +97,13 @@ internal class HttpConnectBridge(
             responseSent = true
             if (status[1] != "200") {
                 rejected.incrementAndGet()
-                if (status[1] == "429") limited.incrementAndGet()
+                if (status[1] == "429") {
+                    val count = limited.incrementAndGet()
+                    val retry = response.toString(Charsets.ISO_8859_1).split("\r\n").firstOrNull { it.substringBefore(':').equals("Retry-After",true) }?.substringAfter(':')?.trim()?.toLongOrNull()
+                    val seconds = retry?.coerceIn(1,300) ?: (2L*count).coerceAtMost(10)
+                    val deadline=System.nanoTime()+seconds*1_000_000_000L
+                    retryAfterNanos.updateAndGet { old -> maxOf(old,deadline) }
+                }
                 if (!closed) runCatching {
                     if (requestId == 1) {
                         val fields = response.toString(Charsets.ISO_8859_1).split("\r\n").drop(1)
@@ -143,6 +153,7 @@ internal class HttpConnectBridge(
     }
 
     internal fun connectRequest(): ByteArray {
+        payloadTemplate?.let { return com.barkatunnel.app.vpnprofile.ConnectPayload.expand(it,targetHost,targetPort) }
         require(targetHost.isNotBlank() && targetHost.none { it.isWhitespace() } && targetPort in 1..65535)
         require(headers.size <= 12)
         headers.forEach { (key, value) ->

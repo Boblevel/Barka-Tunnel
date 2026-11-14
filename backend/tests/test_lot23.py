@@ -29,14 +29,14 @@ def test_admin_quota_reset_customize_and_isolation(env):
         assert rs.reseller_quota(rid)['limit'] == 0
 
 
-def test_custom_quota_only_current_cycle(env,monkeypatch):
+def test_custom_quota_stops_with_account(env,monkeypatch):
     _, svc, rs, _, _, _, account = env
     now = svc.now_ts()
     from datetime import datetime,timezone
     rs.update_reseller_expiry(account['id'],datetime.fromtimestamp(now+90*86400,timezone.utc))
     q = rs.adjust_reseller_quota(account['id'],limit=99)
     monkeypatch.setattr(rs,'now_ts',lambda:q['ends_at'])
-    assert rs.reseller_quota(account['id'])['limit'] == 30
+    assert rs.reseller_quota(account['id'])['limit'] == 0
 
 
 def test_redeem_all_finished_even_with_unused_seats(env,monkeypatch):

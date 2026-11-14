@@ -90,8 +90,7 @@ def fulfill(cx, payment):
                               VALUES(?,?,?,'active',?,?,?,?)''',
                             (username, resellers._encode(resellers._password_digest(password,salt)), resellers._encode(salt), add_months(now,order['months']), now,now,nonce)).lastrowid
         record_event(cx,target,'created',detail='Achat dans l’application')
-    if order['quota_limit'] is not None:
-        reseller_quotas.grant_month(cx, target, period_start, add_months(period_start, 1), int(order['quota_limit']))
+    reseller_quotas.renewed(cx, target, now, int(order['quota_limit']) if order['quota_limit'] is not None else None)
     cx.execute('INSERT OR IGNORE INTO reseller_purchase_owners(owner_hash,reseller_id) VALUES(?,?)',(order['owner_hash'],target))
     cx.execute('UPDATE reseller_purchases SET reseller_id=?,fulfilled_at=?,fulfillment_error=NULL WHERE reference=?',(target,now,payment['reference']))
 

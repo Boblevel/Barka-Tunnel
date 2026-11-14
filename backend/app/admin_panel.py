@@ -193,6 +193,7 @@ function readConfigField(cfg,key,aliases,fallback){
  const existing=[key,...aliases].find(k=>cfg[k]!==undefined&&cfg[k]!==null&&cfg[k]!=='');return existing?cfg[existing]:fallback;
 }
 function writeConfigField(cfg,key,value,aliases){
+ if(key==='host'&&cfg.verify_cert_name===readConfigField(cfg,'host',[],''))cfg.verify_cert_name=value;
  const uri=vlessUri(cfg);
  if(uri&&(uriKeys[key]||['address','port','uuid'].includes(key))){
   if(key==='address')uri.hostname=value;else if(key==='port')uri.port=String(value);else if(key==='uuid')uri.username=value;
@@ -211,12 +212,23 @@ function refreshProtocolFields(el){
  if(!cfg||typeof cfg!=='object'||Array.isArray(cfg))return;
  box.replaceChildren();
  const protocol=el.querySelector('.protocol').value;
+ if(el.dataset.id==='global_world'&&cfg.global_profiles){
+  const label=document.createElement('label');label.textContent='Configuration GLOBAL MONDIAL';
+  const select=document.createElement('select');select.className='global-profile-select';
+  const names={fp_events:'FP EVENTS — Mux',am2_d3:'AM2 D3 — sans Mux',previous:'Dernière configuration du panel',draft:'Brouillon conservé'};
+  for(const key of Object.keys(cfg.global_profiles)){const o=document.createElement('option');o.value=key;o.textContent=names[key]||key;select.appendChild(o)}
+  select.value=cfg.active_global_profile;
+  select.addEventListener('change',()=>{const current=JSON.parse(el.querySelector('.config').value);const {global_profiles:bank,active_global_profile,...fields}=current;bank[active_global_profile]=fields;
+   el.querySelector('.config').value=JSON.stringify({...bank[select.value],global_profiles:bank,active_global_profile:select.value},null,2);refreshProtocolFields(el);markServiceDirty(el)});
+  label.appendChild(select);box.appendChild(label);
+ }
+
  const credentials=[['username','Utilisateur SSH'],['password','Mot de passe SSH','password']];
  const gateway=[['udpgw_host','Serveur UDPGW','text','127.0.0.1'],['udpgw_port','Port UDPGW','number',7300]];
  const fields=protocol==='SSH_TLS'?[['host','Serveur TLS (domaine ou IP)'],['port','Port TLS','number',443],['sni','SNI : domaine du certificat TLS'],...credentials,...gateway]:
  protocol==='SLOWDNS'?[['host','Adresse du serveur','text','',['server_ip']],['ssh_domain','Domaine SSH','text','',['ssh_host']],['ssh_port','Port SSH','number',22,['port']],...credentials,['dns','Résolveur DNS','text','1.1.1.1',['dns_server','dns_resolver']],['nameserver','Name Server / domaine du tunnel','text','',['name_server','ns','tunnel_domain']],['dns_public_key','Clé publique DNS','text','',['dnstt_public_key','public_key','publicKey']]]:
  protocol==='UDP'?[['host','Adresse du serveur SSH','text','',['server_ip']],['ssh_domain','Domaine SSH (facultatif)','text','',['ssh_host']],['port','Port SSH','number',22,['ssh_port']],...credentials,...gateway]:
- protocol==='VLESS'?[['address','Serveur cible'],['port','Port cible','number',443],['uuid','UUID VLESS','password'],['network','Transport','network','ws'],['security','Sécurité','security','tls'],['path','Chemin WebSocket','text','/'],['sni','SNI TLS'],['host','Host WebSocket — domaine à remplacer'],['ip','IP de connexion (facultatif)','text','',['server_ip']],['encryption','Chiffrement VLESS','encryption','none'],['fingerprint','Empreinte TLS (facultatif)'],['proxy_host','Adresse du proxy HTTP (facultatif)'],['proxy_port','Port du proxy HTTP','number','']]:[];
+ protocol==='VLESS'?[['address','Serveur cible'],['port','Port cible','number',443],['uuid','UUID VLESS','password'],['network','Transport','network','ws'],['security','Sécurité','security','tls'],['path','Chemin WebSocket','text','/'],['sni','SNI TLS'],['host','Host WebSocket — domaine à remplacer'],['ip','IP de connexion (facultatif)','text','',['server_ip']],['encryption','Chiffrement VLESS','encryption','none'],['fingerprint','Empreinte TLS (facultatif)'],['verify_cert_name','Nom attendu dans le certificat TLS (distinct du SNI)'],['proxy_host','Adresse du proxy HTTP (facultatif)'],['proxy_port','Port du proxy HTTP','number','']]:[];
  if(!fields.length)return;
  const note=document.createElement('p');note.className='small';note.textContent='Modifiez les champs, enregistrez ce profil puis validez en bas. Les autres paramètres sont conservés. Les ports doivent être compris entre 1 et 65535.';box.appendChild(note);
  for(const [key,title,type='text',fallback='',aliases=[]] of fields){
@@ -237,6 +249,10 @@ function refreshProtocolFields(el){
   label.appendChild(input);box.appendChild(label);
  }
  if(protocol==='VLESS'){
+  const ml=document.createElement('label');ml.textContent='Mux';const mux=document.createElement('input');mux.type='checkbox';mux.checked=cfg.mux===true;
+  mux.addEventListener('change',()=>{const c=JSON.parse(el.querySelector('.config').value);c.mux=mux.checked;el.querySelector('.config').value=JSON.stringify(c,null,2);markServiceDirty(el)});ml.appendChild(mux);box.appendChild(ml);
+  const rl=document.createElement('label');rl.textContent='Payload CONNECT complet (prioritaire sur les en-têtes)';const raw=document.createElement('textarea');raw.dataset.configKey='proxy_payload';raw.value=cfg.proxy_payload||'';
+  raw.addEventListener('input',()=>{const c=JSON.parse(el.querySelector('.config').value);if(raw.value)c.proxy_payload=raw.value;else delete c.proxy_payload;el.querySelector('.config').value=JSON.stringify(c,null,2);markServiceDirty(el)});rl.appendChild(raw);box.appendChild(rl);
   const label=document.createElement('label');label.textContent='En-têtes du proxy HTTP (un Nom: valeur par ligne)';
   const input=document.createElement('textarea');input.dataset.configKey='proxy_headers';input.value=Object.entries(cfg.proxy_headers||{}).map(([k,v])=>k+': '+v).join('\n');
   input.addEventListener('input',()=>{try{const current=JSON.parse(el.querySelector('.config').value||'{}');const entries=input.value.split(/\r?\n/).filter(x=>x.trim()).map(line=>{const i=line.indexOf(':');if(i<1)throw new Error();return [line.slice(0,i).trim(),line.slice(i+1).trim()]});

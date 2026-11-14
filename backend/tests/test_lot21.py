@@ -28,7 +28,7 @@ def test_quota_all_durations_test_exemption_and_idempotency(env, limit):
     rs.reset_reseller_stats(identity)
     assert rs.delete_reseller_code(identity, first)[0]
     db.init_db()
-    assert rs.reseller_quota(identity)['remaining'] == 0
+    assert rs.reseller_quota(identity)['remaining'] == 1
 
 
 def test_parallel_generation_cannot_exceed_quota(env):
@@ -86,7 +86,7 @@ def test_expired_paid_and_shared_codes_never_report_success(env, monkeypatch):
 
 
 @pytest.mark.parametrize('limit,amount', [(30,5000), (70,10000)])
-def test_new_paid_offer_is_one_month_and_early_renewal_does_not_reset_quota(env, provider, limit, amount, monkeypatch):
+def test_paid_renewal_resets_quota_immediately_once(env, provider, limit, amount, monkeypatch):
     db, svc, rs, _, _, main, _ = env
     from app.reseller_purchases import add_months
     clock = svc.now_ts()
@@ -104,21 +104,23 @@ def test_new_paid_offer_is_one_month_and_early_renewal_does_not_reset_quota(env,
         assert expiry == add_months(clock, 1)
         rs.generate_reseller_subscription(account['id'], '1m')
         assert rs.reseller_quota(account['id'])['remaining'] == limit-1
-        # Renew ahead of expiry at the other tier: only the next paid period changes.
+        # Renewal activates the purchased tier and resets occupied slots immediately.
         next_limit = 70 if limit == 30 else 30
         body.update(request_id=uuid.uuid4().hex, quota_limit=next_limit)
         reply = client.post(route+'start-monthly', json=body)
         reference = reply.json()['payment_reference']
         client.post(route+'status', json={**body, 'payment_reference': reference})
-        assert rs.reseller_quota(account['id'])['remaining'] == limit-1
-        svc.mark_payment_paid(reference)
-        with db.connect() as cx:
-            assert cx.execute('SELECT COUNT(*) FROM reseller_quota_periods WHERE reseller_id=?', (account['id'],)).fetchone()[0] == 2
-        clock = expiry
         assert rs.reseller_quota(account['id'])['remaining'] == next_limit
+        rs.generate_reseller_subscription(account['id'], '1w')
+        svc.mark_payment_paid(reference)
+        assert rs.reseller_quota(account['id'])['used'] == 1
+        with db.connect() as cx:
+            assert cx.execute('SELECT COUNT(*) FROM reseller_quota_periods WHERE reseller_id=?', (account['id'],)).fetchone()[0] == 1
+        clock = expiry
+        assert rs.reseller_quota(account['id'])['remaining'] == next_limit-1
 
 
-def test_monthly_reset_ignores_stats_and_unused_codes(env, monkeypatch):
+def test_quota_expires_with_account(env, monkeypatch):
     _, svc, rs, _, _, _, _ = env
     clock = svc.now_ts()
     monkeypatch.setattr(rs, 'now_ts', lambda: clock)
@@ -126,4 +128,4 @@ def test_monthly_reset_ignores_stats_and_unused_codes(env, monkeypatch):
     rs.generate_reseller_subscription(account['id'], '1m')
     current = rs.reseller_quota(account['id'])
     clock = current['ends_at']
-    assert rs.reseller_quota(account['id'])['remaining'] == 70
+    assert rs.reseller_quota(account['id'])['remaining'] == 0

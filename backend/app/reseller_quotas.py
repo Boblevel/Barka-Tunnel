@@ -1,4 +1,4 @@
-"""Monthly issuance quotas, independent of code deletion and dashboard statistics."""
+"""Reusable slots aligned with account expiry; renewal resets usage atomically."""
 from __future__ import annotations
 
 import calendar
@@ -13,35 +13,56 @@ def next_month(timestamp: int) -> int:
 
 
 def current_period(cx, account, now: int):
-    row = cx.execute(
-        "SELECT * FROM reseller_quota_periods WHERE reseller_id=? AND starts_at<=? AND ends_at>? ORDER BY starts_at DESC LIMIT 1",
-        (account['id'], now, now),
-    ).fetchone()
-    if row:
-        return effective_period(cx, row)
     if int(account['expires_at']) <= now:
         return None
-    previous = cx.execute(
-        "SELECT * FROM reseller_quota_periods WHERE reseller_id=? AND ends_at<=? ORDER BY ends_at DESC LIMIT 1",
-        (account['id'], now),
-    ).fetchone()
-    start = int(previous['ends_at'] if previous else account['created_at'])
-    limit = int(previous['code_limit'] if previous else 30)
-    while next_month(start) <= now:
-        start = next_month(start)
-    end = min(next_month(start), int(account['expires_at']))
-    # Existing accounts retain their dates. Count earlier issuance in this cycle,
-    # including deleted/revoked codes; tests never consume the paid allowance.
-    used = cx.execute(
-        "SELECT COUNT(*) FROM activation_codes WHERE created_by_reseller_id=? AND created_at>=? AND created_at<? AND plan_id NOT IN ('test_2h','test_3h','test_6h')",
-        (account['id'], start, end),
-    ).fetchone()[0]
-    cx.execute(
-        "INSERT INTO reseller_quota_periods(reseller_id,starts_at,ends_at,code_limit,used) VALUES(?,?,?,?,?)",
-        (account['id'], start, end, limit, used),
-    )
-    return effective_period(cx, cx.execute("SELECT * FROM reseller_quota_periods WHERE reseller_id=? AND starts_at=?",
-                      (account['id'], start)).fetchone())
+    row = cx.execute("SELECT * FROM reseller_quota_periods WHERE reseller_id=? ORDER BY starts_at DESC LIMIT 1", (account['id'],)).fetchone()
+    if not row:
+        cx.execute("INSERT INTO reseller_quota_periods(reseller_id,starts_at,ends_at,code_limit,used) VALUES(?,?,?,?,0)",
+                   (account['id'], now, account['expires_at'], 30))
+        row = cx.execute("SELECT * FROM reseller_quota_periods WHERE reseller_id=? ORDER BY id DESC LIMIT 1", (account['id'],)).fetchone()
+    if row['ends_at'] != account['expires_at']:
+        # Repair old extensions using the recorded account change time. Codes
+        # generated after that extension continue consuming slots.
+        if account['expires_at'] > row['ends_at'] and account['updated_at'] > account['created_at']:
+            reset_slots(cx, account['id'], now, before=account['updated_at'])
+        cx.execute("UPDATE reseller_quota_periods SET ends_at=? WHERE id=?", (account['expires_at'],row['id']))
+    row = cx.execute("SELECT * FROM reseller_quota_periods WHERE id=?",(row['id'],)).fetchone()
+    period = effective_period(cx, row)
+    baseline = cx.execute("SELECT value FROM admin_state WHERE key=?", (f"quota_reset_{account['id']}",)).fetchone()
+    used = cx.execute("""SELECT COUNT(*) FROM activation_codes WHERE created_by_reseller_id=? AND id>?
+        AND deleted_at IS NULL AND plan_id NOT IN ('test_2h','test_3h','test_6h')
+        AND (status='issued' OR (status='redeemed' AND (applied_until IS NULL OR applied_until>?)))""",
+        (account['id'],int(baseline[0]) if baseline else 0,now)).fetchone()[0]
+    if used != period['used']:
+        cx.execute("UPDATE reseller_quota_periods SET used=? WHERE id=?",(used,row['id']))
+        bump_revision(cx,row['id'])
+    return effective_period(cx,cx.execute("SELECT * FROM reseller_quota_periods WHERE id=?",(row['id'],)).fetchone())
+
+
+def bump_revision(cx, period_id):
+    cx.execute("INSERT OR IGNORE INTO reseller_quota_adjustments(period_id) VALUES(?)",(period_id,))
+    cx.execute("UPDATE reseller_quota_adjustments SET revision=revision+1 WHERE period_id=?",(period_id,))
+
+
+def reset_slots(cx, reseller_id, now, before=None):
+    cutoff = now if before is None else before
+    last_id = cx.execute("SELECT COALESCE(MAX(id),0) FROM activation_codes WHERE created_by_reseller_id=? AND created_at<=?",(reseller_id,cutoff)).fetchone()[0]
+    cx.execute("""INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key)
+        DO UPDATE SET value=CAST(MAX(CAST(admin_state.value AS INTEGER),CAST(excluded.value AS INTEGER)) AS TEXT),updated_at=excluded.updated_at""",
+        (f"quota_reset_{reseller_id}",str(last_id),now))
+
+
+def renewed(cx, reseller_id, now, limit=None):
+    account=cx.execute("SELECT * FROM reseller_accounts WHERE id=?",(reseller_id,)).fetchone()
+    period=current_period(cx,account,now)
+    if period is None:
+        return
+    reset_slots(cx,reseller_id,now)
+    cx.execute("UPDATE reseller_quota_periods SET used=0,ends_at=? WHERE id=?",(account['expires_at'],period['id']))
+    if limit is not None:
+        cx.execute("UPDATE reseller_quota_periods SET code_limit=? WHERE id=?",(limit,period['id']))
+        cx.execute("UPDATE reseller_quota_adjustments SET custom_limit=NULL WHERE period_id=?",(period['id'],))
+    bump_revision(cx,period['id'])
 
 
 def grant_month(cx, reseller_id: int, start: int, end: int, limit: int):

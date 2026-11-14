@@ -32,9 +32,10 @@ class XrayVlessEngine(
             "destination=${ConnectionDiagnostics.host(outboundAddress)}:${config.port} • IP explicite=${!config.ip.isNullOrBlank()}",
             "proxy=${ConnectionDiagnostics.host(config.proxyHost.orEmpty())}:${config.proxyPort ?: 0} • en-têtes=${config.proxyHeaders.size}",
             "WS Host=${ConnectionDiagnostics.host(config.host)}",
+            "certificat attendu=${ConnectionDiagnostics.host(config.verifyCertName ?: config.sni)} • Mux=${config.mux}",
             "WS chemin=${com.barkatunnel.app.journal.DiagnosticRedactor.clean(config.path)} • longueur=${config.path.length} • empreinte=${ConnectionDiagnostics.fingerprint(config.path)} • paramètres=${'?' in config.path}",
             "SNI=${ConnectionDiagnostics.host(config.sni)} • TLS=${config.security == "tls"} • WS=${config.network == "ws"}",
-            "empreinte TLS=${ConnectionDiagnostics.host(config.fingerprint.orEmpty())} • pont CONNECT=${!config.proxyHost.isNullOrBlank() && config.proxyHeaders.isNotEmpty()}"
+            "empreinte TLS=${ConnectionDiagnostics.host(config.fingerprint.orEmpty())} • pont CONNECT=${!config.proxyHost.isNullOrBlank() && (config.proxyHeaders.isNotEmpty() || !config.proxyPayload.isNullOrBlank())}"
         ).forEach { AppLogStore.add(context, "Diagnostic VLESS • $it.") }
 
         val xray = NativeCoreLocator.xray(context)
@@ -42,9 +43,9 @@ class XrayVlessEngine(
             throw IllegalStateException("Le moteur VLESS Android n’est pas exécutable.")
         }
 
-        if (!config.proxyHost.isNullOrBlank() && config.proxyHeaders.isNotEmpty()) {
+        if (!config.proxyHost.isNullOrBlank() && (config.proxyHeaders.isNotEmpty() || !config.proxyPayload.isNullOrBlank())) {
             connectBridge = HttpConnectBridge(config.proxyHost, requireNotNull(config.proxyPort),
-                outboundAddress, config.port, config.proxyHeaders) { detail ->
+                outboundAddress, config.port, config.proxyHeaders, config.proxyPayload) { detail ->
                 AppLogStore.add(context, "Diagnostic VLESS • CONNECT • $detail.")
             }.also { it.start() }
         }
@@ -167,6 +168,8 @@ class XrayVlessEngine(
         if (config.security == "tls") {
             val tlsSettings = JSONObject()
                 .put("serverName", config.sni)
+                .put("alpn", JSONArray().put("http/1.1"))
+            config.verifyCertName?.let { tlsSettings.put("verifyPeerCertByName",it) }
             // Xray v26.3.27 refuse désormais allowInsecure=true depuis le 01/06/2026.
             // On laisse donc la validation TLS standard utiliser le SNI configuré.
             config.fingerprint?.takeIf { it.isNotBlank() }?.let {
@@ -186,6 +189,7 @@ class XrayVlessEngine(
             .put("settings", JSONObject().put("vnext", JSONArray().put(vnext)))
             .put("streamSettings", stream)
 
+        if (config.mux) outbound.put("mux",JSONObject().put("enabled",true))
         val outbounds = JSONArray().put(outbound)
         if (!config.proxyHost.isNullOrBlank()) {
             val headers = JSONObject()

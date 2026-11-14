@@ -42,7 +42,8 @@ def test_default_migration_is_idempotent_and_preserves_custom_settings(tmp_path)
     db, *_ = env(tmp_path)
     with db.transaction() as cx:
         row = cx.execute("SELECT * FROM vpn_profiles WHERE network_id='global_world'").fetchone()
-        cfg = json.loads(row['config_json'])
+        cfg = json.loads(row['config_json'])['global_profiles']['previous']
+        cfg.pop('verify_cert_name', None)
         cfg['host'] = 'ahmed-vidgg-294397537401.us-central1.run.app'
         cx.execute("UPDATE vpn_profiles SET config_json=? WHERE network_id='global_world'", (json.dumps(cfg),))
         old_version = row['version']

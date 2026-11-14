@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - validation/lot24-141
+      - validation/lot25-141
 
 concurrency:
   group: barka-production-deploy
@@ -70,6 +70,7 @@ jobs:
           node backend/tests/panel_lot21.test.cjs
           node backend/tests/panel_lot22.test.cjs
           node backend/tests/panel_lot23.test.cjs
+          node backend/tests/panel_lot25.test.cjs
 
       - name: Préparer les moteurs natifs C6
         shell: bash
@@ -170,7 +171,18 @@ jobs:
           BARKA_VPS_SSH_KEY: ${{ secrets.BARKA_VPS_SSH_KEY }}
           BARKA_VPS_PORT: ${{ secrets.BARKA_VPS_PORT }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          DEPLOY_STAGE="configuration SSH"
+          trap 'rc=$?; echo "Échec étape: $DEPLOY_STAGE (code $rc, ligne $LINENO)" >&2; exit "$rc"' ERR
+          retry_transfer() {
+            local attempt
+            for attempt in 1 2 3; do
+              if "$@"; then return 0; fi
+              echo "Transfert interrompu, tentative $attempt/3" >&2
+              sleep 3
+            done
+            return 1
+          }
           test -n "$BARKA_VPS_HOST" || { echo "Secret BARKA_VPS_HOST manquant"; exit 1; }
           test -n "$BARKA_VPS_USER" || { echo "Secret BARKA_VPS_USER manquant"; exit 1; }
           test -n "$BARKA_VPS_SSH_KEY" || { echo "Secret BARKA_VPS_SSH_KEY manquant"; exit 1; }
@@ -184,27 +196,37 @@ jobs:
           install -d -m 700 "$HOME/.ssh"
           printf '%s\n' "$BARKA_VPS_SSH_KEY" > "$HOME/.ssh/barka_vps_key"
           chmod 600 "$HOME/.ssh/barka_vps_key"
-          ssh-keyscan -p "$VPS_PORT" -H "$BARKA_VPS_HOST" >> "$HOME/.ssh/known_hosts"
+          DEPLOY_STAGE="lecture de la clé SSH"
+          scan_host() { ssh-keyscan -T 20 -p "$VPS_PORT" -H "$BARKA_VPS_HOST" > "$HOME/.ssh/barka_known_hosts.new"; }
+          retry_transfer scan_host
+          test -s "$HOME/.ssh/barka_known_hosts.new"
+          cat "$HOME/.ssh/barka_known_hosts.new" >> "$HOME/.ssh/known_hosts"
+          SSH_OPTIONS=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          DEPLOY_STAGE="connexion SSH"
+          retry_transfer ssh "${SSH_OPTIONS[@]}" -p "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" "$BARKA_VPS_USER@$BARKA_VPS_HOST" true
+          DEPLOY_STAGE="transfert APK et backend"
 
           LOCAL_SHA256="$(sha256sum BarkaTunnel-release.apk | awk '{print $1}')"
           tar -C backend --exclude=__pycache__ -czf "$BACKEND_ARCHIVE" app deploy_baseline.json verify_deploy.py
           BACKEND_SHA256="$(sha256sum "$BACKEND_ARCHIVE" | awk '{print $1}')"
-          scp -P "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
+          retry_transfer scp "${SSH_OPTIONS[@]}" -P "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
             BarkaTunnel-release.apk \
             "$BARKA_VPS_USER@$BARKA_VPS_HOST:$REMOTE_TMP"
-          scp -P "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
+          retry_transfer scp "${SSH_OPTIONS[@]}" -P "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
             "$BACKEND_ARCHIVE" \
             "$BARKA_VPS_USER@$BARKA_VPS_HOST:$REMOTE_BACKEND"
 
-          REMOTE_RESULT="$(ssh -p "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
+          DEPLOY_STAGE="sauvegarde et déploiement serveur"
+          REMOTE_RESULT="$(ssh "${SSH_OPTIONS[@]}" -p "$VPS_PORT" -i "$HOME/.ssh/barka_vps_key" \
             "$BARKA_VPS_USER@$BARKA_VPS_HOST" \
             "BARKA_DEPLOY_SHA='$GITHUB_SHA' BARKA_EXPECTED_APK_SHA='$LOCAL_SHA256' BARKA_REMOTE_APK='$REMOTE_TMP' BARKA_REMOTE_BACKEND='$REMOTE_BACKEND' BARKA_BACKEND_SHA256='$BACKEND_SHA256' BARKA_FINAL_APK='$REMOTE_APK' bash -s" <<'REMOTE_SCRIPT'
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'rc=$?; echo "Échec distant ligne $LINENO (code $rc)" >&2; exit "$rc"' ERR
           BARKA_BACKEND_ROOT="/opt/Barka-Tunnel/backend"
           exec 9>/tmp/barka-backend-deploy.lock
           flock -n 9 || { echo "Un déploiement est déjà en cours."; exit 1; }
           install -d -m 700 /opt/Barka-Tunnel/backups
-          BARKA_BACKUP_ROOT="$(mktemp -d /opt/Barka-Tunnel/backups/lot24.XXXXXX)"
+          BARKA_BACKUP_ROOT="$(mktemp -d /opt/Barka-Tunnel/backups/lot25.XXXXXX)"
 
           test "$(sha256sum "$BARKA_REMOTE_APK" | awk '{print $1}')" = "$BARKA_EXPECTED_APK_SHA"
           test -f "$BARKA_BACKEND_ROOT/.env"
@@ -261,7 +283,8 @@ jobs:
 
           test -n "$REMOTE_SHA256" || { echo "SHA256 distant absent"; exit 1; }
           test "$LOCAL_SHA256" = "$REMOTE_SHA256" || { echo "SHA256 distant incorrect"; exit 1; }
-          curl --fail --location --retry 3 --max-time 180 \
+          DEPLOY_STAGE="vérification publique (backend et APK déjà publiés)"
+          curl --fail --silent --show-error --location --retry 2 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 1200 \
             "https://api.rhaffservice.com/downloads/BarkaTunnel.apk?build=$GITHUB_SHA" -o published-check.apk
           test "$(sha256sum published-check.apk | awk '{print $1}')" = "$LOCAL_SHA256" || { echo "Le téléchargement public ne correspond pas à l’APK vérifié"; exit 1; }
           echo "APK publié et téléchargement vérifié: https://api.rhaffservice.com/downloads/BarkaTunnel.apk?build=$GITHUB_SHA"

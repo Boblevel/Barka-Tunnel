@@ -115,6 +115,7 @@ def renew_reseller_month(reseller_id: int) -> dict:
         settle_reseller_pauses(cx, reseller_id, now)
         cx.execute("UPDATE reseller_accounts SET expires_at=?, updated_at=? WHERE id=?", (expiry, now, reseller_id))
         _revoke_sessions(cx, reseller_id, now)
+        reseller_quotas.renewed(cx, reseller_id, now)
         record_event(cx, reseller_id, "renewed", detail=iso(expiry))
         row = cx.execute("SELECT * FROM reseller_accounts WHERE id=?", (reseller_id,)).fetchone()
     return _public_account(row)
@@ -276,7 +277,7 @@ def update_reseller_expiry(reseller_id: int, expires_at: datetime) -> dict:
     now = now_ts()
     with transaction() as cx:
         row = cx.execute(
-            "SELECT id FROM reseller_accounts WHERE id=? AND deleted_at IS NULL",
+            "SELECT * FROM reseller_accounts WHERE id=? AND deleted_at IS NULL",
             (reseller_id,),
         ).fetchone()
         if not row:
@@ -286,6 +287,11 @@ def update_reseller_expiry(reseller_id: int, expires_at: datetime) -> dict:
             "UPDATE reseller_accounts SET expires_at=?, updated_at=? WHERE id=?",
             (expiry, now, reseller_id),
         )
+        if expiry > int(row["expires_at"]):
+            reseller_quotas.renewed(cx, reseller_id, now)
+        else:
+            updated = cx.execute("SELECT * FROM reseller_accounts WHERE id=?", (reseller_id,)).fetchone()
+            reseller_quotas.current_period(cx, updated, now)
         _revoke_sessions(cx, reseller_id, now)
         row = cx.execute(
             "SELECT * FROM reseller_accounts WHERE id=?",
@@ -468,7 +474,7 @@ def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int, 
         if not plan_id.startswith("test_"):
             period = reseller_quotas.current_period(cx, account, now)
             if period is None or period['used'] >= period['code_limit']:
-                raise PermissionError("Quota mensuel atteint. Les codes de test restent disponibles.")
+                raise PermissionError("Quota atteint. Les codes de test restent disponibles.")
             cx.execute("UPDATE reseller_quota_periods SET used=used+1 WHERE id=?", (period['id'],))
         if request_id:
             cx.execute("INSERT INTO reseller_generation_requests VALUES(?,?,?,?)", (reseller_id, request_id, plan_id, source_ref))
@@ -544,6 +550,7 @@ def adjust_reseller_quota(reseller_id: int, *, limit: int | None = None, reset: 
         if limit is not None:
             cx.execute("UPDATE reseller_quota_adjustments SET custom_limit=? WHERE period_id=?", (limit, period['id']))
         if reset:
+            reseller_quotas.reset_slots(cx, reseller_id, now)
             cx.execute("UPDATE reseller_quota_periods SET used=0 WHERE id=?", (period['id'],))
         cx.execute("UPDATE reseller_quota_adjustments SET revision=revision+1 WHERE period_id=?", (period['id'],))
         record_event(cx, reseller_id, "quota_reset" if reset else "quota_customized",

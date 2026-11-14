@@ -39,7 +39,16 @@ def _snapshot(cx):
         item["config"] = _decode_config(row["config_json"])
         draft = drafts.get(row["network_id"])
         if draft:
+            published_config = item["config"]
             item.update(draft["profile"])
+            if row["network_id"] == "global_world" and published_config.get("global_profiles") and not item["config"].get("global_profiles"):
+                # Keep pre-upgrade pending edits while exposing the new selector.
+                bank = json.loads(json.dumps(published_config["global_profiles"]))
+                pending = dict(item["config"])
+                if pending.get("host") and pending.get("security") == "tls":
+                    pending.setdefault("verify_cert_name", pending["host"])
+                bank["draft"] = pending
+                item["config"] = dict(pending, global_profiles=bank, active_global_profile="draft")
         elif item["priority"] == 100:
             # Old default becomes the editor's new default, without publishing it.
             item["priority"] = 1
@@ -60,6 +69,10 @@ def _validate(profile):
     if payload["network_id"] == "global_world" and payload["display_name"] == "GLOBAL MONDIAL 🌍":
         payload["display_name"] = "GLOBAL MONDIAL"
     config = payload["config"]
+    if payload["network_id"] == "global_world":
+        from .global_profiles import normalize
+        try: config = payload["config"] = normalize(config)
+        except ValueError as error: raise HTTPException(400, str(error)) from error
     if payload["enabled"] and not config:
         raise HTTPException(400, "Impossible d'activer un service sans configuration.")
     if payload["enabled"] and payload["protocol"] == "SLOWDNS":

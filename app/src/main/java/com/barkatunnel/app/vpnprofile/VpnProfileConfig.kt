@@ -34,7 +34,10 @@ sealed interface VpnProfileConfig {
         val allowInsecure: Boolean,
         val proxyHost: String? = null,
         val proxyPort: Int? = null,
-        val proxyHeaders: Map<String, String> = emptyMap()
+        val proxyHeaders: Map<String, String> = emptyMap(),
+        val proxyPayload: String? = null,
+        val mux: Boolean = false,
+        val verifyCertName: String? = null
     ) : VpnProfileConfig
 
     data class UdpCustom(
@@ -139,7 +142,10 @@ object VpnProfileConfigParser {
             allowInsecure = json.optBoolean("allow_insecure", false),
             proxyHost = optionalStringAny(json, "proxy_host"),
             proxyPort = if (json.has("proxy_host")) requiredPort(json, "proxy_port") else null,
-            proxyHeaders = parseProxyHeaders(json)
+            proxyHeaders = parseProxyHeaders(json),
+            proxyPayload = json.optString("proxy_payload").takeIf { it.isNotBlank() }?.also { ConnectPayload.expand(it,"example.com",443) },
+            mux = json.optBoolean("mux",false),
+            verifyCertName = optionalStringAny(json,"verify_cert_name")?.also { require(Regex("[A-Za-z0-9.-]{1,253}").matches(it)) }
         )
     }
 
@@ -206,7 +212,10 @@ object VpnProfileConfigParser {
             allowInsecure = booleanQuery(query["allowInsecure"] ?: query["insecure"]),
             proxyHost = optionalStringAny(json, "proxy_host"),
             proxyPort = if (json.has("proxy_host")) requiredPort(json, "proxy_port") else null,
-            proxyHeaders = parseProxyHeaders(json)
+            proxyHeaders = parseProxyHeaders(json),
+            proxyPayload = json.optString("proxy_payload").takeIf { it.isNotBlank() }?.also { ConnectPayload.expand(it,"example.com",443) },
+            mux = json.optBoolean("mux",false),
+            verifyCertName = optionalStringAny(json,"verify_cert_name")?.also { require(Regex("[A-Za-z0-9.-]{1,253}").matches(it)) }
         )
     }
 

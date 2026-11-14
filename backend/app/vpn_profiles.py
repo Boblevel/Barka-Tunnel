@@ -72,7 +72,7 @@ def get_profile_for_device(device_id: str, network_id: str) -> dict:
         raise LookupError("Configuration VPN non publiée pour ce réseau.")
 
     result = _row_to_public(row)
-    result["config"] = config
+    result["config"] = {k:v for k,v in config.items() if k not in ("global_profiles","active_global_profile")}
     return result
 
 
@@ -103,6 +103,9 @@ def upsert_admin_profile(payload: dict) -> dict:
         raise ValueError("Protocole inconnu.")
 
     config = payload.get("config") or {}
+    if network_id == "global_world" and isinstance(config, dict):
+        from .global_profiles import normalize
+        config = normalize(config)
     if not isinstance(config, dict):
         raise ValueError("Configuration VPN invalide.")
     if payload.get("enabled") and not config:
@@ -166,6 +169,12 @@ def validate_tls_config(config):
 
 
 def validate_vless_proxy(config):
+    from .global_profiles import payload_headers
+    if config.get('proxy_payload'): payload_headers(config['proxy_payload'])
+    if 'mux' in config and type(config['mux']) is not bool: raise ValueError('Mux invalide.')
+    import re
+    name=config.get('verify_cert_name','')
+    if not isinstance(name,str) or (name and not re.fullmatch(r'[A-Za-z0-9.-]{1,253}',name)): raise ValueError('Nom du certificat invalide.')
     proxy_host = config.get('proxy_host')
     if proxy_host is None:
         return

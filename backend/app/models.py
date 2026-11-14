@@ -208,7 +208,7 @@ class ResellerLoginRequest(BaseModel):
 
 class ResellerGenerateSubscriptionRequest(BaseModel):
     request_id: str | None = Field(default=None, min_length=16, max_length=64, pattern=r"^[a-zA-Z0-9-]+$")
-    plan_id: Literal["24h", "1w", "2w", "1m"]
+    plan_id: Literal["1w", "2w", "1m"]
 
 
 class ResellerGenerateTestRequest(BaseModel):
