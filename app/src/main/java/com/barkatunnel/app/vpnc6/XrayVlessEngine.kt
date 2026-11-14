@@ -19,6 +19,7 @@ class XrayVlessEngine(
     private var connectBridge: HttpConnectBridge? = null
     private var configFile: File? = null
     private var logFile: File? = null
+    private var trustDirectory: File? = null
 
     override fun start() {
         if (isCancelled()) throw InterruptedException("Connexion annulée.")
@@ -56,10 +57,19 @@ class XrayVlessEngine(
         val output = File(context.cacheDir, "c6_xray_${System.nanoTime()}.log")
         logFile = output
 
-        process = ProcessCompat.startWithLog(
-            ProcessBuilder(xray.absolutePath, "run", "-config", file.absolutePath),
-            output
-        )
+        val builder = ProcessBuilder(xray.absolutePath, "run", "-config", file.absolutePath)
+        try {
+            if (config.security == "tls") {
+                val directory = File(context.cacheDir, "c6_trust_${System.nanoTime()}")
+                trustDirectory = directory
+                val count = AndroidTrustRoots.prepare(builder, directory)
+                AppLogStore.add(context, "Diagnostic VLESS • confiance TLS Android • certificats=$count • lot=26.")
+            }
+            process = ProcessCompat.startWithLog(builder, output)
+        } catch (error: Exception) {
+            stop()
+            throw error
+        }
         AppLogStore.add(
             context,
             "Diagnostic VLESS • processus Xray lancé • SOCKS attendu 127.0.0.1:$socksPort."
@@ -116,6 +126,8 @@ class XrayVlessEngine(
         }
         ProcessCompat.stop(process)
         process = null
+        trustDirectory?.deleteRecursively()
+        trustDirectory = null
         configFile?.delete()
         configFile = null
         logFile?.delete()
