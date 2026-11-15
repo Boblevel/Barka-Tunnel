@@ -66,7 +66,7 @@ class VpnProfileRepository(
             enabledProfiles.forEach { meta ->
                 try {
                     val before = secureStore.cachedVersion(meta.networkId)
-                    val cached = memoryProfiles[meta.networkId] ?: secureStore.load(meta.networkId)
+                    val cached = secureStore.load(meta.networkId)
                     if (cached == null || cached.version != meta.version || !isUsable(meta.networkId, cached)) {
                         fetchAndCache(meta.networkId)
                     }
@@ -108,11 +108,11 @@ class VpnProfileRepository(
         // On l'utilise directement pour démarrer le VPN afin qu'un appel HTTPS
         // transitoire au moment du premier clic ne provoque pas un faux rejet
         // avant une nouvelle tentative automatique, sur Wi-Fi comme sur mobile.
-        val cached = memoryProfiles[networkId]
+        // Synchronisation and connection can use different repository instances.
+        // The encrypted store is shared, whereas each memory map is private.
+        val cached = secureStore.load(networkId)
             ?.takeIf { isUsable(networkId, it) }
-            ?: secureStore.load(networkId)
-                ?.takeIf { isUsable(networkId, it) }
-                ?.also { memoryProfiles[networkId] = it }
+            ?.also { memoryProfiles[networkId] = it }
 
         if (cached != null) {
             val requiredVersion = secureStore.requiredVersion(networkId)
