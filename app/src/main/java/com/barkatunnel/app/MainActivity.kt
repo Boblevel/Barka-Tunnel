@@ -1474,7 +1474,7 @@ class MainActivity : AppCompatActivity() {
         val boundary = if (index >= 0 && homeBrandName.layout != null) {
             position[0] + homeBrandName.totalPaddingLeft + homeBrandName.layout.getPrimaryHorizontal(index).toInt()
         } else (width * 0.38f).toInt()
-        return (width - boundary).coerceIn((width * 0.55f).toInt(), (width * 0.90f).toInt())
+        return (width - boundary).coerceIn((width * 0.68f).toInt(), (width * 0.90f).toInt())
     }
 
     private var sideMenuDialog: Dialog? = null

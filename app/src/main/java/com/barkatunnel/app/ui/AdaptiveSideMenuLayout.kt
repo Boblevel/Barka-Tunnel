@@ -51,6 +51,26 @@ class AdaptiveSideMenuLayout @JvmOverloads constructor(
             }
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        if (compact && items.columns == 1) {
+            val rows = (0 until items.childCount).mapNotNull { index ->
+                (items.getChildAt(index) as? TextView)?.takeIf { it.visibility != View.GONE && it.id != View.NO_ID }
+            }
+            val contentHeight = items.paddingTop + items.paddingBottom + (0 until items.childCount).sumOf { index ->
+                val child = items.getChildAt(index)
+                if (child.visibility == View.GONE) 0 else {
+                    val params = child.layoutParams as LayoutParams
+                    child.measuredHeight + params.topMargin + params.bottomMargin
+                }
+            }
+            val spare = (scroll.measuredHeight - contentHeight).coerceAtLeast(0)
+            if (rows.isNotEmpty() && spare > 0) {
+                // Fill the available height evenly instead of leaving an empty
+                // block below the last entry on medium-height phones.
+                val extraPerRow = spare / rows.size
+                rows.forEach { row -> row.minimumHeight = row.measuredHeight + extraPerRow }
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            }
+        }
         if (items.columns == 1 && items.measuredHeight > scroll.measuredHeight) {
             items.columns = if (MeasureSpec.getSize(widthMeasureSpec) >= dp(360)) 3 else 2
             for (i in 0 until items.childCount) {
