@@ -31,7 +31,13 @@ def current_period(cx, account, now: int):
     baseline = cx.execute("SELECT value FROM admin_state WHERE key=?", (f"quota_reset_{account['id']}",)).fetchone()
     used = cx.execute("""SELECT COUNT(*) FROM activation_codes WHERE created_by_reseller_id=? AND id>?
         AND deleted_at IS NULL AND plan_id NOT IN ('test_2h','test_3h','test_6h')
-        AND (status='issued' OR (status='redeemed' AND (applied_until IS NULL OR applied_until>?)))""",
+        AND (status='issued' OR (status IN ('redeemed','revoked') AND (applied_until IS NULL OR applied_until>?)))""",
+        (account['id'],int(baseline[0]) if baseline else 0,now)).fetchone()[0]
+    # Deletions made after this change reserve their slot until the original
+    # expiry. A never-activated code has no expiry and needs an admin reset.
+    used += cx.execute("""SELECT COUNT(*) FROM activation_codes a JOIN admin_state s
+        ON s.key='quota_deleted_' || a.id WHERE a.created_by_reseller_id=? AND a.id>?
+        AND a.deleted_at IS NOT NULL AND (CAST(s.value AS INTEGER)=0 OR CAST(s.value AS INTEGER)>?)""",
         (account['id'],int(baseline[0]) if baseline else 0,now)).fetchone()[0]
     if used != period['used']:
         cx.execute("UPDATE reseller_quota_periods SET used=? WHERE id=?",(used,row['id']))

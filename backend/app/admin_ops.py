@@ -172,6 +172,12 @@ def delete_activation_code(
         if row["created_by_reseller_id"] is not None:
             record_event(cx, int(row["created_by_reseller_id"]), "code_deleted",
                          detail="revendeur" if reseller_id is not None else "administrateur")
+        # Keep the quota reservation even after deletion; the subscription's
+        # original expiration is saved before device grants are compacted.
+        if row["created_by_reseller_id"] is not None:
+            cx.execute("""INSERT OR IGNORE INTO admin_state(key,value,updated_at)
+                SELECT ?, ?, ? WHERE (SELECT plan_id FROM activation_codes WHERE id=?) NOT IN ('test_2h','test_3h','test_6h')""",
+                (f"quota_deleted_{row['id']}", str(row['applied_until'] or 0), now, row['id']))
         device_id = row["redeemed_device_id"]
         if device_id:
             device = cx.execute(

@@ -1,0 +1,14 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync(require('node:path').join(__dirname,'../app/reseller_panel.py'),'utf8');
+const line = source.split('\n').find(s=>s.startsWith('function renderCodes()'));
+const elements = {};
+for (const id of ['codeSearch','codeStatus','codeDeleteFiltered','codeDeleteInfo','codeCount','codes']) elements[id]={value:'',classList:{toggle(k,v){this[k]=v}}};
+const ctx=vm.createContext({$:id=>elements[id],latestCodes:[],codeMatches:()=>true,codeRow:()=>''});
+vm.runInContext(line,ctx);
+ctx.renderCodes(); assert.equal(elements.codeDeleteFiltered.classList.hidden,true);
+elements.codeStatus.value='expired';ctx.renderCodes();assert.equal(elements.codeDeleteFiltered.classList.hidden,false);
+elements.codeStatus.value='';elements.codeSearch.value='  BARKA ';ctx.renderCodes();assert.equal(elements.codeDeleteInfo.classList.hidden,false);
+elements.codeSearch.value='  ';ctx.renderCodes();assert.equal(elements.codeDeleteFiltered.classList.hidden,true);
+console.log('Filtrage revendeur vérifié.');

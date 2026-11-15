@@ -30,12 +30,12 @@ def test_deleted_expired_slots_and_test_exemption(env,monkeypatch):
  one=rs.generate_reseller_subscription(rid,'1w');two=rs.generate_reseller_subscription(rid,'2w')
  with pytest.raises(PermissionError):rs.generate_reseller_subscription(rid,'1m')
  assert rs.delete_reseller_code(rid,one)[0]
- assert rs.reseller_quota(rid)['remaining']==1
+ assert rs.reseller_quota(rid)['remaining']==0
  assert svc.redeem_activation_code('expires-client',two)[0]
  now=svc.now_ts();monkeypatch.setattr(rs,'now_ts',lambda:now+14*86400+1)
- assert rs.reseller_quota(rid)['remaining']==2
+ assert rs.reseller_quota(rid)['remaining']==1
  rs.generate_reseller_test(rid)
- assert rs.reseller_quota(rid)['used']==0
+ assert rs.reseller_quota(rid)['used']==1
 
 
 def test_existing_date_mismatch_repairs_once_and_keeps_new_codes(env):
@@ -121,6 +121,7 @@ def test_reseller_api_repairs_stale_counter_and_restricts_new_durations(env):
  # Existing 24-hour codes remain valid; only new reseller requests lose 24h.
  legacy=rs.generate_reseller_subscription(a['id'],'24h')
  assert rs.delete_reseller_code(a['id'],legacy)[0]
+ rs.adjust_reseller_quota(a['id'],reset=True)
  rs.reseller_quota(a['id'])
  with db.transaction() as cx:
   cx.execute('UPDATE reseller_quota_periods SET used=30 WHERE reseller_id=?',(a['id'],))

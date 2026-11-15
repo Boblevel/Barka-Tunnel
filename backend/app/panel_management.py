@@ -24,6 +24,8 @@ class FilterRequest(BaseModel):
 def filtered_codes(body: FilterRequest, reseller_id: int | None = None, *, delete: bool = False) -> dict:
     if reseller_id is not None and body.kind != "subscription":
         raise HTTPException(403, "Action non autorisée.")
+    if reseller_id is not None and body.status == "all" and not body.query.strip():
+        raise HTTPException(400, "Choisissez un filtre avant de supprimer des codes.")
     allowed = {"issued", "redeemed", "expired", "revoked"} if body.kind == "subscription" else {"active", "expired", "revoked"}
     if reseller_id is not None:
         allowed.add("all")

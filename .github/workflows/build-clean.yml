@@ -12,6 +12,7 @@ on:
       - validation/lot30-guides
       - validation/lot31-fix
       - validation/lot32-ui
+      - validation/lot33-quota
 
 concurrency:
   group: barka-production-deploy

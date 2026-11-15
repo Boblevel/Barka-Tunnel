@@ -10,7 +10,7 @@ def test_all_reseller_codes_are_scoped_and_confirmed(env):
     services.redeem_activation_code('lot14-client-device', used)
     other = rs.generate_reseller_test(b['id'])
     admin = services.issue_activation_code('LOT14-ADMIN', '24h')
-    body = filtered(pm, status='all')
+    body = filtered(pm, status='all', query='BARKA-')
     preview = pm.filtered_codes(body, a['id'])
     assert preview['count'] == 2
     with pytest.raises(HTTPException):
