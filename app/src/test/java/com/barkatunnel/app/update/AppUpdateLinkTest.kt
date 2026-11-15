@@ -40,7 +40,7 @@ class AppUpdateLinkTest {
             controller.pause().stop().destroy()
         }
     }
-    @Test fun mandatoryInternalUpdateRetainsVersionAndOpensHomeDownloader() {
+    @Test fun mandatoryInternalUpdateRetainsVersionAndOpensApkDownloadScreen() {
         val controller=Robolectric.buildActivity(AppCompatActivity::class.java)
         val activity=controller.get();activity.setTheme(R.style.Theme_BarkaTunnel);controller.setup().visible()
         try {
@@ -49,7 +49,7 @@ class AppUpdateLinkTest {
             ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             shadowOf(android.os.Looper.getMainLooper()).idle()
             val intent=shadowOf(activity).nextStartedActivity
-            assertEquals(com.barkatunnel.app.MainActivity::class.java.name,intent.component?.className)
+            assertEquals(ApkDownloadActivity::class.java.name, intent.component?.className)
             val pending = activity.getSharedPreferences("barka_apk_download", android.content.Context.MODE_PRIVATE)
             assertEquals(999L, pending.getLong("version", 0))
             assertEquals("https://example.org/app.apk", pending.getString("url", null))
