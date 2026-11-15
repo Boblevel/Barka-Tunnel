@@ -34,11 +34,12 @@ def current_period(cx, account, now: int):
         AND deleted_at IS NULL AND plan_id NOT IN ('test_2h','test_3h','test_6h')
         AND (status='issued' OR (status IN ('redeemed','revoked') AND (applied_until IS NULL OR applied_until>?)))""",
         (account['id'],baseline_id,now)).fetchone()[0]
-    # Deletions made after this change reserve their slot until the original
-    # expiry. A never-activated code has no expiry and needs an admin reset.
+    # A used code retains its reservation until its original expiry.
+    # Deleting an unused code releases its slot immediately.
     used += cx.execute("""SELECT COUNT(*) FROM activation_codes a JOIN admin_state s
         ON s.key='quota_deleted_' || a.id WHERE a.created_by_reseller_id=? AND a.id>?
-        AND a.deleted_at IS NOT NULL AND (CAST(s.value AS INTEGER)=0 OR CAST(s.value AS INTEGER)>?)""",
+        AND a.deleted_at IS NOT NULL
+        AND (CAST(s.value AS INTEGER)>? OR (CAST(s.value AS INTEGER)=0 AND a.redeemed_at IS NOT NULL))""",
         (account['id'],baseline_id,now)).fetchone()[0]
     used = settle_pre_reset_expirations(cx, account['id'], baseline_id, now, used)
     if used != period['used']:

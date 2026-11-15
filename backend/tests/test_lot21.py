@@ -28,6 +28,8 @@ def test_quota_all_durations_test_exemption_and_idempotency(env, limit):
     rs.reset_reseller_stats(identity)
     assert rs.delete_reseller_code(identity, first)[0]
     db.init_db()
+    assert rs.reseller_quota(identity)['remaining'] == 1
+    assert rs.generate_reseller_subscription(identity, '1m')
     assert rs.reseller_quota(identity)['remaining'] == 0
 
 

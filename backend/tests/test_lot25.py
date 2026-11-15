@@ -30,12 +30,12 @@ def test_deleted_expired_slots_and_test_exemption(env,monkeypatch):
  one=rs.generate_reseller_subscription(rid,'1w');two=rs.generate_reseller_subscription(rid,'2w')
  with pytest.raises(PermissionError):rs.generate_reseller_subscription(rid,'1m')
  assert rs.delete_reseller_code(rid,one)[0]
- assert rs.reseller_quota(rid)['remaining']==0
+ assert rs.reseller_quota(rid)['remaining']==1
  assert svc.redeem_activation_code('expires-client',two)[0]
  now=svc.now_ts();monkeypatch.setattr(rs,'now_ts',lambda:now+14*86400+1)
- assert rs.reseller_quota(rid)['remaining']==1
+ assert rs.reseller_quota(rid)['remaining']==2
  rs.generate_reseller_test(rid)
- assert rs.reseller_quota(rid)['used']==1
+ assert rs.reseller_quota(rid)['used']==0
 
 
 def test_existing_date_mismatch_repairs_once_and_keeps_new_codes(env):

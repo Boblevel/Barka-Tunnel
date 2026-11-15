@@ -45,7 +45,7 @@ def test_over_limit_and_admin_actions(env):
 
 
 def test_reseller_bulk_deletion_requires_filter(env):
-    _, _, rs, _, _, main, account = env
+    _, _, rs, _, _, _, account = env
     from app.panel_management import FilterRequest, filtered_codes
     rid = account['id']
     code = rs.generate_reseller_subscription(rid, '1w')
@@ -57,7 +57,31 @@ def test_reseller_bulk_deletion_requires_filter(env):
     preview = filtered_codes(body, rid)
     assert preview['count'] == 1
     assert filtered_codes(body.model_copy(update={'fingerprint': preview['fingerprint']}), rid, delete=True)['deleted'] == 1
-    assert rs.reseller_quota(rid)['used'] == 1
+    assert rs.reseller_quota(rid)['used'] == 0
+
+
+def test_unused_subscription_deletion_restores_quota_in_panel(env):
+    _, svc, rs, _, _, main, account = env
+    token = rs.login_reseller(account['username'], account['password'])['token']
+    headers = {'Authorization': 'Bearer ' + token}
+    with client_for(main) as client:
+        generated = client.post('/v1/reseller/codes/subscription',
+                                json={'plan_id': '1w'}, headers=headers)
+        assert generated.status_code == 200
+        body = generated.json()
+        assert (body['quota']['used'], body['quota']['remaining']) == (1, 29)
+        code = body['code']
+        deleted = client.post('/v1/reseller/codes/delete', json={'code': code}, headers=headers)
+        assert deleted.json()['success']
+        retry = client.post('/v1/reseller/codes/delete', json={'code': code}, headers=headers)
+        assert not retry.json()['success']
+        quota = client.get('/v1/reseller/quota', headers=headers).json()
+        assert (quota['used'], quota['remaining']) == (0, 30)
+        assert quota['revision'] > body['quota']['revision']
+        assert not svc.redeem_activation_code('deleted-unused-code', code)[0]
+        replacement = client.post('/v1/reseller/codes/subscription',
+                                  json={'plan_id': '1w'}, headers=headers).json()
+        assert (replacement['quota']['used'], replacement['quota']['remaining']) == (1, 29)
 
 
 def test_one_expiration_releases_exactly_one_slot(env, monkeypatch):
