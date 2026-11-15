@@ -39,6 +39,11 @@ class JournalDiagnosticTest {
     @Test fun temporaryDiagnosticsDoNotEvictNormalJournalEntries() {
         val context = RuntimeEnvironment.getApplication()
         AppLogStore.clear(context)
+        val prefs = context.getSharedPreferences("barka_home_preferences", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putString("selected_network_id", "orange_bf").commit()
+        AppLogStore.add(context, "Diagnostic VLESS • masqué hors Global")
+        assertFalse(AppLogStore.getAll(context).contains("masqué hors Global"))
+        prefs.edit().putString("selected_network_id", "global_world").commit()
         AppLogStore.add(context, "VPN connecté • ORANGE BF")
         repeat(300) { AppLogStore.add(context, "Diagnostic VLESS • CONNECT • statut 429") }
         assertTrue(AppLogStore.getAll(context).contains("VPN connecté"))
@@ -47,5 +52,6 @@ class JournalDiagnosticTest {
         assertFalse(AppLogStore.getAll(context).contains("PRIVATE"))
         assertTrue(AppLogStore.getAll(context).contains("statut 429"))
         AppLogStore.clear(context)
+        prefs.edit().remove("selected_network_id").commit()
     }
 }

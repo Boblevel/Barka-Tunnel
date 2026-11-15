@@ -10,6 +10,7 @@ on:
       - validation/lot27-141
       - validation/lot29-complet
       - validation/lot30-guides
+      - validation/lot31-fix
 
 concurrency:
   group: barka-production-deploy

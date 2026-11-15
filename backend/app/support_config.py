@@ -47,7 +47,7 @@ def get_video_guides(response: Response):
     response.headers['Cache-Control'] = 'no-store'
     with transaction() as cx:
         rows = dict(cx.execute("SELECT key,value FROM admin_state WHERE key IN ('video_guide','video_ip_finder')").fetchall())
-    return VideoGuideConfig(guide=rows.get('video_guide',''), ip_finder=rows.get('video_ip_finder',''))
+    return VideoGuideConfig(guide=rows.get('video_guide','https://www.youtube.com/watch?v=NUe3oG-R5hI'), ip_finder=rows.get('video_ip_finder',''))
 
 @router.put('/v1/admin/video-guides', dependencies=[Depends(require_admin)])
 def set_video_guides(body: VideoGuideConfig, response: Response):
