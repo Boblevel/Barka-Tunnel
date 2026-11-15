@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources><string name="video_guide_title">دليل الفيديو</string><string name="video_guide_intro">شاهد دليل الفيديو لمعرفة كيفية استخدام هذه الميزة.</string><string name="video_guide_watch">مشاهدة</string></resources>
+<resources><string name="video_guide_title">دليل الفيديو</string><string name="video_guide_intro">شاهد دليل الفيديو لمعرفة كيفية استخدام هذه الميزة.</string><string name="video_guide_watch">مشاهدة</string><string name="video_guide_unavailable">الفيديو غير متاح. تحقق من الاتصال أو حاول لاحقاً.</string></resources>

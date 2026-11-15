@@ -15,30 +15,36 @@ import java.net.URI
 /** Only the fixed YouTube embed origin is loaded; the admin supplies an ID through the server. */
 object VideoGuide {
     fun bind(activity: Activity, button: View, key: String) {
-        button.visibility = View.GONE
-        Thread {
-            val id = runCatching {
-                val link = BarkaBackendClient(activity).videoGuides().optString(key)
-                val uri = URI(link)
-                require(uri.scheme == "https" && uri.host == "www.youtube.com" && uri.path == "/watch")
-                val value = uri.rawQuery?.removePrefix("v=") ?: ""
-                require(value.matches(Regex("[A-Za-z0-9_-]{11}")))
-                value
-            }.getOrNull()
-            activity.runOnUiThread {
-                if (activity.isFinishing || activity.isDestroyed || id == null) return@runOnUiThread
-                button.visibility = View.VISIBLE
-                button.setOnClickListener { show(activity, id) }
-                val prefs = activity.getSharedPreferences("video_guide_intro", Activity.MODE_PRIVATE)
-                if (!prefs.getBoolean(key, false)) {
-                    AlertDialog.Builder(activity).setTitle(R.string.video_guide_title)
-                        .setMessage(R.string.video_guide_intro)
-                        .setPositiveButton(R.string.video_guide_watch) { _, _ -> show(activity, id) }
-                        .setNegativeButton(android.R.string.cancel, null).show()
-                    prefs.edit().putBoolean(key, true).apply()
+        button.visibility = View.VISIBLE
+        button.setOnClickListener {
+            button.isEnabled = false
+            Thread {
+                val id = runCatching {
+                    val link = BarkaBackendClient(activity).videoGuides().optString(key)
+                    val uri = URI(link)
+                    require(uri.scheme == "https" && uri.host == "www.youtube.com" && uri.path == "/watch")
+                    val value = uri.rawQuery?.removePrefix("v=") ?: ""
+                    require(value.matches(Regex("[A-Za-z0-9_-]{11}")))
+                    value
+                }.getOrNull()
+                activity.runOnUiThread {
+                    if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
+                    button.isEnabled = true
+                    if (id == null) {
+                        Toast.makeText(activity, R.string.video_guide_unavailable, Toast.LENGTH_LONG).show()
+                        return@runOnUiThread
+                    }
+                    val prefs = activity.getSharedPreferences("video_guide_intro", Activity.MODE_PRIVATE)
+                    if (!prefs.getBoolean(key, false)) {
+                        AlertDialog.Builder(activity).setTitle(R.string.video_guide_title)
+                            .setMessage(R.string.video_guide_intro)
+                            .setPositiveButton(R.string.video_guide_watch) { _, _ -> show(activity, id) }
+                            .setNegativeButton(android.R.string.cancel, null).show()
+                        prefs.edit().putBoolean(key, true).apply()
+                    } else show(activity, id)
                 }
-            }
-        }.start()
+            }.start()
+        }
     }
 
     private fun show(activity: Activity, id: String) {

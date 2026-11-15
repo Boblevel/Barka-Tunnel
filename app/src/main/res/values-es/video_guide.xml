@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources><string name="video_guide_title">Guía en vídeo</string><string name="video_guide_intro">Descubre la guía en vídeo para usar esta función.</string><string name="video_guide_watch">VER</string></resources>
+<resources><string name="video_guide_title">Guía en vídeo</string><string name="video_guide_intro">Descubre la guía en vídeo para usar esta función.</string><string name="video_guide_watch">VER</string><string name="video_guide_unavailable">Vídeo no disponible. Comprueba tu conexión o inténtalo más tarde.</string></resources>

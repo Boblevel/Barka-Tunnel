@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources><string name="video_guide_title">Guide vidéo</string><string name="video_guide_intro">Découvrez le guide vidéo pour utiliser cette fonction.</string><string name="video_guide_watch">REGARDER</string></resources>
+<resources><string name="video_guide_title">Guide vidéo</string><string name="video_guide_intro">Découvrez le guide vidéo pour utiliser cette fonction.</string><string name="video_guide_watch">REGARDER</string><string name="video_guide_unavailable">Vidéo indisponible. Vérifiez votre connexion ou réessayez plus tard.</string></resources>

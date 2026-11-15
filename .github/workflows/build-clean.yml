@@ -15,6 +15,7 @@ on:
       - validation/lot33-quota
       - validation/lot34-menu
       - validation/lot35-build
+      - validation/lot36-video
 
 concurrency:
   group: barka-production-deploy
