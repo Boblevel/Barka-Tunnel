@@ -59,3 +59,25 @@ def set_video_guides(body: VideoGuideConfig, response: Response):
             cx.execute('INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at', (key,value,int(time.time())))
     response.headers['Cache-Control']='no-store'
     return VideoGuideConfig(guide=guide,ip_finder=ip)
+
+class ShareLinkConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    url: str = Field(min_length=1, max_length=1000)
+
+@router.get('/v1/share-link')
+def get_share_link(response: Response):
+    response.headers['Cache-Control'] = 'no-store'
+    with transaction() as cx:
+        row = cx.execute("SELECT value FROM admin_state WHERE key='app_share_url'").fetchone()
+    return ShareLinkConfig(url=row['value'] if row else 'https://apkpure.com/p/com.barkatunnel.app')
+
+@router.put('/v1/admin/share-link', dependencies=[Depends(require_admin)])
+def set_share_link(body: ShareLinkConfig, response: Response):
+    from fastapi import HTTPException
+    from .app_updates import valid_download_url
+    url = body.url.strip()
+    if not valid_download_url(url): raise HTTPException(422, 'Lien HTTPS invalide.')
+    with transaction() as cx:
+        cx.execute("INSERT INTO admin_state(key,value,updated_at) VALUES('app_share_url',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", (url,int(time.time())))
+    response.headers['Cache-Control'] = 'no-store'
+    return ShareLinkConfig(url=url)

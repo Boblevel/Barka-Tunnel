@@ -29,6 +29,14 @@ class SettingsActivity : AppCompatActivity() {
         SystemBars.apply(this)
         applySystemBars()
         updateCoordinator = AppUpdateCoordinator(this)
+        Thread {
+            runCatching {
+                val url = com.barkatunnel.app.backend.BarkaBackendClient(this).shareLink()
+                val uri = java.net.URI(url)
+                require(uri.scheme == "https" && !uri.host.isNullOrBlank() && uri.userInfo == null && url.none { it.isWhitespace() || it.code < 32 })
+                getSharedPreferences("share_config", MODE_PRIVATE).edit().putString("url", url).apply()
+            }
+        }.start()
 
         val prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
         prefs.edit()
@@ -195,7 +203,8 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun shareApplication() {
-        val apkUrl = AppUpdateDestination.APKPURE_URL
+        val saved = getSharedPreferences("share_config", MODE_PRIVATE).getString("url", null)
+        val apkUrl = saved ?: AppUpdateDestination.APKPURE_URL
         val text = getString(R.string.share_download_format, apkUrl)
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

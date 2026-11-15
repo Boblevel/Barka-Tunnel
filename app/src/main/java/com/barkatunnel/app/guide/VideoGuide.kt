@@ -50,7 +50,16 @@ object VideoGuide {
         player.setBackgroundColor(Color.BLACK)
         val html = """<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:black"><iframe width="100%" height="240" src="https://www.youtube.com/embed/$id?playsinline=1" title="YouTube" frameborder="0" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></body></html>"""
         player.loadDataWithBaseURL("https://api.rhaffservice.com/", html, "text/html", "UTF-8", null)
-        val dialog = AlertDialog.Builder(activity).setTitle(R.string.video_guide_title).setView(player)
+        val content = android.widget.LinearLayout(activity).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(16, 12, 16, 12)
+            addView(android.widget.TextView(activity).apply {
+                text = activity.getString(R.string.video_guide_intro)
+                setPadding(8, 4, 8, 16)
+            })
+            addView(player, android.widget.LinearLayout.LayoutParams(-1, (240 * activity.resources.displayMetrics.density).toInt()))
+        }
+        val dialog = AlertDialog.Builder(activity).setTitle(R.string.video_guide_title).setView(content)
             .setNegativeButton(android.R.string.cancel, null).create()
         dialog.setOnDismissListener { player.stopLoading(); player.destroy() }
         dialog.show()

@@ -91,6 +91,8 @@ class BarkaBackendClient(context: Context) {
         if (!body.optBoolean("success", false)) throw BarkaBackendException("Envoi non confirmé. Réessayez.")
     }
 
+    fun shareLink(): String = getObject("/v1/share-link", BarkaVpnService.connectedSocksPort()).getString("url")
+
     fun videoGuides(): JSONObject = getObject("/v1/video-guides", BarkaVpnService.connectedSocksPort())
 
     fun getPricing(): JSONObject = getObject("/v1/pricing", BarkaVpnService.connectedSocksPort())

@@ -42,9 +42,8 @@
                 android:layout_width="46dp"
                 android:layout_height="46dp"
                 android:gravity="center"
-                android:text="!"
-                android:textSize="24sp"
-                android:textStyle="bold"
+                android:drawableTop="@drawable/ic_video_guide"
+                android:paddingTop="12dp"
                 android:contentDescription="@string/video_guide_title"
                 android:textColor="?attr/barkaAccent" />
         </LinearLayout>
