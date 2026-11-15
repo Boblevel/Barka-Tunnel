@@ -111,14 +111,16 @@ class HttpConnectBridgeTest {
     }
 
     @Test fun stopClosesActiveSockets() {
-        val bridge = HttpConnectBridge("127.0.0.1", 9, "target.invalid", 443, emptyMap())
-        bridge.start()
-        Socket("127.0.0.1", bridge.port).use { client ->
-            client.soTimeout = 5000
-            client.getOutputStream().write("CONNECT target.invalid".toByteArray())
-            bridge.close()
-            try { assertEquals(-1, client.getInputStream().read()) }
-            catch (_: java.net.SocketException) { }
+        repeat(25) {
+            val bridge = HttpConnectBridge("127.0.0.1", 9, "target.invalid", 443, emptyMap())
+            bridge.start()
+            Socket("127.0.0.1", bridge.port).use { client ->
+                client.soTimeout = 5000
+                client.getOutputStream().write("CONNECT target.invalid".toByteArray())
+                bridge.close()
+                try { assertEquals(-1, client.getInputStream().read()) }
+                catch (_: java.net.SocketException) { }
+            }
         }
     }
 

@@ -14,6 +14,7 @@ on:
       - validation/lot32-ui
       - validation/lot33-quota
       - validation/lot34-menu
+      - validation/lot35-build
 
 concurrency:
   group: barka-production-deploy

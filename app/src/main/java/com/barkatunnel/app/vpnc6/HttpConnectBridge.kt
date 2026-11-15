@@ -44,7 +44,10 @@ internal class HttpConnectBridge(
                 while (!closed) {
                     val client = listener.accept()
                     if (closed || !permits.tryAcquire()) { client.close(); continue }
-                    sockets.add(client)
+                    val tracked = synchronized(sockets) {
+                        if (closed) false else sockets.add(client)
+                    }
+                    if (!tracked) { client.close(); permits.release(); continue }
                     try { workers.execute {
                         try { relay(client) } finally {
                             sockets.remove(client); runCatching { client.close() }; permits.release()
@@ -59,7 +62,10 @@ internal class HttpConnectBridge(
 
     private fun relay(client: Socket) {
         val remote = Socket()
-        sockets.add(remote)
+        val tracked = synchronized(sockets) {
+            if (closed) false else sockets.add(remote)
+        }
+        if (!tracked) { remote.close(); return }
         val requestId = attempts.incrementAndGet()
         var stage = "requête locale"
         var responseSent = false
@@ -127,7 +133,7 @@ internal class HttpConnectBridge(
             finally { runCatching { client.close() }; runCatching { remote.close() }; upload.cancel(true) }
         } catch (error: Exception) {
             if (!closed && requestId <= 12) runCatching { reportFailure("requête=$requestId • $stage : ${error.javaClass.simpleName}") }
-            if (!responseSent) runCatching { client.getOutputStream().write("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray()) }
+            if (!closed && !responseSent) runCatching { client.getOutputStream().write("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray()) }
         } finally { sockets.remove(remote); runCatching { remote.close() } }
     }
 
