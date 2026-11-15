@@ -197,9 +197,12 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
                 return
             }
             val uri = FileProvider.getUriForFile(activity, "${activity.packageName}.apk-provider", apk)
-            activity.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
-                .setClipData(ClipData.newRawUri("APK", uri))
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                clipData = ClipData.newRawUri("APK", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            activity.startActivity(installIntent)
         } catch (_: Exception) { status.setText(R.string.update_open_failed) }
     }
 
