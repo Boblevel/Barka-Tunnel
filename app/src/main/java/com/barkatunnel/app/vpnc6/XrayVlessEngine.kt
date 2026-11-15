@@ -182,6 +182,7 @@ class XrayVlessEngine(
                 .put("serverName", config.sni)
                 .put("alpn", JSONArray().put("http/1.1"))
             config.verifyCertName?.let { tlsSettings.put("verifyPeerCertByName",it) }
+            config.pinnedCertSha256?.let { tlsSettings.put("pinnedPeerCertSha256", it) }
             // Xray v26.3.27 refuse désormais allowInsecure=true depuis le 01/06/2026.
             // On laisse donc la validation TLS standard utiliser le SNI configuré.
             config.fingerprint?.takeIf { it.isNotBlank() }?.let {

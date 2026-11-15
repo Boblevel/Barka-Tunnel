@@ -173,6 +173,9 @@ def validate_vless_proxy(config):
     if config.get('proxy_payload'): payload_headers(config['proxy_payload'])
     if 'mux' in config and type(config['mux']) is not bool: raise ValueError('Mux invalide.')
     import re
+    pin = config.get('pinned_cert_sha256', '')
+    if not isinstance(pin, str) or (pin and not re.fullmatch(r'(?:[A-Fa-f0-9]{64}|(?:[A-Fa-f0-9]{2}:){31}[A-Fa-f0-9]{2})', pin)):
+        raise ValueError('Empreinte SHA-256 du certificat invalide.')
     name=config.get('verify_cert_name','')
     if not isinstance(name,str) or (name and not re.fullmatch(r'[A-Za-z0-9.-]{1,253}',name)): raise ValueError('Nom du certificat invalide.')
     proxy_host = config.get('proxy_host')

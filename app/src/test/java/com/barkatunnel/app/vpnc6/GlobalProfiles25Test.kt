@@ -35,4 +35,17 @@ class GlobalProfiles25Test {
   val other=build.invoke(XrayVlessEngine(RuntimeEnvironment.getApplication(),profile.copy(mux=false),10808)) as JSONObject
   assertFalse(other.getJSONArray("outbounds").getJSONObject(0).has("mux"))
  }
+ @Test fun pinnedCertificateIsSentToXrayForVlessUri() {
+  val hash="ab".repeat(32)
+  val cfg=JSONObject().put("uri","vless://b71def49-88e2-4d13-afb6-c8b413ecb19e@target.example:443?type=ws&security=tls&sni=target.example&host=target.example&path=%2Fvless")
+   .put("pinned_cert_sha256",hash.chunked(2).joinToString(":"))
+  val profile=VpnProfileConfigParser.parse(VpnProfileProtocol.VLESS,cfg.toString()) as VpnProfileConfig.Vless
+  val build=XrayVlessEngine::class.java.getDeclaredMethod("buildConfig").apply { isAccessible=true }
+  val json=build.invoke(XrayVlessEngine(RuntimeEnvironment.getApplication(),profile,10808)) as JSONObject
+  val tls=json.getJSONArray("outbounds").getJSONObject(0).getJSONObject("streamSettings").getJSONObject("tlsSettings")
+  assertEquals(hash,tls.getString("pinnedPeerCertSha256"))
+  cfg.put("pinned_cert_sha256","invalid")
+  try { VpnProfileConfigParser.parse(VpnProfileProtocol.VLESS,cfg.toString()); fail("Invalid certificate hash accepted") }
+  catch (_:com.barkatunnel.app.backend.BarkaBackendException) { }
+ }
 }

@@ -37,7 +37,8 @@ sealed interface VpnProfileConfig {
         val proxyHeaders: Map<String, String> = emptyMap(),
         val proxyPayload: String? = null,
         val mux: Boolean = false,
-        val verifyCertName: String? = null
+        val verifyCertName: String? = null,
+        val pinnedCertSha256: String? = null
     ) : VpnProfileConfig
 
     data class UdpCustom(
@@ -145,8 +146,18 @@ object VpnProfileConfigParser {
             proxyHeaders = parseProxyHeaders(json),
             proxyPayload = json.optString("proxy_payload").takeIf { it.isNotBlank() }?.also { ConnectPayload.expand(it,"example.com",443) },
             mux = json.optBoolean("mux",false),
-            verifyCertName = optionalStringAny(json,"verify_cert_name")?.also { require(Regex("[A-Za-z0-9.-]{1,253}").matches(it)) }
+            verifyCertName = optionalStringAny(json,"verify_cert_name")?.also { require(Regex("[A-Za-z0-9.-]{1,253}").matches(it)) },
+            pinnedCertSha256 = parsePinnedCert(json)
         )
+    }
+
+    private fun parsePinnedCert(json: JSONObject): String? {
+        val value = optionalStringAny(json, "pinned_cert_sha256") ?: return null
+        val normalized = value.replace(":", "")
+        if (!Regex("[0-9a-fA-F]{64}").matches(normalized)) {
+            throw BarkaBackendException("Empreinte SHA-256 du certificat invalide.")
+        }
+        return normalized.lowercase()
     }
 
     private fun parseProxyHeaders(json: JSONObject): Map<String, String> {
@@ -215,7 +226,8 @@ object VpnProfileConfigParser {
             proxyHeaders = parseProxyHeaders(json),
             proxyPayload = json.optString("proxy_payload").takeIf { it.isNotBlank() }?.also { ConnectPayload.expand(it,"example.com",443) },
             mux = json.optBoolean("mux",false),
-            verifyCertName = optionalStringAny(json,"verify_cert_name")?.also { require(Regex("[A-Za-z0-9.-]{1,253}").matches(it)) }
+            verifyCertName = optionalStringAny(json,"verify_cert_name")?.also { require(Regex("[A-Za-z0-9.-]{1,253}").matches(it)) },
+            pinnedCertSha256 = parsePinnedCert(json)
         )
     }
 

@@ -204,7 +204,7 @@ function writeConfigField(cfg,key,value,aliases){
   return;
  }
  const existing=[key,...aliases].find(k=>cfg[k]!==undefined&&cfg[k]!==null&&cfg[k]!=='')||key;
- if(['proxy_host','proxy_port','ip','fingerprint'].includes(key)&&value===''){delete cfg[existing];if(key==='proxy_host'){delete cfg.proxy_port;delete cfg.proxy_headers}return}
+ if(['proxy_host','proxy_port','ip','fingerprint','pinned_cert_sha256'].includes(key)&&value===''){delete cfg[existing];if(key==='proxy_host'){delete cfg.proxy_port;delete cfg.proxy_headers}return}
  cfg[existing]=value;
  if(key==='proxy_host'&&value&&uri){cfg.network=readConfigField(cfg,'network',[],'ws');cfg.security=readConfigField(cfg,'security',[],'none')}
 }
@@ -231,7 +231,7 @@ function refreshProtocolFields(el){
  const fields=protocol==='SSH_TLS'?[['host','Serveur TLS (domaine ou IP)'],['port','Port TLS','number',443],['sni','SNI : domaine du certificat TLS'],...credentials,...gateway]:
  protocol==='SLOWDNS'?[['host','Adresse du serveur','text','',['server_ip']],['ssh_domain','Domaine SSH','text','',['ssh_host']],['ssh_port','Port SSH','number',22,['port']],...credentials,['dns','Résolveur DNS','text','1.1.1.1',['dns_server','dns_resolver']],['nameserver','Name Server / domaine du tunnel','text','',['name_server','ns','tunnel_domain']],['dns_public_key','Clé publique DNS','text','',['dnstt_public_key','public_key','publicKey']]]:
  protocol==='UDP'?[['host','Adresse du serveur SSH','text','',['server_ip']],['ssh_domain','Domaine SSH (facultatif)','text','',['ssh_host']],['port','Port SSH','number',22,['ssh_port']],...credentials,...gateway]:
- protocol==='VLESS'?[['address','Serveur cible'],['port','Port cible','number',443],['uuid','UUID VLESS','password'],['network','Transport','network','ws'],['security','Sécurité','security','tls'],['path','Chemin WebSocket','text','/'],['sni','SNI TLS'],['host','Host WebSocket — domaine à remplacer'],['ip','IP de connexion (facultatif)','text','',['server_ip']],['encryption','Chiffrement VLESS','encryption','none'],['fingerprint','Empreinte TLS (facultatif)'],['verify_cert_name','Nom attendu dans le certificat TLS (distinct du SNI)'],['proxy_host','Adresse du proxy HTTP (facultatif)'],['proxy_port','Port du proxy HTTP','number','']]:[];
+ protocol==='VLESS'?[['address','Serveur cible'],['port','Port cible','number',443],['uuid','UUID VLESS','password'],['network','Transport','network','ws'],['security','Sécurité','security','tls'],['path','Chemin WebSocket','text','/'],['sni','SNI TLS'],['host','Host WebSocket — domaine à remplacer'],['ip','IP de connexion (facultatif)','text','',['server_ip']],['encryption','Chiffrement VLESS','encryption','none'],['fingerprint','Empreinte TLS (facultatif)'],['pinned_cert_sha256','Empreinte SHA-256 du certificat (facultatif)'],['verify_cert_name','Nom attendu dans le certificat TLS (distinct du SNI)'],['proxy_host','Adresse du proxy HTTP (facultatif)'],['proxy_port','Port du proxy HTTP','number','']]:[];
  if(!fields.length)return;
  const note=document.createElement('p');note.className='small';note.textContent='Modifiez les champs, enregistrez ce profil puis validez en bas. Les autres paramètres sont conservés. Les ports doivent être compris entre 1 et 65535.';box.appendChild(note);
  for(const [key,title,type='text',fallback='',aliases=[]] of fields){
