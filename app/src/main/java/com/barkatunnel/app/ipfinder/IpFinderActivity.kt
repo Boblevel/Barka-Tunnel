@@ -91,6 +91,7 @@ class IpFinderActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_ip_finder)
+        com.barkatunnel.app.guide.VideoGuide.bind(this, findViewById(R.id.videoIpButton), "ip_finder")
         SystemBars.apply(this)
 
         findViewById<View>(R.id.ipNetworkSettings).setOnClickListener {

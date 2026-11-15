@@ -12,6 +12,7 @@ class GuideActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_guide)
         SystemBars.apply(this)
+        VideoGuide.bind(this, findViewById(R.id.videoGuideButton), "guide")
 
         findViewById<View>(R.id.guideBackButton).setOnClickListener { finish() }
 

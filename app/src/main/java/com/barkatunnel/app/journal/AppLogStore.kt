@@ -18,10 +18,8 @@ object AppLogStore {
         message: String
     ) {
         val diagnostic = message.trimStart().startsWith("Diagnostic ", ignoreCase = true)
-        if (diagnostic && !message.startsWith("Diagnostic VLESS", ignoreCase = true) &&
-            !(message.startsWith("Diagnostic VPN", ignoreCase = true) &&
-                context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE)
-                    .getString("selected_network_id", null) == "global_world")) return
+        if (diagnostic && context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE)
+                .getString("selected_network_id", null) != "global_world") return
         val prefs = context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE

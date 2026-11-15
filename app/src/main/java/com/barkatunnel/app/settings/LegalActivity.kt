@@ -59,7 +59,7 @@ class LegalActivity : AppCompatActivity() {
                 addView(body)
             }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         }
-        if (policy != null) card(text(getString(R.string.settings_about_format, BuildConfig.VERSION_NAME), true),
+        if (policy == "terms") card(text(getString(R.string.settings_about_format, BuildConfig.VERSION_NAME), true),
             text("RHAFF SERVICE\nbarkatunnel@gmail.com"),
             text(getString(R.string.legal_updated)))
         if (policy == null) {

@@ -38,9 +38,16 @@
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
-            <View
+            <TextView
+                android:id="@+id/videoIpButton"
                 android:layout_width="48dp"
-                android:layout_height="48dp" />
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="!"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:contentDescription="@string/video_guide_title"
+                android:textColor="?attr/barkaAccent" />
         </LinearLayout>
     </LinearLayout>
 

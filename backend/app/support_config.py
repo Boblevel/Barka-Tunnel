@@ -20,3 +20,42 @@ def set_support(body: SupportConfig, response: Response):
         cx.execute("INSERT INTO admin_state(key,value,updated_at) VALUES('support_whatsapp',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", (body.whatsapp_number,int(time.time())))
     response.headers['Cache-Control'] = 'no-store'
     return body
+
+class VideoGuideConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    guide: str = Field(default='', max_length=256)
+    ip_finder: str = Field(default='', max_length=256)
+
+
+def video_id(value: str) -> str:
+    import re
+    from urllib.parse import urlsplit, parse_qs
+    if not value: return ''
+    parts = urlsplit(value)
+    if parts.scheme != 'https' or parts.username or parts.password or parts.port:
+        raise ValueError('Lien YouTube invalide.')
+    host = (parts.hostname or '').lower()
+    if host == 'youtu.be': identifier = parts.path.strip('/')
+    elif host in ('youtube.com', 'www.youtube.com', 'm.youtube.com'):
+        identifier = parse_qs(parts.query).get('v', [''])[0] if parts.path == '/watch' else (parts.path.split('/')[2] if parts.path.startswith('/embed/') and len(parts.path.split('/')) == 3 else '')
+    else: identifier = ''
+    if not re.fullmatch(r'[A-Za-z0-9_-]{11}', identifier): raise ValueError('Lien YouTube invalide.')
+    return 'https://www.youtube.com/watch?v=' + identifier
+
+@router.get('/v1/video-guides')
+def get_video_guides(response: Response):
+    response.headers['Cache-Control'] = 'no-store'
+    with transaction() as cx:
+        rows = dict(cx.execute("SELECT key,value FROM admin_state WHERE key IN ('video_guide','video_ip_finder')").fetchall())
+    return VideoGuideConfig(guide=rows.get('video_guide',''), ip_finder=rows.get('video_ip_finder',''))
+
+@router.put('/v1/admin/video-guides', dependencies=[Depends(require_admin)])
+def set_video_guides(body: VideoGuideConfig, response: Response):
+    from fastapi import HTTPException
+    try: guide, ip = video_id(body.guide.strip()), video_id(body.ip_finder.strip())
+    except ValueError as e: raise HTTPException(422, str(e)) from e
+    with transaction() as cx:
+        for key, value in [('video_guide',guide),('video_ip_finder',ip)]:
+            cx.execute('INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at', (key,value,int(time.time())))
+    response.headers['Cache-Control']='no-store'
+    return VideoGuideConfig(guide=guide,ip_finder=ip)
