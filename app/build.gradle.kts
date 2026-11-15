@@ -11,8 +11,8 @@ android {
         applicationId = "com.barkatunnel.app"
         minSdk = 23
         targetSdk = 35
-        versionCode = 141
-        versionName = "2.3.2.1"
+        versionCode = 142
+        versionName = "2.3.5.1"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")

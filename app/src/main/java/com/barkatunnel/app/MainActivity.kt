@@ -89,7 +89,6 @@ private enum class NetworkIpVisualState {
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var homeDownload: com.barkatunnel.app.update.HomeApkDownload
     private lateinit var homeBrandName: TextView
 
     private var selectedNetwork: NetworkOption? = null
@@ -260,7 +259,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_home_journal_pager)
         applyRootSystemInsets()
         val homePage = layoutInflater.inflate(R.layout.activity_main, null, false)
-        homeDownload = com.barkatunnel.app.update.HomeApkDownload(this, homePage)
         homeBrandName = homePage.findViewById(R.id.homeBrandName)
         val journalPage = layoutInflater.inflate(R.layout.activity_journal, null, false)
         journalPage.findViewById<android.view.View>(R.id.journalContentContainer).apply {
@@ -619,7 +617,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        homeDownload.stop()
         giftFireworks?.cancel()
         giftFireworks = null
         vpnStateReconciliationActive = false
@@ -673,7 +670,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        homeDownload.resume()
         homePageResumed = true
         if (::timerController.isInitialized) timerController.start()
         vpnStateReconciliationActive = true
@@ -1454,16 +1450,6 @@ class MainActivity : AppCompatActivity() {
         if (controller.currentState().selectedNetwork?.id != persistedNetwork.id) {
             handleHomeResult(controller.selectNetwork(persistedNetwork))
         }
-    }
-
-    fun showApkDownload() {
-        openHome()
-        homeDownload.resume()
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        showApkDownload()
     }
 
     private fun sideMenuWidth(): Int {

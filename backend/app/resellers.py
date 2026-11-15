@@ -473,7 +473,7 @@ def _issue_reseller_code(reseller_id: int, plan_id: str, duration_seconds: int, 
                 return activation_code_for_source(previous['source_ref'])
         if not plan_id.startswith("test_"):
             period = reseller_quotas.current_period(cx, account, now)
-            if period is None or period['used'] >= period['code_limit']:
+            if period is None or period['remaining'] == 0:
                 raise PermissionError("Quota atteint. Les codes de test restent disponibles.")
             cx.execute("UPDATE reseller_quota_periods SET used=used+1 WHERE id=?", (period['id'],))
         if request_id:
@@ -550,7 +550,7 @@ def adjust_reseller_quota(reseller_id: int, *, limit: int | None = None, reset: 
         if limit is not None:
             cx.execute("UPDATE reseller_quota_adjustments SET custom_limit=? WHERE period_id=?", (limit, period['id']))
         if reset:
-            reseller_quotas.reset_slots(cx, reseller_id, now)
+            reseller_quotas.reset_slots(cx, reseller_id, now, manual=True)
             cx.execute("UPDATE reseller_quota_periods SET used=0 WHERE id=?", (period['id'],))
         cx.execute("UPDATE reseller_quota_adjustments SET revision=revision+1 WHERE period_id=?", (period['id'],))
         record_event(cx, reseller_id, "quota_reset" if reset else "quota_customized",

@@ -35,7 +35,7 @@ class HomeDownloadPresentationTest {
             File(dir, "update.part").writeBytes(ByteArray(370))
             File(dir, "download.properties").writeText("total=1000\n")
             for (width in listOf(320, 360, 390, 480, 600)) {
-                val root = activity.layoutInflater.inflate(R.layout.activity_main, null)
+                val root = activity.layoutInflater.inflate(R.layout.activity_apk_download, null)
                 val download = HomeApkDownload(activity, root)
                 download.resume()
                 root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
@@ -46,7 +46,8 @@ class HomeDownloadPresentationTest {
                 assertEquals("37%", root.findViewById<TextView>(R.id.apkDownloadPercent).text.toString())
                 assertTrue(card.left >= 0 && card.right <= width)
                 assertTrue(root.findViewById<View>(R.id.apkDownloadAction).height >= 48)
-                assertTrue(root.findViewById<View>(R.id.homeContentViewport).height > 0)
+                val home = activity.layoutInflater.inflate(R.layout.activity_main, null)
+                assertNull(home.findViewById<View>(R.id.apkDownloadCard))
                 download.stop()
             }
         } finally { controller.pause().stop().destroy() }

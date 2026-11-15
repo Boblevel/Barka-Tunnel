@@ -38,8 +38,9 @@ def test_over_limit_and_admin_actions(env):
         after = [tuple(x) for x in cx.execute('SELECT code_hash,status,applied_until,deleted_at FROM activation_codes WHERE created_by_reseller_id=? ORDER BY id', (rid,))]
     assert before == after
     assert rs.reseller_quota(rid)['used'] == 0
-    assert rs.generate_reseller_subscription(rid, '1w')
-    rs.adjust_reseller_quota(rid, limit=2)
+    with pytest.raises(PermissionError):
+        rs.generate_reseller_subscription(rid, '1w')
+    rs.adjust_reseller_quota(rid, limit=3)
     assert rs.generate_reseller_subscription(rid, '1w')
     assert svc.redeem_activation_code('quota33-unused', two)[0]
 
@@ -73,3 +74,24 @@ def test_one_expiration_releases_exactly_one_slot(env, monkeypatch):
     assert rs.reseller_quota(rid)['remaining'] == 1
     rs.generate_reseller_subscription(rid, '1m')
     with pytest.raises(PermissionError): rs.generate_reseller_subscription(rid, '1m')
+
+
+def test_admin_reset_keeps_old_codes_under_the_cap_until_expiry(env, monkeypatch):
+    _, svc, rs, _, _, _, account = env
+    rid = account['id']
+    now = svc.now_ts()
+    rs.adjust_reseller_quota(rid, limit=2)
+    for device in ('lot39-first', 'lot39-second'):
+        code = rs.generate_reseller_subscription(rid, '24h')
+        assert svc.redeem_activation_code(device, code)[0]
+
+    quota = rs.adjust_reseller_quota(rid, reset=True)
+    assert (quota['used'], quota['remaining']) == (0, 0)
+    with pytest.raises(PermissionError):
+        rs.generate_reseller_subscription(rid, '1w')
+
+    monkeypatch.setattr(rs, 'now_ts', lambda: now + 86410)
+    quota = rs.reseller_quota(rid)
+    assert (quota['used'], quota['remaining']) == (0, 2)
+    assert rs.generate_reseller_subscription(rid, '1w')
+    assert rs.reseller_quota(rid)['used'] == 1

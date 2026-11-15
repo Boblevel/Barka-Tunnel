@@ -18,6 +18,7 @@ on:
       - validation/lot36-video
       - validation/lot37-certificat
       - validation/lot38-cache
+      - validation/lot39-release
 
 concurrency:
   group: barka-production-deploy
@@ -160,7 +161,7 @@ jobs:
           test -f "$APK_SOURCE"
           APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -name apksigner -type f | sort -V | tail -n 1)"
           test -n "$APK_SIGNER"
-          "$APK_SIGNER" verify --verbose --print-certs "$APK_SOURCE" | tee apk-verification.txt
+          "$APK_SIGNER" verify --min-sdk-version 23 --verbose --print-certs "$APK_SOURCE" | tee apk-verification.txt
           grep -Fq '012ff8a1b08a66dd72d1741da1da44054bc307a20a4bf2be3c7de51b8383100c' apk-verification.txt
           python3 -c 'import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); bad=z.testzip(); sys.exit("APK corrompu: "+bad if bad else 0)' "$APK_SOURCE"
           cp "$APK_SOURCE" BarkaTunnel-release.apk

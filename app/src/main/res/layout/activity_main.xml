@@ -92,7 +92,6 @@
     </LinearLayout>
 
 
-    <include layout="@layout/home_apk_download" />
 
     <com.barkatunnel.app.ui.home.NonScrollingScrollView
         android:id="@+id/homeContentViewport"

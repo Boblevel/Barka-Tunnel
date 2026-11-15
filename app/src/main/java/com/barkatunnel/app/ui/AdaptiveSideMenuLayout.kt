@@ -26,8 +26,6 @@ class AdaptiveSideMenuLayout @JvmOverloads constructor(
         (heading.getChildAt(0) as TextView).textSize = if (compact) 16f else 19f
         (heading.getChildAt(1) as TextView).textSize = if (compact) 11f else 12f
         (heading.getChildAt(1).layoutParams as LayoutParams).topMargin = dp(if (compact) 3 else 5)
-        items.columns = if (MeasureSpec.getSize(heightMeasureSpec) >= dp(568)) 1
-            else if (MeasureSpec.getSize(widthMeasureSpec) >= dp(360)) 3 else 2
         header.minimumHeight = dp(if (compact) 48 else 96)
         header.setPadding(dp(12), dp(if (compact) 0 else 12), dp(12), dp(if (compact) 0 else 12))
         items.setPadding(dp(12), dp(if (compact) 0 else 20), dp(12), dp(if (compact) 0 else 22))
@@ -41,17 +39,17 @@ class AdaptiveSideMenuLayout @JvmOverloads constructor(
             params.bottomMargin = dp(if (compact || section) 0 else 3)
             child.minimumHeight = if (section) dp(if (compact) 14 else 0) else dp(if (compact) 48 else 56)
             child.minHeight = child.minimumHeight
-            child.setPadding(dp(if (items.columns > 1) 4 else if (section) 8 else 10),
+            child.setPadding(dp(if (section) 8 else 10),
                 dp(if (compact) 0 else if (section) 0 else 12),
-                dp(if (items.columns > 1) 4 else 8), dp(if (compact) 0 else if (section) 7 else 12))
+                dp(8), dp(if (compact) 0 else if (section) 7 else 12))
             if (section) child.textSize = if (compact) 10f else 11f
             else {
-                child.textSize = if (items.columns > 1) 14f else 16f
-                child.compoundDrawablePadding = dp(if (items.columns > 1) 6 else 18)
+                child.textSize = 16f
+                child.compoundDrawablePadding = dp(if (compact) 12 else 18)
             }
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        if (compact && items.columns == 1) {
+        if (compact) {
             val rows = (0 until items.childCount).mapNotNull { index ->
                 (items.getChildAt(index) as? TextView)?.takeIf { it.visibility != View.GONE && it.id != View.NO_ID }
             }
@@ -70,17 +68,6 @@ class AdaptiveSideMenuLayout @JvmOverloads constructor(
                 rows.forEach { row -> row.minimumHeight = row.measuredHeight + extraPerRow }
                 super.onMeasure(widthMeasureSpec, heightMeasureSpec)
             }
-        }
-        if (items.columns == 1 && items.measuredHeight > scroll.measuredHeight) {
-            items.columns = if (MeasureSpec.getSize(widthMeasureSpec) >= dp(360)) 3 else 2
-            for (i in 0 until items.childCount) {
-                val child = items.getChildAt(i) as? TextView ?: continue
-                if (child.id == View.NO_ID) continue
-                child.textSize = 14f
-                child.compoundDrawablePadding = dp(6)
-                child.setPadding(dp(4), 0, dp(4), 0)
-            }
-            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         }
         if (items.measuredHeight > scroll.measuredHeight) {
             // Preserve labels and 48dp touch targets on short, enlarged-text screens.

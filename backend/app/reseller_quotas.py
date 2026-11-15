@@ -29,20 +29,31 @@ def current_period(cx, account, now: int):
     row = cx.execute("SELECT * FROM reseller_quota_periods WHERE id=?",(row['id'],)).fetchone()
     period = effective_period(cx, row)
     baseline = cx.execute("SELECT value FROM admin_state WHERE key=?", (f"quota_reset_{account['id']}",)).fetchone()
+    baseline_id = int(baseline[0]) if baseline else 0
     used = cx.execute("""SELECT COUNT(*) FROM activation_codes WHERE created_by_reseller_id=? AND id>?
         AND deleted_at IS NULL AND plan_id NOT IN ('test_2h','test_3h','test_6h')
         AND (status='issued' OR (status IN ('redeemed','revoked') AND (applied_until IS NULL OR applied_until>?)))""",
-        (account['id'],int(baseline[0]) if baseline else 0,now)).fetchone()[0]
+        (account['id'],baseline_id,now)).fetchone()[0]
     # Deletions made after this change reserve their slot until the original
     # expiry. A never-activated code has no expiry and needs an admin reset.
     used += cx.execute("""SELECT COUNT(*) FROM activation_codes a JOIN admin_state s
         ON s.key='quota_deleted_' || a.id WHERE a.created_by_reseller_id=? AND a.id>?
         AND a.deleted_at IS NOT NULL AND (CAST(s.value AS INTEGER)=0 OR CAST(s.value AS INTEGER)>?)""",
-        (account['id'],int(baseline[0]) if baseline else 0,now)).fetchone()[0]
+        (account['id'],baseline_id,now)).fetchone()[0]
     if used != period['used']:
         cx.execute("UPDATE reseller_quota_periods SET used=? WHERE id=?",(used,row['id']))
         bump_revision(cx,row['id'])
-    return effective_period(cx,cx.execute("SELECT * FROM reseller_quota_periods WHERE id=?",(row['id'],)).fetchone())
+    result = effective_period(cx, cx.execute("SELECT * FROM reseller_quota_periods WHERE id=?", (row['id'],)).fetchone())
+    result['remaining'] = max(0, result['code_limit'] - used)
+    manual_cap = cx.execute("SELECT 1 FROM admin_state WHERE key=?", (f"quota_manual_cap_{account['id']}",)).fetchone()
+    if manual_cap:
+        retained = cx.execute("""SELECT COUNT(*) FROM activation_codes
+            WHERE created_by_reseller_id=? AND id<=? AND deleted_at IS NULL
+              AND plan_id NOT IN ('test_2h','test_3h','test_6h')
+              AND (status='issued' OR (status IN ('redeemed','revoked') AND (applied_until IS NULL OR applied_until>?)))""",
+            (account['id'], baseline_id, now)).fetchone()[0]
+        result['remaining'] = max(0, result['remaining'] - retained)
+    return result
 
 
 def bump_revision(cx, period_id):
@@ -50,12 +61,18 @@ def bump_revision(cx, period_id):
     cx.execute("UPDATE reseller_quota_adjustments SET revision=revision+1 WHERE period_id=?",(period_id,))
 
 
-def reset_slots(cx, reseller_id, now, before=None):
+def reset_slots(cx, reseller_id, now, before=None, *, manual=False):
     cutoff = now if before is None else before
     last_id = cx.execute("SELECT COALESCE(MAX(id),0) FROM activation_codes WHERE created_by_reseller_id=? AND created_at<=?",(reseller_id,cutoff)).fetchone()[0]
     cx.execute("""INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key)
         DO UPDATE SET value=CAST(MAX(CAST(admin_state.value AS INTEGER),CAST(excluded.value AS INTEGER)) AS TEXT),updated_at=excluded.updated_at""",
         (f"quota_reset_{reseller_id}",str(last_id),now))
+    cap_key = f"quota_manual_cap_{reseller_id}"
+    if manual:
+        cx.execute("INSERT OR REPLACE INTO admin_state(key,value,updated_at) VALUES(?, '1', ?)", (cap_key, now))
+    else:
+        cx.execute("DELETE FROM admin_state WHERE key=?", (cap_key,))
+
 
 
 def renewed(cx, reseller_id, now, limit=None):
@@ -83,7 +100,7 @@ def summary(cx, account, now: int) -> dict:
     if period is None:
         return {'limit': 0, 'used': 0, 'remaining': 0, 'starts_at': None, 'ends_at': None}
     return {'limit': period['code_limit'], 'used': period['used'],
-            'remaining': max(0, period['code_limit'] - period['used']),
+            'remaining': period['remaining'],
             'starts_at': period['starts_at'], 'ends_at': period['ends_at'], 'revision': period['revision']}
 
 

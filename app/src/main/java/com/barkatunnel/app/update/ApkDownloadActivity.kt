@@ -2,106 +2,38 @@ package com.barkatunnel.app.update
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageInfo
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
+import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BackendAppUpdate
-import com.barkatunnel.app.vpnc6.BarkaVpnService
-import okhttp3.OkHttpClient
-import java.io.File
-import java.net.InetSocketAddress
-import java.net.Proxy
-import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
+import com.barkatunnel.app.ui.SystemBars
 
 class ApkDownloadActivity : AppCompatActivity() {
-    private lateinit var status: TextView
-    private lateinit var bar: ProgressBar
-    private lateinit var action: Button
-    private var ready: File?=null
-    private val paused=AtomicBoolean(false)
-    private var worker: Thread?=null
-    private var awaitingPermission=false
-    private lateinit var url: String
-    private var version=0L
+    private lateinit var download: HomeApkDownload
+
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
-        url=intent.getStringExtra("url").orEmpty();version=intent.getLongExtra("version",0)
-        if(!AppUpdateDestination.isValid(url)||version<=0){finish();return}
-        val layout=LinearLayout(this).apply {
-            orientation=LinearLayout.VERTICAL
-            val pad=(24*resources.displayMetrics.density).toInt();setPadding(pad,pad*2,pad,pad)
-        }
-        status=TextView(this).apply {textSize=18f;text="Préparation de la mise à jour…"}
-        bar=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {max=100}
-        action=Button(this).apply {text="METTRE EN PAUSE"}
-        val close=Button(this).apply {text="FERMER";setOnClickListener{finish()}}
-        layout.addView(status);layout.addView(bar);layout.addView(action);layout.addView(close)
-        setContentView(layout);com.barkatunnel.app.ui.SystemBars.apply(this)
-        action.setOnClickListener {
-            when {
-                ready!=null -> install()
-                worker?.isAlive==true -> {paused.set(true);action.isEnabled=false;status.text="Mise en pause…"}
-                else -> startDownload()
-            }
-        }
-        startDownload()
+        setContentView(R.layout.activity_apk_download)
+        SystemBars.apply(this)
+        download = HomeApkDownload(this, findViewById(R.id.apkDownloadScreen))
     }
-    private fun startDownload() {
-        if(worker?.isAlive==true)return
-        paused.set(false);action.isEnabled=true;action.text="METTRE EN PAUSE"
-        status.text="Connexion… Les données déjà reçues sont conservées."
-        val context=applicationContext
-        worker=Thread {
-            try {
-                val key=sha256((url+"|"+version).toByteArray())
-                val root=File(context.filesDir,"apk-updates/$key")
-                val builder=OkHttpClient.Builder().connectTimeout(20,TimeUnit.SECONDS).readTimeout(20,TimeUnit.SECONDS).followSslRedirects(false)
-                BarkaVpnService.connectedSocksPort()?.let { builder.proxy(Proxy(Proxy.Type.SOCKS,InetSocketAddress("127.0.0.1",it))) }
-                var lastUi=0L
-                val apk=File(root,"BarkaTunnel.apk")
-                val file=apk.takeIf{it.isFile} ?: ResumableApkDownload(builder.build()).download(url,root,{paused.get()}) {done,total ->
-                    val now=System.currentTimeMillis()
-                    if(now-lastUi>200||done==total){lastUi=now;runOnUiThread {if(!isDestroyed){bar.progress=(done*100/total).toInt();status.text="${done/1048576} / ${total/1048576} Mo • ${bar.progress}%"}}}
-                }
-                try{ApkVerifier.verify(context,file,url,version)}catch(error:Exception){file.delete();throw error}
-                if(file!=apk&&!file.renameTo(apk))throw IllegalStateException("Impossible de préparer l’installation.")
-                ready=apk
-                runOnUiThread {if(!isDestroyed){bar.progress=100;status.text="Téléchargement terminé. APK vérifié.";action.isEnabled=true;action.text="INSTALLER";if(!paused.get())install()}}
-            }catch(error:Exception){runOnUiThread{if(!isDestroyed){status.text=error.message?:"Téléchargement interrompu.";action.isEnabled=true;action.text="REPRENDRE"}}}
-        }.also {it.start()}
+
+    override fun onResume() {
+        super.onResume()
+        download.resume()
     }
-    private fun install() {
-        val apk=ready?:return
-        try {
-            if(Build.VERSION.SDK_INT>=26&&!packageManager.canRequestPackageInstalls()){
-                status.text="Autorisez Barka Tunnel à installer cette mise à jour, puis revenez ici."
-                awaitingPermission=true
-                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:$packageName")));return
-            }
-            val uri=FileProvider.getUriForFile(this,"$packageName.apk-provider",apk)
-            startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
-        }catch(_:Exception){status.text="Installation non ouverte. Appuyez sur Installer pour réessayer."}
+
+    override fun onStop() {
+        download.stop()
+        super.onStop()
     }
-    override fun onResume(){super.onResume();if(awaitingPermission){awaitingPermission=false;if(Build.VERSION.SDK_INT<26||packageManager.canRequestPackageInstalls())install()}}
-    override fun onStop(){paused.set(true);super.onStop()}
+
     companion object {
-        private fun sha256(bytes:ByteArray)=MessageDigest.getInstance("SHA-256").digest(bytes).joinToString(""){"%02x".format(it)}
-        fun open(context:Context,update:BackendAppUpdate) {
+        fun open(context: Context, update: BackendAppUpdate) {
             HomeApkDownload.select(context, update)
-            if (context is com.barkatunnel.app.MainActivity) context.showApkDownload()
-            else context.startActivity(Intent(context, com.barkatunnel.app.MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK))
+            val intent = Intent(context, ApkDownloadActivity::class.java)
+            if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
         }
     }
 }

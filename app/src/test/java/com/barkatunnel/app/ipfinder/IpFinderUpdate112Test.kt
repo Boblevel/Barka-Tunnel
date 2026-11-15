@@ -65,7 +65,7 @@ class IpFinderUpdate112Test {
     @Test fun removesRetiredPrefixesAndPreservesLaterUserEdits() {
         preferences.edit().putString("search_pattern", "10.193;10.194;10.80;10.165").commit()
         assertFalse(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
-        assertEquals("10.165",preferences.getString("search_pattern", ""))
+        assertEquals("10.193;10.165",preferences.getString("search_pattern", ""))
         preferences.edit().putString("search_pattern", "=192.168.1.1").commit()
         assertFalse(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
         assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.1"))

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import java.io.File
 import java.security.MessageDigest
+import java.util.zip.ZipFile
 
 object ApkVerifier {
     @Suppress("DEPRECATION")
@@ -23,6 +24,11 @@ object ApkVerifier {
         val installed=packageManager.getPackageInfo(packageName,flags)
         fun versionOf(info:PackageInfo)=if(Build.VERSION.SDK_INT>=28)info.longVersionCode else info.versionCode.toLong()
         check(archive.packageName==packageName&&versionOf(archive)==version&&version>versionOf(installed)){"Cet APK ne correspond pas à la version annoncée."}
+        ZipFile(file).use { apk ->
+            check(Build.SUPPORTED_ABIS.any { abi -> apk.getEntry("lib/$abi/libbarka_xray.so") != null }) {
+                "Cet APK ne contient pas le moteur adapté à ce téléphone."
+            }
+        }
         fun signers(info:PackageInfo):Set<String> = (if(Build.VERSION.SDK_INT>=28)info.signingInfo?.apkContentsSigners else info.signatures).orEmpty().map{sha256(it.toByteArray())}.toSet()
         check(signers(installed).isNotEmpty()&&signers(archive)==signers(installed)){"Signature APK différente : installation refusée."}
     }

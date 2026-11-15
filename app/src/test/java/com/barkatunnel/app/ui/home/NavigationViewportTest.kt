@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 @Config(sdk = [28], application = Application::class, qualifiers = "fr-port-mdpi")
 class NavigationViewportTest {
-    @Test fun portraitScreensShowAllMenuOptionsWithoutScrolling() {
+    @Test fun menuOptionsStayInOneColumnAndRemainReachable() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
         activity.setTheme(R.style.Theme_BarkaTunnel)
@@ -32,22 +32,20 @@ class NavigationViewportTest {
                 val scroll = root.getChildAt(1) as ScrollView
                 scroll.scrollTo(0, 10000)
                 val body = scroll.getChildAt(0) as ViewGroup
-                val dimensions = (0 until body.childCount).map { body.getChildAt(it) }.joinToString { "${it.id}:${it.measuredWidth}x${it.measuredHeight}@${it.top}" }
-                assertEquals("Drawer $width x $height header=${root.getChildAt(0).measuredHeight} viewport=${scroll.measuredHeight} body=${body.measuredHeight} children=$dimensions", 0, scroll.scrollY)
-                for (id in listOf(R.id.menuHome, R.id.menuGuide, R.id.menuSubscription,
+                assertEquals((body.height - scroll.height).coerceAtLeast(0), scroll.scrollY)
+                val items = listOf(R.id.menuHome, R.id.menuGuide, R.id.menuSubscription,
                     R.id.menuActivation, R.id.menuIpFinder, R.id.menuSettings, R.id.menuReseller,
-                    R.id.menuSupport, R.id.menuSuggestions)) {
-                    val item = root.findViewById<TextView>(id)
-                    assertTrue(item.height >= 48)
-                    assertTrue(item.bottom <= scroll.height)
-                }
+                    R.id.menuSupport, R.id.menuSuggestions).map { root.findViewById<TextView>(it) }
+                assertTrue(items.all { it.width == items.first().width && it.height >= 48 })
+                assertTrue(items.zipWithNext().all { (upper, lower) -> upper.bottom <= lower.top })
+                assertTrue(items.last().bottom - scroll.scrollY <= scroll.height)
             }
         } finally { controller.pause().stop().destroy() }
     }
 
-    @Test fun largerTextKeepsAllOptionsReachableWithoutScrolling() {
+    @Test fun largerTextKeepsAllOptionsReachable() {
         org.robolectric.RuntimeEnvironment.setFontScale(1.5f)
-        try { portraitScreensShowAllMenuOptionsWithoutScrolling() }
+        try { menuOptionsStayInOneColumnAndRemainReachable() }
         finally { org.robolectric.RuntimeEnvironment.setFontScale(1f) }
     }
 
@@ -69,7 +67,7 @@ class NavigationViewportTest {
                 assertEquals(View.OVER_SCROLL_NEVER, scroll.overScrollMode)
                 assertFalse(scroll.isVerticalScrollBarEnabled)
                 assertTrue(scroll.height > 0)
-                assertEquals(0, scroll.scrollY)
+                assertEquals(((scroll.getChildAt(0)).height - scroll.height).coerceAtLeast(0), scroll.scrollY)
                 assertEquals(width, header.width)
             }
         } finally { controller.pause().stop().destroy() }

@@ -1,5 +1,6 @@
 package com.barkatunnel.app.update
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -39,6 +40,7 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
     private var running = false
     private var cancelled = AtomicBoolean(false)
     private var ready: File? = null
+    private var awaitingInstallPermission = false
     private var activeKey = ""
     private val retry = Runnable { resume() }
 
@@ -92,7 +94,14 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
         runCatching { File(directory, "download.properties").inputStream().use { metadata.load(it) } }
         val total = metadata.getProperty("total")?.toLongOrNull() ?: 0
         showProgress(File(directory, "update.part").length(), total)
-        if (ready != null) { showReady(); return }
+        if (ready != null) {
+            showReady()
+            if (awaitingInstallPermission) {
+                awaitingInstallPermission = false
+                if (Build.VERSION.SDK_INT >= 26 && activity.packageManager.canRequestPackageInstalls()) install()
+            }
+            return
+        }
         action.isEnabled = true
         if (prefs.getBoolean("paused", false)) {
             status.setText(R.string.download_paused)
@@ -124,9 +133,10 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
                             handler.post { if (visible && activeKey == key && !cancellation.get()) showProgress(done, size) }
                         }
                     }
-                try { ApkVerifier.verify(context, file, url, version) }
-                catch (error: Exception) { file.delete(); throw error }
+                // Android's package parser needs the .apk filename on some versions.
                 check(file == apk || file.renameTo(apk)) { "Impossible de préparer l’installation." }
+                try { ApkVerifier.verify(context, apk, url, version) }
+                catch (error: Exception) { apk.delete(); throw error }
                 completed = apk
             } catch (error: Exception) { failure = error }
             val result = completed
@@ -154,7 +164,7 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
                         handler.postDelayed(retry, 10_000)
                     }
                     else -> {
-                        status.setText(R.string.download_failed)
+                        status.text = error?.message ?: activity.getString(R.string.download_failed)
                         action.setText(R.string.download_resume)
                     }
                 }
@@ -163,7 +173,7 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
     }
 
     private fun showProgress(done: Long, total: Long) {
-        val value = if (total > 0) (done.coerceAtMost(total) * 100 / total).toInt() else 0
+        val value = if (total > 0) (done.coerceAtMost(total) * 100 / total).toInt().coerceAtMost(99) else 0
         progress.progress = value
         percent.text = "$value%"
         if (total > 0) status.text = activity.getString(R.string.download_progress, done / 1048576, total / 1048576)
@@ -182,11 +192,13 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
         try {
             if (Build.VERSION.SDK_INT >= 26 && !activity.packageManager.canRequestPackageInstalls()) {
                 status.setText(R.string.download_permission)
+                awaitingInstallPermission = true
                 activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${activity.packageName}")))
                 return
             }
             val uri = FileProvider.getUriForFile(activity, "${activity.packageName}.apk-provider", apk)
             activity.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
+                .setClipData(ClipData.newRawUri("APK", uri))
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
         } catch (_: Exception) { status.setText(R.string.update_open_failed) }
     }
@@ -198,13 +210,12 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
             .digest("$url|$version".toByteArray()).joinToString("") { "%02x".format(it) }
         fun select(context: Context, update: BackendAppUpdate) {
             require(AppUpdateDestination.isValid(update.apkUrl) && update.latestVersionCode > 0)
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            if (prefs.getString("url", null) == update.apkUrl &&
+                prefs.getLong("version", 0) == update.latestVersionCode) return
+            prefs.edit()
                 .putString("url", update.apkUrl).putLong("version", update.latestVersionCode)
                 .putBoolean("paused", false).commit()
-        }
-        fun isSelected(context: Context, update: BackendAppUpdate): Boolean {
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            return prefs.getString("url", null) == update.apkUrl && prefs.getLong("version", 0) == update.latestVersionCode
         }
     }
 }

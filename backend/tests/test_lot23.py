@@ -17,7 +17,7 @@ def test_admin_quota_reset_customize_and_isolation(env):
         assert q['ends_at'] == before['ends_at']
         assert client.post(route+'/reset', json={'confirmation':'non'}).status_code == 422
         q = client.post(route+'/reset', json={'confirmation':'oui'}).json()
-        assert (q['limit'], q['used'], q['remaining'], q['revision']) == (5,0,5,2)
+        assert (q['limit'], q['used'], q['remaining'], q['revision']) == (5,0,4,2)
         assert rs.generate_reseller_subscription(rid,'2w','same-request') == code
         assert rs.reseller_quota(rid)['used'] == 0
         assert svc.redeem_activation_code('lot23-existing-code',code)[0]
