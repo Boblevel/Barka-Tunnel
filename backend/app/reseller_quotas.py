@@ -40,20 +40,38 @@ def current_period(cx, account, now: int):
         ON s.key='quota_deleted_' || a.id WHERE a.created_by_reseller_id=? AND a.id>?
         AND a.deleted_at IS NOT NULL AND (CAST(s.value AS INTEGER)=0 OR CAST(s.value AS INTEGER)>?)""",
         (account['id'],baseline_id,now)).fetchone()[0]
+    used = settle_pre_reset_expirations(cx, account['id'], baseline_id, now, used)
     if used != period['used']:
         cx.execute("UPDATE reseller_quota_periods SET used=? WHERE id=?",(used,row['id']))
         bump_revision(cx,row['id'])
     result = effective_period(cx, cx.execute("SELECT * FROM reseller_quota_periods WHERE id=?", (row['id'],)).fetchone())
     result['remaining'] = max(0, result['code_limit'] - used)
-    manual_cap = cx.execute("SELECT 1 FROM admin_state WHERE key=?", (f"quota_manual_cap_{account['id']}",)).fetchone()
-    if manual_cap:
-        retained = cx.execute("""SELECT COUNT(*) FROM activation_codes
-            WHERE created_by_reseller_id=? AND id<=? AND deleted_at IS NULL
-              AND plan_id NOT IN ('test_2h','test_3h','test_6h')
-              AND (status='issued' OR (status IN ('redeemed','revoked') AND (applied_until IS NULL OR applied_until>?)))""",
-            (account['id'], baseline_id, now)).fetchone()[0]
-        result['remaining'] = max(0, result['remaining'] - retained)
     return result
+
+
+def settle_pre_reset_expirations(cx, reseller_id, baseline_id, now, occupied):
+    key = f"quota_reset_expirations_{reseller_id}"
+    state = cx.execute("SELECT value,updated_at FROM admin_state WHERE key=?", (key,)).fetchone()
+    if state is None:
+        # Existing manual resets start tracking future expirations at first use.
+        if cx.execute("DELETE FROM admin_state WHERE key=?", (f"quota_manual_cap_{reseller_id}",)).rowcount:
+            cx.execute("INSERT INTO admin_state(key,value,updated_at) VALUES(?,'0',?)", (key, now))
+        return occupied
+    recorded, cutoff = int(state['value']), state['updated_at']
+    expired = cx.execute("""INSERT OR IGNORE INTO admin_state(key,value,updated_at)
+        SELECT 'quota_expiry_counted_' || a.id, '1', ?
+        FROM activation_codes a LEFT JOIN admin_state d ON d.key='quota_deleted_' || a.id
+        WHERE a.created_by_reseller_id=? AND a.id<=?
+          AND a.plan_id NOT IN ('test_2h','test_3h','test_6h')
+          AND (CASE WHEN a.deleted_at IS NULL AND a.status IN ('redeemed','revoked')
+                    THEN a.applied_until ELSE CAST(d.value AS INTEGER) END) BETWEEN ? AND ?""",
+        (now, reseller_id, baseline_id, cutoff + 1, now)).rowcount
+    # Generation settles expirations before adding a slot. Saturation consumes
+    # expirations at zero without carrying them over to subsequent generations.
+    released = min(occupied, recorded + expired)
+    if released != recorded:
+        cx.execute("UPDATE admin_state SET value=? WHERE key=?", (str(released), key))
+    return occupied - released
 
 
 def bump_revision(cx, period_id):
@@ -67,11 +85,12 @@ def reset_slots(cx, reseller_id, now, before=None, *, manual=False):
     cx.execute("""INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key)
         DO UPDATE SET value=CAST(MAX(CAST(admin_state.value AS INTEGER),CAST(excluded.value AS INTEGER)) AS TEXT),updated_at=excluded.updated_at""",
         (f"quota_reset_{reseller_id}",str(last_id),now))
-    cap_key = f"quota_manual_cap_{reseller_id}"
+    cx.execute("DELETE FROM admin_state WHERE key=?", (f"quota_manual_cap_{reseller_id}",))
+    key = f"quota_reset_expirations_{reseller_id}"
     if manual:
-        cx.execute("INSERT OR REPLACE INTO admin_state(key,value,updated_at) VALUES(?, '1', ?)", (cap_key, now))
+        cx.execute("INSERT OR REPLACE INTO admin_state(key,value,updated_at) VALUES(?,'0',?)", (key, now))
     else:
-        cx.execute("DELETE FROM admin_state WHERE key=?", (cap_key,))
+        cx.execute("DELETE FROM admin_state WHERE key=?", (key,))
 
 
 

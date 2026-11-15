@@ -37,11 +37,10 @@ def test_over_limit_and_admin_actions(env):
     with db.connect() as cx:
         after = [tuple(x) for x in cx.execute('SELECT code_hash,status,applied_until,deleted_at FROM activation_codes WHERE created_by_reseller_id=? ORDER BY id', (rid,))]
     assert before == after
-    assert rs.reseller_quota(rid)['used'] == 0
+    assert (rs.reseller_quota(rid)['used'], rs.reseller_quota(rid)['remaining']) == (0, 1)
+    assert rs.generate_reseller_subscription(rid, '1w')
     with pytest.raises(PermissionError):
         rs.generate_reseller_subscription(rid, '1w')
-    rs.adjust_reseller_quota(rid, limit=3)
-    assert rs.generate_reseller_subscription(rid, '1w')
     assert svc.redeem_activation_code('quota33-unused', two)[0]
 
 
@@ -76,22 +75,48 @@ def test_one_expiration_releases_exactly_one_slot(env, monkeypatch):
     with pytest.raises(PermissionError): rs.generate_reseller_subscription(rid, '1m')
 
 
-def test_admin_reset_keeps_old_codes_under_the_cap_until_expiry(env, monkeypatch):
-    _, svc, rs, _, _, _, account = env
+def test_old_expirations_reduce_usage_once_without_creating_reserved_slots(env, monkeypatch):
+    db, svc, rs, _, _, _, account = env
     rid = account['id']
     now = svc.now_ts()
+    monkeypatch.setattr(svc, 'now_ts', lambda: now)
     rs.adjust_reseller_quota(rid, limit=2)
-    for device in ('lot39-first', 'lot39-second'):
-        code = rs.generate_reseller_subscription(rid, '24h')
+    for device, plan in (('lot39-first', '24h'), ('lot39-second', '1w')):
+        code = rs.generate_reseller_subscription(rid, plan)
         assert svc.redeem_activation_code(device, code)[0]
 
     quota = rs.adjust_reseller_quota(rid, reset=True)
-    assert (quota['used'], quota['remaining']) == (0, 0)
+    assert (quota['used'], quota['remaining']) == (0, 2)
+
+    # The first expiry happens at zero, with no dashboard refresh before issuing.
+    monkeypatch.setattr(rs, 'now_ts', lambda: now + 86400)
+    assert rs.generate_reseller_subscription(rid, '1w')
+    assert rs.reseller_quota(rid)['used'] == 1
+    assert rs.generate_reseller_subscription(rid, '1w')
     with pytest.raises(PermissionError):
         rs.generate_reseller_subscription(rid, '1w')
 
-    monkeypatch.setattr(rs, 'now_ts', lambda: now + 86410)
+    monkeypatch.setattr(rs, 'now_ts', lambda: now + 7 * 86400)
     quota = rs.reseller_quota(rid)
-    assert (quota['used'], quota['remaining']) == (0, 2)
+    assert (quota['used'], quota['remaining']) == (1, 1)
+    db.init_db()
+    assert rs.reseller_quota(rid) == quota
     assert rs.generate_reseller_subscription(rid, '1w')
-    assert rs.reseller_quota(rid)['used'] == 1
+    assert rs.reseller_quota(rid)['used'] == 2
+    with pytest.raises(PermissionError):
+        rs.generate_reseller_subscription(rid, '1w')
+
+
+def test_existing_manual_reset_recovers_full_quota(env):
+    db, _, rs, _, _, _, account = env
+    rid = account['id']
+    rs.adjust_reseller_quota(rid, limit=1)
+    rs.generate_reseller_subscription(rid, '1w')
+    rs.adjust_reseller_quota(rid, reset=True)
+    with db.transaction() as cx:
+        cx.execute("DELETE FROM admin_state WHERE key=?", (f"quota_reset_expirations_{rid}",))
+        cx.execute("INSERT INTO admin_state(key,value,updated_at) VALUES(?,'1',?)",
+                   (f"quota_manual_cap_{rid}", rs.now_ts()))
+    quota = rs.reseller_quota(rid)
+    assert (quota['used'], quota['remaining']) == (0, 1)
+    assert rs.generate_reseller_subscription(rid, '1w')
