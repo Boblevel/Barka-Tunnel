@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from .security import require_admin
 from .app_updates import release_apk_path
 from .config import settings
+from .apk_metadata import read_apk_metadata
 
 router = APIRouter()
 MAX_APK_BYTES = 300 * 1024 * 1024
@@ -28,8 +29,9 @@ def validate_apk(path):
         with zipfile.ZipFile(path) as z:
             if 'AndroidManifest.xml' not in z.namelist():
                 raise ValueError('Manifest absent')
+        return read_apk_metadata(path)
     except (zipfile.BadZipFile, ValueError) as error:
-        raise HTTPException(400, 'Fichier APK invalide.') from error
+        raise HTTPException(400, str(error) or 'Fichier APK invalide.') from error
 
 
 def publish(path, digest, size):
@@ -40,7 +42,7 @@ def publish(path, digest, size):
         pass
     os.chmod(target, 0o644)
     return {'success': True, 'apk_url': settings.public_base_url + '/downloads/apk/' + digest + '.apk',
-            'size_bytes': size, 'sha256': digest}
+            'size_bytes': size, 'sha256': digest, **read_apk_metadata(target)}
 
 
 @router.put('/v1/admin/app-update/apk', dependencies=[Depends(require_admin)])

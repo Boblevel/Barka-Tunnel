@@ -7,6 +7,8 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.util.Properties
 
+class ApkDownloadRejected(message: String) : IOException(message)
+
 /** Partial bytes and validators survive process death. One writer per directory. */
 class ResumableApkDownload(private val client: OkHttpClient) {
     fun download(url: String, directory: File, cancelled: () -> Boolean,
@@ -29,6 +31,9 @@ class ResumableApkDownload(private val client: OkHttpClient) {
                 client.newCall(request.build()).execute().use { response ->
                     if(response.request.url.scheme!="https") throw IOException("Redirection non sécurisée refusée.")
                     val body=response.body ?: throw IOException("Réponse vide.")
+                    val contentType = body.contentType()
+                    if (contentType?.type == "text" || contentType?.subtype == "json")
+                        throw ApkDownloadRejected("Le serveur ne fournit pas un APK. Réessayez plus tard ou contactez le support.")
                     val currentValidator=response.header("ETag")?.takeUnless { it.startsWith("W/") }
                         ?: response.header("Last-Modified").orEmpty()
                     val total: Long
@@ -42,10 +47,10 @@ class ResumableApkDownload(private val client: OkHttpClient) {
                             if(start!=offset || end<start || end>=total || (offset>0 && (currentValidator!=validator || total!=totalSaved)))
                                 throw IOException("Le fichier du serveur a changé. Republiez un lien APK distinct.")
                         }
-                        else -> throw IOException("Téléchargement refusé (HTTP ${response.code}).")
+                        else -> throw ApkDownloadRejected("Téléchargement refusé (HTTP ${response.code}). Réessayez plus tard.")
                     }
-                    if(total !in 1..MAX_BYTES) throw IOException("Taille APK invalide (300 Mo maximum).")
-                    if(directory.usableSpace<total-offset+8*1024*1024) throw IOException("Espace insuffisant sur le téléphone.")
+                    if(total !in 1..MAX_BYTES) throw ApkDownloadRejected("Taille APK invalide (300 Mo maximum).")
+                    if(directory.usableSpace<total-offset+8*1024*1024) throw ApkDownloadRejected("Espace insuffisant sur le téléphone.")
                     RandomAccessFile(part,"rw").use { output ->
                         output.setLength(offset); output.seek(offset)
                         meta.setProperty("url",url);meta.setProperty("total",total.toString());meta.setProperty("validator",currentValidator)

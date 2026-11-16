@@ -3,6 +3,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.MediaType.Companion.toMediaType
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.Rule
@@ -42,5 +43,19 @@ class ResumableApkDownloadTest {
         val client=OkHttpClient.Builder().addInterceptor{response(it.request(),byteArrayOf(1,2),206,range="bytes 12-13/14")}.build()
         try{ResumableApkDownload(client).download(url,dir,{false}){_,_->};fail("invalid range accepted")}
         catch(_:IOException){assertEquals(0,java.io.File(dir,"update.part").length())}
+    }
+    @Test fun htmlErrorWithHttp200IsNeverTreatedAsAnApk() {
+        val dir = folder.newFolder()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                .body("<html>Site unavailable</html>".toResponseBody("text/html".toMediaType())).build()
+        }.build()
+        try {
+            ResumableApkDownload(client).download(url, dir, { false }) { _, _ -> fail("Invalid download reported progress") }
+            fail("HTML must be rejected")
+        } catch (error: ApkDownloadRejected) {
+            assertTrue(error.message.orEmpty().contains("APK"))
+            assertEquals(0, java.io.File(dir, "update.part").length())
+        }
     }
 }

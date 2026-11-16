@@ -1,6 +1,5 @@
 package com.barkatunnel.app.update
 
-import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -12,7 +11,6 @@ import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BackendAppUpdate
 import com.barkatunnel.app.vpnc6.BarkaVpnService
@@ -42,6 +40,7 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
     private var ready: File? = null
     private var awaitingInstallPermission = false
     private var activeKey = ""
+    private var networkFailures = 0
     private val retry = Runnable { resume() }
 
     init {
@@ -55,6 +54,7 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
                     action.isEnabled = false
                 }
                 else -> {
+                    networkFailures = 0
                     prefs.edit().putBoolean("paused", false).commit()
                     resume()
                 }
@@ -152,16 +152,21 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
                 if (!visible) return@post
                 action.isEnabled = true
                 when {
-                    result != null -> showReady()
+                    result != null -> { networkFailures = 0; showReady() }
                     prefs.getBoolean("paused", false) -> {
                         status.setText(R.string.download_paused)
                         action.setText(R.string.download_resume)
                     }
                     cancellation.get() -> handler.post(retry)
+                    error is ApkDownloadRejected -> {
+                        status.text = error.message
+                        action.setText(R.string.download_resume)
+                    }
                     error is IOException -> {
                         status.setText(R.string.download_retry)
                         action.setText(R.string.download_resume)
-                        handler.postDelayed(retry, 10_000)
+                        networkFailures++
+                        if (networkFailures <= 3) handler.postDelayed(retry, 10_000L * networkFailures)
                     }
                     else -> {
                         status.text = error?.message ?: activity.getString(R.string.download_failed)
@@ -196,13 +201,10 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
                 activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${activity.packageName}")))
                 return
             }
-            val uri = FileProvider.getUriForFile(activity, "${activity.packageName}.apk-provider", apk)
-            val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                clipData = ClipData.newRawUri("APK", uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            activity.startActivity(installIntent)
+            activity.startActivity(Intent(activity, ApkInstallActivity::class.java)
+                .putExtra("apk", apk.absolutePath)
+                .putExtra("url", prefs.getString("url", ""))
+                .putExtra("version", prefs.getLong("version", 0)))
         } catch (_: Exception) { status.setText(R.string.update_open_failed) }
     }
 

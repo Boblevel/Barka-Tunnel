@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.BarkaTunnel" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="android:fontFamily">sans</item>
+        <item name="android:fontFamily">@font/barka_sans</item>
+        <item name="fontFamily">@font/barka_sans</item>
         <item name="materialButtonStyle">@style/BarkaFlatButton</item>
         <item name="buttonStyle">@style/BarkaFlatButton</item>
         <item name="barkaAccent">@color/barka_blue</item>

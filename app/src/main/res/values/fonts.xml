@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Older Android uses a direct TTF, avoiding private FontFamily reflection. -->
+    <item name="barka_sans" type="font">@font/barka_regular</item>
+</resources>

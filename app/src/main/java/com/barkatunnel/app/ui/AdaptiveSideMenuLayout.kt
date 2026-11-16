@@ -14,11 +14,17 @@ class AdaptiveSideMenuLayout @JvmOverloads constructor(
 ) : LinearLayout(context, attrs) {
     private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
 
+    override fun onFinishInflate() {
+        super.onFinishInflate()
+        BarkaTypography.apply(this)
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val header = getChildAt(0) as LinearLayout
         header.isBaselineAligned = false
         val scroll = getChildAt(1) as ScrollView
         val items = scroll.getChildAt(0) as AdaptiveMenuContent
+        items.columns = 1
         val compact = MeasureSpec.getSize(heightMeasureSpec) < dp(780)
         val heading = header.getChildAt(1) as LinearLayout
         for (i in 0 until heading.childCount)

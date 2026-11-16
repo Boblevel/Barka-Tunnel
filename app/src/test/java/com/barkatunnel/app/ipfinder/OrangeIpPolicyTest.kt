@@ -4,10 +4,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class OrangeIpPolicyTest {
-    private val expected = setOf(161,76,74,102,75,195,196,197,198,199,204,205,206,207,208,209,210,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,143,165,51,63,193)
+    private val expected = setOf(161,76,74,102,75,195,196,197,198,199,204,205,206,207,208,209,210,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,143,165,51,63,193,67,43,73)
 
-    @Test fun exactlyThe41PrefixesAreAcceptedAcrossEverySecondOctet() {
-        assertEquals(41, expected.size)
+    @Test fun exactlyThe44PrefixesAreAcceptedAcrossEverySecondOctet() {
+        assertEquals(44, expected.size)
         assertEquals(expected.map { "10.$it" }.toSet(), OrangeIpPolicy.PATTERNS.split(';').toSet())
         for (second in 0..255) {
             for (tail in listOf("0.0", "127.179", "10.161", "10.165", "255.255")) {

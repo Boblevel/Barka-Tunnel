@@ -19,6 +19,7 @@ on:
       - validation/lot37-certificat
       - validation/lot38-cache
       - validation/lot39-release
+      - validation/lot40-144
 
 concurrency:
   group: barka-production-deploy
@@ -162,7 +163,21 @@ jobs:
           APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -name apksigner -type f | sort -V | tail -n 1)"
           test -n "$APK_SIGNER"
           "$APK_SIGNER" verify --min-sdk-version 23 --verbose --print-certs "$APK_SOURCE" | tee apk-verification.txt
+          grep -Fq 'Verified using v1 scheme (JAR signing): true' apk-verification.txt
+          grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true' apk-verification.txt
           grep -Fq '012ff8a1b08a66dd72d1741da1da44054bc307a20a4bf2be3c7de51b8383100c' apk-verification.txt
+          PYTHONPATH=backend python3 - "$APK_SOURCE" <<'PY'
+          import json, sys
+          from app.apk_metadata import read_apk_metadata
+          info = read_apk_metadata(sys.argv[1])
+          output = json.load(open('app/build/outputs/apk/release/output-metadata.json'))
+          element = output['elements'][0]
+          assert len(output['elements']) == 1 and not element['filters'], 'APK universel requis'
+          assert info['version_code'] == element['versionCode'] == 144, info
+          assert info['version_name'] == element['versionName'] == '2.3.5.4', info
+          assert info['min_sdk'] == 23, info
+          print('Version et compatibilité APK vérifiées :', info)
+          PY
           python3 -c 'import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); bad=z.testzip(); sys.exit("APK corrompu: "+bad if bad else 0)' "$APK_SOURCE"
           cp "$APK_SOURCE" BarkaTunnel-release.apk
           sha256sum BarkaTunnel-release.apk

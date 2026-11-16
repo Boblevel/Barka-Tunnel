@@ -1,6 +1,8 @@
 package com.barkatunnel.app.guide
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import android.graphics.Color
 import android.view.View
 import android.webkit.WebChromeClient
@@ -10,8 +12,13 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.webkit.ProxyConfig
+import androidx.webkit.ProxyController
+import androidx.webkit.WebViewFeature
 import com.barkatunnel.app.R
 import com.barkatunnel.app.backend.BarkaBackendClient
+import com.barkatunnel.app.vpnc6.BarkaVpnService
 import java.net.URI
 
 /** Only the fixed YouTube embed origin is loaded; the admin supplies an ID through the server. */
@@ -53,12 +60,21 @@ object VideoGuide {
         val player = try {
             WebView(activity)
         } catch (_: RuntimeException) {
-            Toast.makeText(activity, R.string.video_guide_unavailable, Toast.LENGTH_LONG).show()
+            openExternal(activity, id)
             return
         }
         player.settings.javaScriptEnabled = true
         player.settings.domStorageEnabled = true
         player.settings.mediaPlaybackRequiresUserGesture = true
+        player.settings.allowFileAccess = false
+        player.settings.allowContentAccess = false
+        player.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        val proxySupported = WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)
+        val uiExecutor = ContextCompat.getMainExecutor(activity)
+        var dismissed = false
+        var rendererGone = false
+        var routeInitialized = false
+        var routedPort: Int? = null
         val status = android.widget.TextView(activity).apply {
             setText(R.string.video_guide_intro)
             setPadding(8, 4, 8, 16)
@@ -68,7 +84,21 @@ object VideoGuide {
             player.visibility = View.GONE
         }
         player.webViewClient = object : WebViewClient() {
+            override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                rendererGone = true
+                showPlaybackError()
+                (view.parent as? android.view.ViewGroup)?.removeView(view)
+                view.destroy()
+                return true
+            }
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                // Never launch arbitrary intents received from embedded content.
+                return request.url.scheme != "https"
+            }
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                if (request.isForMainFrame) showPlaybackError()
+            }
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: android.webkit.WebResourceResponse) {
                 if (request.isForMainFrame) showPlaybackError()
             }
         }
@@ -80,7 +110,8 @@ object VideoGuide {
             <style>html,body,iframe,#player{width:100%;height:100%;margin:0;border:0;background:#000}</style>
             </head><body>
             <iframe id="player" src="https://www.youtube.com/embed/$id?playsinline=1&amp;enablejsapi=1&amp;origin=$origin"
-                title="YouTube" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+                title="YouTube" referrerpolicy="strict-origin-when-cross-origin"
+                allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
             <script>
                 function onYouTubeIframeAPIReady() {
                     new YT.Player('player', { events: {
@@ -105,34 +136,92 @@ object VideoGuide {
             }
         }
         val timeout = Runnable {
-            if (!playerReady) status.setText(R.string.video_guide_unavailable)
+            if (!playerReady) showPlaybackError()
         }
         fun loadPlayer() {
+            if (rendererGone) { openExternal(activity, id); return }
             playerReady = false
             player.visibility = View.VISIBLE
             status.setText(R.string.video_guide_intro)
             player.removeCallbacks(timeout)
-            player.loadDataWithBaseURL("$origin/", html, "text/html", "UTF-8", null)
-            player.postDelayed(timeout, 20_000)
+            val load = Runnable {
+                if (!dismissed && !rendererGone) {
+                    player.loadDataWithBaseURL("$origin/", html, "text/html", "UTF-8", null)
+                    player.postDelayed(timeout, 30_000)
+                }
+            }
+            // Barka itself is excluded from the TUN. Route WebView explicitly,
+            // just like the backend client; do not fall back to a direct route.
+            val port = BarkaVpnService.connectedSocksPort()
+            routedPort = port
+            routeInitialized = true
+            if (proxySupported) {
+                try {
+                    if (port != null) ProxyController.getInstance().setProxyOverride(
+                        ProxyConfig.Builder().addProxyRule("socks://127.0.0.1:$port").build(), uiExecutor, load)
+                    else ProxyController.getInstance().clearProxyOverride(uiExecutor, load)
+                } catch (_: RuntimeException) { showPlaybackError() }
+            } else if (port != null) {
+                showPlaybackError()
+                openExternal(activity, id)
+            } else load.run()
         }
         val content = android.widget.LinearLayout(activity).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(16, 12, 16, 12)
             addView(status)
-            addView(player, android.widget.LinearLayout.LayoutParams(-1, (240 * activity.resources.displayMetrics.density).toInt()))
+            val metrics = activity.resources.displayMetrics
+            val height = ((metrics.widthPixels - 64 * metrics.density) * 9 / 16)
+                .coerceAtMost(metrics.heightPixels * 0.45f).coerceAtLeast(120 * metrics.density).toInt()
+            addView(player, android.widget.LinearLayout.LayoutParams(-1, height))
         }
+        val owner = activity as? androidx.lifecycle.LifecycleOwner
+        var lifecycle: androidx.lifecycle.LifecycleEventObserver? = null
         val dialog = AlertDialog.Builder(activity).setTitle(R.string.video_guide_title).setView(content)
             .setNegativeButton(android.R.string.cancel, null)
             .setNeutralButton(R.string.download_resume, null)
+            .setPositiveButton(R.string.video_guide_external) { _, _ -> openExternal(activity, id) }
             .create()
         dialog.setOnDismissListener {
+            dismissed = true
+            lifecycle?.let { owner?.lifecycle?.removeObserver(it) }
             player.removeCallbacks(timeout)
-            player.stopLoading()
-            content.removeView(player)
-            player.destroy()
+            if (!rendererGone) {
+                player.stopLoading()
+                player.onPause()
+                content.removeView(player)
+                player.destroy()
+            }
+            if (proxySupported) runCatching {
+                ProxyController.getInstance().clearProxyOverride(uiExecutor) {}
+            }
         }
         dialog.show()
+        dialog.window?.decorView?.let { com.barkatunnel.app.ui.BarkaTypography.apply(it) }
+        lifecycle = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> if (!dismissed && !rendererGone) {
+                    player.evaluateJavascript("var p=document.getElementById('player');if(p)p.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), 'https://www.youtube.com');", null)
+                    player.onPause()
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> if (!dismissed && !rendererGone) {
+                    player.onResume()
+                    if (routeInitialized && routedPort != BarkaVpnService.connectedSocksPort()) loadPlayer()
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> dialog.dismiss()
+                else -> Unit
+            }
+        }
+        owner?.lifecycle?.addObserver(lifecycle)
         dialog.getButton(android.content.DialogInterface.BUTTON_NEUTRAL).setOnClickListener { loadPlayer() }
         loadPlayer()
+    }
+
+    private fun openExternal(activity: Activity, id: String) {
+        try {
+            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$id")))
+        } catch (_: RuntimeException) {
+            Toast.makeText(activity, R.string.video_guide_unavailable, Toast.LENGTH_LONG).show()
+        }
     }
 }

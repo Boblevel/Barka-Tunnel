@@ -116,7 +116,8 @@ def test_upload_returns_actual_download_url(env):
     with client_for(main) as c:
         import io,zipfile,hashlib
         buf=io.BytesIO()
-        with zipfile.ZipFile(buf,'w') as z:z.writestr('AndroidManifest.xml',b'test')
+        from apk_fixture import manifest_bytes
+        with zipfile.ZipFile(buf,'w') as z:z.writestr('AndroidManifest.xml',manifest_bytes())
         payload=buf.getvalue()
         assert c.put('/v1/admin/app-update/apk',content=payload,headers={'X-Admin-Token':'wrong'}).status_code==401
         result=c.put('/v1/admin/app-update/apk',content=payload)

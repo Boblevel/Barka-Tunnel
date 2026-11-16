@@ -314,7 +314,7 @@ async function uploadApk(){
    $('updateStatus').textContent='Téléversement : '+Math.round(offset*100/f.size)+' %';
   }
   $('updateStatus').textContent='Vérification de l’APK…';const result=await api(path+'/finish',{method:'POST'});
-  $('updUrl').value=result.apk_url;$('updInternal').checked=true;$('updateStatus').textContent='APK téléversé. Enregistrez la mise à jour pour publier.';
+  $('updUrl').value=result.apk_url;$('updCode').value=result.version_code;$('updName').value=result.version_name;$('updInternal').checked=true;$('updateStatus').textContent='APK vérifié : '+result.version_name+' (code '+result.version_code+'). Enregistrez la mise à jour pour publier.';
  }catch(e){$('updateStatus').textContent=e.message}finally{apkUploading=false;$('apkUploadButton').disabled=false}
 }
 async function loadShareUrl(){try{const d=await api('/v1/share-link');if(!$('shareUrl').dataset.dirty)$('shareUrl').value=d.url}catch(e){$('shareUrlStatus').textContent=e.message}}

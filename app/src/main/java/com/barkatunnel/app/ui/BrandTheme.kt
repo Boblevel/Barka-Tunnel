@@ -40,7 +40,9 @@ object BrandTheme : Application.ActivityLifecycleCallbacks {
         if (applied[activity] != key(activity)) activity.recreate()
     }
     override fun onActivityDestroyed(activity: Activity) { applied.remove(activity) }
-    override fun onActivityStarted(activity: Activity) = Unit
+    override fun onActivityStarted(activity: Activity) {
+        BarkaTypography.apply(activity.window.decorView)
+    }
     override fun onActivityPaused(activity: Activity) = Unit
     override fun onActivityStopped(activity: Activity) = Unit
     override fun onActivitySaveInstanceState(activity: Activity, state: Bundle) = Unit

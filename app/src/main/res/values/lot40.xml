@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_guide_external">Ouvrir dans YouTube / navigateur</string>
+    <string name="install_preparing">Préparation de l’installation…</string>
+    <string name="install_waiting">Confirmez l’installation dans la fenêtre Android. Si elle ne s’ouvre pas, revenez au téléchargement et réessayez.</string>
+    <string name="install_failed_detail">Installation impossible : %1$s. Revenez au téléchargement pour réessayer.</string>
+    <string name="install_cancelled">Installation annulée. Le téléchargement est conservé ; vous pouvez réessayer.</string>
+    <string name="install_storage">Espace insuffisant. Libérez de la place puis réessayez.</string>
+    <string name="install_conflict">Cette installation entre en conflit avec la version présente. Contactez le support ; ne supprimez pas vos données.</string>
+    <string name="install_incompatible">Cet APK est incompatible avec la version Android ou le processeur du téléphone. Contactez le support.</string>
+</resources>

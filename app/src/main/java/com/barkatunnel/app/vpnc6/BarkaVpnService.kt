@@ -621,7 +621,8 @@ class BarkaVpnService : VpnService() {
                 val access = runCatching { com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess(socksPort(protocol)) }.getOrNull()
                 val now = android.os.SystemClock.elapsedRealtime()
                 if (now >= nextUpdateCheckAt) {
-                    nextUpdateCheckAt = now + 60_000L
+                    val power = getSystemService(android.os.PowerManager::class.java)
+                    nextUpdateCheckAt = now + if (!power.isInteractive || power.isPowerSaveMode) 300_000L else 60_000L
                     val update = runCatching {
                         com.barkatunnel.app.backend.BarkaBackendClient(this)
                             .checkAppUpdate(com.barkatunnel.app.BuildConfig.VERSION_CODE.toLong(), socksPort(protocol))
@@ -671,6 +672,9 @@ class BarkaVpnService : VpnService() {
                         val now = SystemClock.elapsedRealtime()
                         if (now < nextDiagnosticAt) return@scheduleWithFixedDelay
                         val power = getSystemService(android.os.PowerManager::class.java)
+                        // The engine-health check above still runs. Do not send
+                        // optional Internet probes while the screen is asleep.
+                        if (!power.isInteractive) return@scheduleWithFixedDelay
                         nextDiagnosticAt = now + if (power.isPowerSaveMode || !power.isInteractive) 120_000L else 60_000L
                         // Ce contrôle valide le relais SOCKS. Le processus
                         // tun2socks est contrôlé séparément ci-dessus, car

@@ -80,6 +80,35 @@ def upsert_app_update(payload: dict) -> dict:
         raise ValueError("Indiquez un lien HTTPS valide, sans identifiants ni espaces.")
     if mandatory and not enabled:
         raise ValueError("Une mise à jour obligatoire doit être activée.")
+    if enabled and payload.get("download_in_app"):
+        # Freeze our mutable VPS link before announcing it. Existing clients
+        # cannot safely finish a download if the file changes under that URL.
+        from .apk_metadata import read_apk_metadata
+        from .apk_release import publish
+        import hashlib
+        import re
+        import shutil
+        import tempfile
+        url = urlsplit(apk_url)
+        if url.netloc == urlsplit(settings.public_base_url).netloc:
+            match = re.fullmatch(r"/downloads/apk/([a-f0-9]{64})\.apk", url.path)
+            path = (release_apk_path().parent / (match[1] + '.apk')) if match else (
+                release_apk_path() if url.path == '/downloads/BarkaTunnel.apk' else None)
+            if path is None or not path.is_file():
+                raise ValueError("APK absent du serveur. Téléversez le fichier avant de publier.")
+            # Open the source once: a deployment may atomically replace its
+            # pathname while we verify. Publish the exact bytes verified here.
+            with path.open('rb') as source, tempfile.NamedTemporaryFile(dir=path.parent, suffix='.apk') as snapshot:
+                shutil.copyfileobj(source, snapshot)
+                snapshot.flush()
+                info = read_apk_metadata(snapshot.name)
+                if info['version_code'] != version_code or info['version_name'] != version_name:
+                    raise ValueError(f"L’APK contient la version {info['version_name']} (code {info['version_code']}). Corrigez la version annoncée ou téléversez le bon APK.")
+                snapshot.seek(0)
+                digest = hashlib.file_digest(snapshot, 'sha256').hexdigest()
+                if match and digest != match[1]:
+                    raise ValueError("APK endommagé sur le serveur. Téléversez-le de nouveau.")
+                apk_url = publish(snapshot.name, digest, Path(snapshot.name).stat().st_size)['apk_url']
     with transaction() as cx:
         cx.execute(
             """UPDATE app_update

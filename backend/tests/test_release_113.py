@@ -53,7 +53,8 @@ def test_delete_preserves_other_credit(env,monkeypatch,remove_panel):
 
 def apk_bytes(size):
     buf=io.BytesIO()
-    with zipfile.ZipFile(buf,'w') as z:z.writestr('AndroidManifest.xml',b'manifest');z.writestr('classes.dex',bytes(size))
+    from apk_fixture import manifest_bytes
+    with zipfile.ZipFile(buf,'w') as z:z.writestr('AndroidManifest.xml',manifest_bytes());z.writestr('classes.dex',bytes(size))
     return buf.getvalue()
 
 

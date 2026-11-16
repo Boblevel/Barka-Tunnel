@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_guide_external">فتح في YouTube / المتصفح</string>
+    <string name="install_preparing">جارٍ تحضير التثبيت…</string>
+    <string name="install_waiting">أكد التثبيت في نافذة Android. إذا لم تظهر، ارجع إلى التنزيل وحاول مجدداً.</string>
+    <string name="install_failed_detail">تعذر التثبيت: %1$s. ارجع إلى التنزيل للمحاولة مجدداً.</string>
+    <string name="install_cancelled">تم إلغاء التثبيت. التنزيل محفوظ ويمكنك المحاولة مجدداً.</string>
+    <string name="install_storage">المساحة غير كافية. حرر مساحة ثم حاول مجدداً.</string>
+    <string name="install_conflict">يتعارض التثبيت مع الإصدار المثبت. تواصل مع الدعم ولا تحذف بياناتك.</string>
+    <string name="install_incompatible">ملف APK غير متوافق مع إصدار Android أو معالج الهاتف. تواصل مع الدعم.</string>
+</resources>
