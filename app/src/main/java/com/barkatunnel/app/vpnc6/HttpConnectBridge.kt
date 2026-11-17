@@ -71,6 +71,8 @@ internal class HttpConnectBridge(
         var responseSent = false
         try {
             check(!closed)
+            client.tcpNoDelay = true
+            remote.tcpNoDelay = true
             client.soTimeout = 30_000
             val request = readHeader(client.getInputStream()).toString(Charsets.ISO_8859_1)
             require(request.substringBefore("\r\n") == "CONNECT $authority HTTP/1.1")

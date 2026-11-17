@@ -22,7 +22,9 @@ class ApkInstallResultTest {
             PackageInstaller.STATUS_FAILURE_STORAGE to R.string.install_storage,
             PackageInstaller.STATUS_FAILURE_CONFLICT to R.string.install_conflict,
             PackageInstaller.STATUS_FAILURE_INCOMPATIBLE to R.string.install_incompatible,
-            PackageInstaller.STATUS_FAILURE_ABORTED to R.string.install_cancelled
+            PackageInstaller.STATUS_FAILURE_ABORTED to R.string.install_cancelled,
+            PackageInstaller.STATUS_FAILURE_BLOCKED to R.string.install_blocked,
+            PackageInstaller.STATUS_FAILURE_INVALID to R.string.install_invalid
         )) {
             val intent = Intent().putExtra(PackageInstaller.EXTRA_STATUS, code)
             val controller = Robolectric.buildActivity(ApkInstallActivity::class.java, intent).setup()

@@ -8,4 +8,6 @@
     <string name="install_storage">Espace insuffisant. Libérez de la place puis réessayez.</string>
     <string name="install_conflict">Cette installation entre en conflit avec la version présente. Contactez le support ; ne supprimez pas vos données.</string>
     <string name="install_incompatible">Cet APK est incompatible avec la version Android ou le processeur du téléphone. Contactez le support.</string>
+    <string name="install_blocked">Android a bloqué l’installation. Vérifiez l’autorisation « Installer des applications inconnues » et les restrictions du téléphone ou du profil professionnel. Ne désactivez pas les protections de sécurité.</string>
+    <string name="install_invalid">Android refuse ce fichier APK. Téléchargez de nouveau la version officielle et consultez le journal ; ne désinstallez pas votre application.</string>
 </resources>

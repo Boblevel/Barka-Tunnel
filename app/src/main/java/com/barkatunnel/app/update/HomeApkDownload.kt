@@ -41,6 +41,17 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
     private var awaitingInstallPermission = false
     private var activeKey = ""
     private var networkFailures = 0
+    @Volatile private var transfer: ResumableApkDownload? = null
+    private var routePort: Int? = null
+    private val routeWatch = object : Runnable {
+        override fun run() {
+            if (!visible || !running) return
+            if (routePort != BarkaVpnService.connectedSocksPort()) {
+                cancelled.set(true)
+                transfer?.cancel()
+            } else handler.postDelayed(this, 1000)
+        }
+    }
     private val retry = Runnable { resume() }
 
     init {
@@ -50,6 +61,7 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
                 running -> {
                     prefs.edit().putBoolean("paused", true).commit()
                     cancelled.set(true)
+                    transfer?.cancel()
                     status.setText(R.string.download_paused)
                     action.isEnabled = false
                 }
@@ -65,7 +77,9 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
     fun stop() {
         visible = false
         cancelled.set(true)
+        transfer?.cancel()
         handler.removeCallbacks(retry)
+        handler.removeCallbacks(routeWatch)
     }
 
     @Suppress("DEPRECATION")
@@ -114,18 +128,25 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
         action.setText(R.string.download_pause)
         status.setText(R.string.download_connecting)
         val context = activity.applicationContext
+        routePort = BarkaVpnService.connectedSocksPort()
+        val selectedPort = routePort
+        handler.removeCallbacks(routeWatch)
+        handler.postDelayed(routeWatch, 1000)
         executor.execute {
             var completed: File? = null
             var failure: Exception? = null
             try {
                 val builder = OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS)
-                    .readTimeout(20, TimeUnit.SECONDS).followSslRedirects(false)
-                BarkaVpnService.connectedSocksPort()?.let {
+                    .readTimeout(45, TimeUnit.SECONDS).followSslRedirects(false)
+                selectedPort?.let {
                     builder.proxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", it)))
                 }
                 val apk = File(directory, "BarkaTunnel.apk")
                 var lastUi = 0L
-                val file = apk.takeIf { it.isFile } ?: ResumableApkDownload(builder.build())
+                val downloader = ResumableApkDownload(builder.build())
+                transfer = downloader
+                if (cancellation.get()) downloader.cancel()
+                val file = apk.takeIf { it.isFile } ?: downloader
                     .download(url, directory, { cancellation.get() }) { done, size ->
                         val now = System.currentTimeMillis()
                         if (now - lastUi >= 200 || done == size) {
@@ -139,10 +160,12 @@ class HomeApkDownload(private val activity: AppCompatActivity, root: View) {
                 catch (error: Exception) { apk.delete(); throw error }
                 completed = apk
             } catch (error: Exception) { failure = error }
+            finally { transfer = null }
             val result = completed
             val error = failure
             handler.post {
                 running = false
+                handler.removeCallbacks(routeWatch)
                 if (activity.isDestroyed) return@post
                 if (key != key(prefs.getString("url", "").orEmpty(), prefs.getLong("version", 0))) {
                     if (visible) resume()

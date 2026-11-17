@@ -15,6 +15,7 @@ class ApkDownloadActivity : AppCompatActivity() {
         super.onCreate(state)
         setContentView(R.layout.activity_apk_download)
         SystemBars.apply(this)
+        com.barkatunnel.app.ui.BarkaTypography.apply(findViewById(R.id.apkDownloadScreen))
         download = HomeApkDownload(this, findViewById(R.id.apkDownloadScreen))
     }
 

@@ -525,7 +525,7 @@ class IpFinderActivity : AppCompatActivity() {
         private const val DEFAULT_SEARCH_PATTERN = OrangeIpPolicy.PATTERNS
         private const val LEGACY_IP_SEQUENCE = "10.208;10.210"
         private const val UPDATED_IP_SEQUENCE = "10.208;10.209;10.210"
-        private val RETIRED_IP_PREFIXES = setOf("10.148", "10.46", "10.194", "10.80", "10.10194")
+        private val RETIRED_IP_PREFIXES = setOf("10.148", "10.194", "10.80", "10.10194")
         private const val IP_FINDER_VIBRATION_MS = 70L
         private const val MAX_NETWORK_POLLS = 15
         private const val MAX_SERVICE_READY_RETRIES = 20
@@ -553,7 +553,10 @@ class IpFinderActivity : AppCompatActivity() {
                 .split(Regex("[;,\\n]+"))
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
-            var migratedPattern = patterns.filterNot { pattern ->
+            // Upgrade the previous built-in list, preserving genuinely custom filters.
+            val previousDefaults = DEFAULT_SEARCH_PATTERN.split(';').filterNot { it in setOf("10.46", "100.80") }.toSet()
+            val currentPatterns = if (patterns.toSet() == previousDefaults) DEFAULT_SEARCH_PATTERN.split(';') else patterns
+            val migratedPattern = currentPatterns.filterNot { pattern ->
                     pattern.removePrefix("=")
                         .removePrefix("^")
                         .removeSuffix("$")

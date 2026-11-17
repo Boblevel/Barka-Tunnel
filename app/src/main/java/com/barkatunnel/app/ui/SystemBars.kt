@@ -22,9 +22,10 @@ object SystemBars {
         val content = activity.findViewById<android.view.View>(android.R.id.content)
         val pageNames = setOf("SettingsActivity", "GuideActivity", "GuideSectionActivity",
             "SubscriptionActivity", "ActivationActivity", "IpFinderActivity", "SupportActivity",
-            "SuggestionsActivity", "ResellerPurchaseActivity", "ConsumptionActivity", "VpnToolsActivity")
+            "SuggestionsActivity", "ResellerPurchaseActivity", "ConsumptionActivity", "VpnToolsActivity",
+            "ApkDownloadActivity", "ApkInstallActivity")
         val alignedPage = activity.javaClass.simpleName in pageNames
-        if (alignedPage) {
+        if (alignedPage && activity.javaClass.simpleName !in setOf("ApkDownloadActivity", "ApkInstallActivity")) {
             val root = (content as? android.view.ViewGroup)?.getChildAt(0) as? android.view.ViewGroup
             val header = if (activity.javaClass.simpleName == "VpnToolsActivity") root else root?.getChildAt(0)
             header?.setPaddingRelative(header.paddingStart,

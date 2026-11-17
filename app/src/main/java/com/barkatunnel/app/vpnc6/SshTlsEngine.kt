@@ -18,7 +18,7 @@ class SshTlsEngine(private val config: VpnProfileConfig.SshTls, private val sock
     }
     private val factory = object : SocketFactory {
         override fun createSocket(host: String, port: Int): Socket {
-            val raw = Socket(); transport = raw
+            val raw = Socket().apply { tcpNoDelay = true }; transport = raw
             var stage = "connexion TCP au serveur SSH TLS"
             try {
                 checkActive(); raw.connect(InetSocketAddress(config.host, config.port), 12000); checkActive()

@@ -25,6 +25,10 @@ class AppUpdateCoordinator(
 
     private var updateDialog: AlertDialog? = null
     private var lastPresentedUpdate = ""
+    private val deferred = activity.getSharedPreferences("barka_deferred_update", android.content.Context.MODE_PRIVATE)
+
+    private fun revision(update: BackendAppUpdate) =
+        "${update.latestVersionCode}:${update.updatedAt}:${update.apkUrl}"
 
     private val callbackLock = Any()
     private val waitingCallbacks = mutableListOf<(BackendAppUpdate?) -> Unit>()
@@ -128,6 +132,12 @@ class AppUpdateCoordinator(
             AppUpdateGate.clear()
         }
 
+        if (!update.forceUpdate && !showNoUpdate && deferred.getString("revision", null) == revision(update)) {
+            updateDialog?.dismiss()
+            updateDialog = null
+            return
+        }
+
         val key = "${update.latestVersionCode}:${update.updatedAt}:${update.forceUpdate}:${update.apkUrl}:${update.message}"
         if (!showNoUpdate && key == lastPresentedUpdate &&
             (!update.forceUpdate || updateDialog?.isShowing == true)) return
@@ -160,7 +170,9 @@ class AppUpdateCoordinator(
             }
 
         if (!update.forceUpdate) {
-            builder.setNegativeButton(R.string.update_later, null)
+            builder.setNegativeButton(R.string.update_later) { _, _ ->
+                deferred.edit().putString("revision", revision(update)).apply()
+            }
         }
 
         updateDialog?.dismiss()

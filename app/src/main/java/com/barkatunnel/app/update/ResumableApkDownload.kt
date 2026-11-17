@@ -11,6 +11,13 @@ class ApkDownloadRejected(message: String) : IOException(message)
 
 /** Partial bytes and validators survive process death. One writer per directory. */
 class ResumableApkDownload(private val client: OkHttpClient) {
+    @Volatile private var activeCall: okhttp3.Call? = null
+    @Volatile private var stopped = false
+    fun cancel() {
+        stopped = true
+        activeCall?.cancel()
+    }
+
     fun download(url: String, directory: File, cancelled: () -> Boolean,
                  progress: (Long, Long) -> Unit): File {
         require(AppUpdateDestination.isValid(url)) { "Lien HTTPS invalide." }
@@ -24,15 +31,25 @@ class ResumableApkDownload(private val client: OkHttpClient) {
                 val totalSaved = meta.getProperty("total","-1").toLongOrNull() ?: -1
                 val validator = meta.getProperty("validator","")
                 if(meta.getProperty("url","")!=url || validator.isBlank() || offset>totalSaved) offset=0
+                if(stopped || cancelled()) throw IOException("Téléchargement en pause.")
                 if(offset>0 && offset==totalSaved) { progress(offset,totalSaved); return part }
-                if(cancelled()) throw IOException("Téléchargement en pause.")
                 val request = Request.Builder().url(url).header("Accept-Encoding","identity")
                 if(offset>0) request.header("Range","bytes=$offset-").header("If-Range",validator)
-                client.newCall(request.build()).execute().use { response ->
+                val call = client.newCall(request.build())
+                activeCall = call
+                if (stopped || cancelled()) call.cancel()
+                try { call.execute().use { response ->
                     if(response.request.url.scheme!="https") throw IOException("Redirection non sécurisée refusée.")
                     val body=response.body ?: throw IOException("Réponse vide.")
+                    if (response.code in listOf(408, 429, 500, 502, 503, 504))
+                        throw IOException("Serveur temporairement indisponible (HTTP ${response.code}).")
+                    if (response.code == 416 && offset > 0) {
+                        metadata.delete()
+                        throw IOException("Reprise expirée. Le téléchargement recommencera sans mélanger les fichiers.")
+                    }
                     val contentType = body.contentType()
-                    if (contentType?.type == "text" || contentType?.subtype == "json")
+                    if (contentType?.type == "text" || contentType?.subtype == "json" ||
+                        contentType?.subtype?.endsWith("+json") == true)
                         throw ApkDownloadRejected("Le serveur ne fournit pas un APK. Réessayez plus tard ou contactez le support.")
                     val currentValidator=response.header("ETag")?.takeUnless { it.startsWith("W/") }
                         ?: response.header("Last-Modified").orEmpty()
@@ -41,11 +58,13 @@ class ResumableApkDownload(private val client: OkHttpClient) {
                         200 -> { offset=0; total=body.contentLength() }
                         206 -> {
                             val range=Regex("bytes (\\d+)-(\\d+)/(\\d+)").matchEntire(response.header("Content-Range").orEmpty())
-                                ?: throw IOException("Réponse de reprise invalide.")
+                                ?: run { metadata.delete(); throw IOException("Réponse de reprise invalide.") }
                             val start=range.groupValues[1].toLong(); val end=range.groupValues[2].toLong()
                             total=range.groupValues[3].toLong()
-                            if(start!=offset || end<start || end>=total || (offset>0 && (currentValidator!=validator || total!=totalSaved)))
+                            if(start!=offset || end<start || end>=total || (offset>0 && (currentValidator!=validator || total!=totalSaved))) {
+                                metadata.delete()
                                 throw IOException("Le fichier du serveur a changé. Republiez un lien APK distinct.")
+                            }
                         }
                         else -> throw ApkDownloadRejected("Téléchargement refusé (HTTP ${response.code}). Réessayez plus tard.")
                     }
@@ -61,7 +80,7 @@ class ResumableApkDownload(private val client: OkHttpClient) {
                         body.byteStream().use { input ->
                             val buffer=ByteArray(64*1024)
                             while(true) {
-                                if(cancelled()) throw IOException("Téléchargement en pause.")
+                                if(stopped || cancelled()) throw IOException("Téléchargement en pause.")
                                 val count=input.read(buffer);if(count<0)break
                                 if(offset+count>total)throw IOException("Taille APK incohérente.")
                                 output.write(buffer,0,count);offset+=count;progress(offset,total)
@@ -70,7 +89,7 @@ class ResumableApkDownload(private val client: OkHttpClient) {
                         output.fd.sync()
                     }
                     if(offset!=total)throw IOException("Connexion interrompue. Appuyez sur Reprendre.")
-                }
+                } } finally { activeCall = null }
                 return part
             }
         }

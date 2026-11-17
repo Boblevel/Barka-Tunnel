@@ -20,6 +20,7 @@ on:
       - validation/lot38-cache
       - validation/lot39-release
       - validation/lot40-144
+      - validation/lot41-145
 
 concurrency:
   group: barka-production-deploy
@@ -173,8 +174,8 @@ jobs:
           output = json.load(open('app/build/outputs/apk/release/output-metadata.json'))
           element = output['elements'][0]
           assert len(output['elements']) == 1 and not element['filters'], 'APK universel requis'
-          assert info['version_code'] == element['versionCode'] == 144, info
-          assert info['version_name'] == element['versionName'] == '2.3.5.4', info
+          assert info['version_code'] == element['versionCode'] == 145, info
+          assert info['version_name'] == element['versionName'] == '2.4.1.1', info
           assert info['min_sdk'] == 23, info
           print('Version et compatibilité APK vérifiées :', info)
           PY

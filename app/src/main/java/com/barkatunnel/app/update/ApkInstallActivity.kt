@@ -96,6 +96,15 @@ class ApkInstallActivity : AppCompatActivity() {
 
     @Suppress("DEPRECATION")
     private fun handleResult(result: Intent) {
+        val code = result.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
+        if (code > PackageInstaller.STATUS_SUCCESS) {
+            // Keep only Android's technical reason, never arbitrary installer text or paths.
+            val reason = Regex("INSTALL_(?:FAILED|PARSE_FAILED)_[A-Z0-9_]+")
+                .find(result.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE).orEmpty())?.value
+                ?: "STATUS_$code"
+            com.barkatunnel.app.journal.AppLogStore.add(this,
+                "Installation • $reason • Android=${Build.VERSION.SDK_INT} • ABI=${Build.SUPPORTED_ABIS.joinToString()}")
+        }
         when (result.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 val confirmation = result.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
@@ -112,6 +121,8 @@ class ApkInstallActivity : AppCompatActivity() {
             PackageInstaller.STATUS_FAILURE_STORAGE -> status.setText(R.string.install_storage)
             PackageInstaller.STATUS_FAILURE_CONFLICT -> status.setText(R.string.install_conflict)
             PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> status.setText(R.string.install_incompatible)
+            PackageInstaller.STATUS_FAILURE_BLOCKED -> status.setText(R.string.install_blocked)
+            PackageInstaller.STATUS_FAILURE_INVALID -> status.setText(R.string.install_invalid)
             else -> status.setText(R.string.update_open_failed)
         }
     }

@@ -33,7 +33,11 @@ object ApkVerifier {
             }
         }
         ZipFile(file).use { apk ->
-            check(Build.SUPPORTED_ABIS.any { abi -> apk.getEntry("lib/$abi/libbarka_xray.so") != null }) {
+            check(Build.SUPPORTED_ABIS.any { abi ->
+                listOf("libbarka_xray.so", "libbarka_dnstt.so", "libtun2socks.so").all { core ->
+                    (apk.getEntry("lib/$abi/$core")?.size ?: 0) > 0
+                }
+            }) {
                 "Cet APK ne contient pas le moteur adapté à ce téléphone."
             }
         }

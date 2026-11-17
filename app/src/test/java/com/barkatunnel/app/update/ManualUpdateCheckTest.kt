@@ -24,13 +24,14 @@ import java.util.concurrent.TimeUnit
 class UpdateBackendShadow {
     companion object {
         var available = true
+        var mandatory = false
         var entered = CountDownLatch(1)
         var release = CountDownLatch(0)
     }
     @Implementation fun checkAppUpdate(currentVersionCode: Long, socksPort: Int?): BackendAppUpdate {
         entered.countDown()
         check(release.await(5, TimeUnit.SECONDS))
-        return BackendAppUpdate(true, available, false, if(available) currentVersionCode + 1 else currentVersionCode,
+        return BackendAppUpdate(true, available, mandatory, if(available) currentVersionCode + 1 else currentVersionCode,
             "2.0.4.2", "https://example.org/BarkaTunnel.apk", "Mise à jour disponible")
     }
 }
@@ -46,6 +47,8 @@ class ManualUpdateCheckTest {
     }
     @Before fun reset() {
         UpdateBackendShadow.available = true
+        UpdateBackendShadow.mandatory = false
+        AppUpdateGate.clear()
         UpdateBackendShadow.entered = CountDownLatch(1)
         UpdateBackendShadow.release = CountDownLatch(0)
     }
@@ -73,6 +76,29 @@ class ManualUpdateCheckTest {
             UpdateBackendShadow.available=false
             coordinator.check(showNoUpdate=true)
             waitDone(coordinator)
+            assertFalse(ShadowAlertDialog.getLatestAlertDialog().isShowing)
+        } finally { controller.pause().stop().destroy() }
+    }
+    @Test fun laterSurvivesNewCoordinatorButManualCheckStillOffersUpdate() {
+        val controller = Robolectric.buildActivity(Screen::class.java).setup()
+        try {
+            val first = AppUpdateCoordinator(controller.get())
+            first.check(force = true); waitDone(first)
+            ShadowAlertDialog.getLatestAlertDialog().getButton(android.content.DialogInterface.BUTTON_NEGATIVE).performClick()
+            assertFalse(AppUpdateGate.isBlocked())
+            val second = AppUpdateCoordinator(controller.get())
+            second.check(force = true); waitDone(second)
+            assertFalse(ShadowAlertDialog.getLatestAlertDialog().isShowing)
+            second.check(showNoUpdate = true); waitDone(second)
+            assertTrue(ShadowAlertDialog.getLatestAlertDialog().isShowing)
+            ShadowAlertDialog.getLatestAlertDialog().dismiss()
+            UpdateBackendShadow.mandatory = true
+            second.check(force = true); waitDone(second)
+            assertTrue(AppUpdateGate.isBlocked())
+            assertTrue(ShadowAlertDialog.getLatestAlertDialog().isShowing)
+            UpdateBackendShadow.mandatory = false
+            second.check(force = true); waitDone(second)
+            assertFalse(AppUpdateGate.isBlocked())
             assertFalse(ShadowAlertDialog.getLatestAlertDialog().isShowing)
         } finally { controller.pause().stop().destroy() }
     }

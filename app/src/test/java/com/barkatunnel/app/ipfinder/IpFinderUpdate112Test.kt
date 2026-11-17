@@ -41,25 +41,39 @@ class IpFinderUpdate112Test {
         AssistantRoles.held = false
     }
 
-    @Test fun newInstallRejectsRetiredPrefixButKeepsOtherAddresses() {
-        assertFalse(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
+    @Test fun newInstallAcceptsRestoredPrefixAndKeepsOtherAddresses() {
+        assertTrue(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.161.1.2"))
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.209.1.2"))
+        assertTrue(IpFinderActivity.isIpCompatible(context, "100.80.1.2"))
+        assertFalse(IpFinderActivity.isIpCompatible(context, "10.148.1.2"))
     }
 
     @Test fun savedPatternsAreMigratedWithoutRemovingSimilarPrefixesOrCustomRules() {
         preferences.edit().putString("search_pattern", "10.46;^10.46;=10.46;10.148,10.146\n^10.75;=192.168.1.2").commit()
-        assertFalse(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
-        assertEquals("10.146;^10.75;=192.168.1.2", preferences.getString("search_pattern", ""))
+        assertTrue(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
+        assertEquals("10.46;^10.46;=10.46;10.146;^10.75;=192.168.1.2", preferences.getString("search_pattern", ""))
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.146.1.2"))
         assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.2"))
         assertFalse(IpFinderActivity.isIpCompatible(context, "192.168.1.3"))
     }
 
     @Test fun onlyRetiredPatternsRestoreTheSupportedDefaults() {
-        preferences.edit().putString("search_pattern", "10.46;^10.148").commit()
-        assertFalse(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
+        preferences.edit().putString("search_pattern", "10.148;^10.194").commit()
+        assertTrue(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.161.1.2"))
+    }
+
+    @Test fun previousDefaultListGetsNewPrefixesOnceWithoutChangingCustomFilters() {
+        preferences.edit().putString("search_pattern", "10.161;10.76;10.74;10.102;10.75;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210;10.212;10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165;10.51;10.63;10.193;10.67;10.43;10.73").commit()
+        repeat(2) {
+            assertTrue(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
+            assertTrue(IpFinderActivity.isIpCompatible(context, "100.80.1.2"))
+            assertEquals(46, preferences.getString("search_pattern", "")!!.split(';').size)
+        }
+        preferences.edit().putString("search_pattern", "=192.168.1.1").commit()
+        assertFalse(IpFinderActivity.isIpCompatible(context, "100.80.1.2"))
+        assertEquals("=192.168.1.1", preferences.getString("search_pattern", ""))
     }
 
     @Test fun removesRetiredPrefixesAndPreservesLaterUserEdits() {

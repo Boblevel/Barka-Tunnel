@@ -58,4 +58,49 @@ class ResumableApkDownloadTest {
             assertEquals(0, java.io.File(dir, "update.part").length())
         }
     }
+
+    @Test fun temporaryServerFailureRemainsRetryableEvenWithHtmlBody() {
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(503).message("Busy")
+                .body("maintenance".toResponseBody("text/html".toMediaType())).build()
+        }.build()
+        try { ResumableApkDownload(client).download(url, folder.newFolder(), { false }) { _, _ -> }; fail() }
+        catch (error: IOException) { assertFalse(error is ApkDownloadRejected) }
+    }
+    @Test fun expiredRangeClearsValidatorAndNextAttemptStartsFresh() {
+        val dir = folder.newFolder(); var pause = false
+        val first = OkHttpClient.Builder().addInterceptor { response(it.request(), ByteArray(100000), 200) }.build()
+        try { ResumableApkDownload(first).download(url, dir, { pause }) { done, _ -> if (done > 0) pause = true } }
+        catch (_: IOException) { }
+        val expired = OkHttpClient.Builder().addInterceptor { response(it.request(), byteArrayOf(), 416) }.build()
+        try { ResumableApkDownload(expired).download(url, dir, { false }) { _, _ -> }; fail() }
+        catch (_: IOException) { }
+        val bytes = byteArrayOf(7, 8, 9)
+        val fresh = OkHttpClient.Builder().addInterceptor {
+            assertNull(it.request().header("Range")); response(it.request(), bytes, 200)
+        }.build()
+        assertArrayEquals(bytes, ResumableApkDownload(fresh).download(url, dir, { false }) { _, _ -> }.readBytes())
+    }
+    @Test fun cancelInterruptsActiveCallBeforeReadTimeout() {
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            entered.countDown()
+            val deadline = System.nanoTime() + 5_000_000_000L
+            while (!chain.call().isCanceled() && System.nanoTime() < deadline) Thread.sleep(5)
+            assertTrue(chain.call().isCanceled())
+            throw IOException("Cancelled")
+        }.build()
+        val download = ResumableApkDownload(client)
+        val dir = folder.newFolder()
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            val task = executor.submit<Boolean> {
+                try { download.download(url, dir, { false }) { _, _ -> }; false }
+                catch (_: IOException) { true }
+            }
+            assertTrue(entered.await(2, java.util.concurrent.TimeUnit.SECONDS))
+            download.cancel()
+            assertTrue(task.get(2, java.util.concurrent.TimeUnit.SECONDS))
+        } finally { download.cancel(); executor.shutdownNow() }
+    }
 }

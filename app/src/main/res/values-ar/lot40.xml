@@ -8,4 +8,6 @@
     <string name="install_storage">المساحة غير كافية. حرر مساحة ثم حاول مجدداً.</string>
     <string name="install_conflict">يتعارض التثبيت مع الإصدار المثبت. تواصل مع الدعم ولا تحذف بياناتك.</string>
     <string name="install_incompatible">ملف APK غير متوافق مع إصدار Android أو معالج الهاتف. تواصل مع الدعم.</string>
+    <string name="install_blocked">حظر Android التثبيت. تحقق من إذن تثبيت التطبيقات غير المعروفة وقيود الجهاز أو ملف العمل. لا تعطل وسائل الحماية الأمنية.</string>
+    <string name="install_invalid">رفض Android ملف APK هذا. أعد تنزيل الإصدار الرسمي وراجع السجل؛ لا تحذف التطبيق.</string>
 </resources>

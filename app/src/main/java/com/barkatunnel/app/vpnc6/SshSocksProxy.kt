@@ -147,13 +147,20 @@ class SshSocksProxy(
         var connectedReply = false
         var upstream: Future<*>? = null
         try {
+            socket.tcpNoDelay = true
             socket.soTimeout = 20_000
             val input = DataInputStream(socket.getInputStream())
             val output = DataOutputStream(socket.getOutputStream())
 
             if (input.readUnsignedByte() != 0x05) return
             val methodCount = input.readUnsignedByte()
-            repeat(methodCount) { input.readUnsignedByte() }
+            var acceptsNoAuth = false
+            repeat(methodCount) { if (input.readUnsignedByte() == 0) acceptsNoAuth = true }
+            if (!acceptsNoAuth) {
+                output.write(byteArrayOf(0x05, 0xff.toByte()))
+                output.flush()
+                return
+            }
             output.write(byteArrayOf(0x05, 0x00))
             output.flush()
 
