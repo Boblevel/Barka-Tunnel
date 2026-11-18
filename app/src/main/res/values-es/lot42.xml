@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_guide_loading">Cargando vídeo…</string>
+    <string name="video_guide_slow">La carga está tardando. Puedes esperar o reintentar.</string>
+    <string name="video_guide_webview">El reproductor Android no está disponible o no es compatible con la VPN. Actualiza Android System WebView y reintenta.</string>
+    <string name="video_guide_restricted">Este vídeo no está disponible o su propietario ha desactivado la reproducción integrada.</string>
+    <string name="video_guide_identity">YouTube no reconoce el reproductor. Actualiza Android System WebView y reintenta.</string>
+    <string name="video_guide_close">Cerrar</string>
+    <string name="video_guide_retry">Reintentar</string>
+    <string name="ip_alert_system_policy">IP Finder • Alerta solicitada; Android puede limitar la vibración según el modo No molestar.</string>
+</resources>

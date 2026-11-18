@@ -266,6 +266,8 @@ def init_db() -> None:
             update_columns = {row["name"] for row in cx.execute("PRAGMA table_info(app_update)").fetchall()}
             if "download_in_app" not in update_columns:
                 cx.execute("ALTER TABLE app_update ADD COLUMN download_in_app INTEGER NOT NULL DEFAULT 0")
+            if "orange_ip_indicator_enabled" not in update_columns:
+                cx.execute("ALTER TABLE app_update ADD COLUMN orange_ip_indicator_enabled INTEGER NOT NULL DEFAULT 1")
 
             reseller_columns = {row["name"] for row in cx.execute("PRAGMA table_info(reseller_accounts)").fetchall()}
             if "password_nonce" not in reseller_columns:

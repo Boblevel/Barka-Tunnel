@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_guide_loading">جارٍ تحميل الفيديو…</string>
+    <string name="video_guide_slow">يستغرق التحميل وقتاً أطول. يمكنك الانتظار أو إعادة المحاولة.</string>
+    <string name="video_guide_webview">مشغّل Android غير متاح أو غير متوافق مع VPN. حدّث Android System WebView ثم أعد المحاولة.</string>
+    <string name="video_guide_restricted">هذا الفيديو غير متاح أو عطّل مالكه التشغيل المضمّن.</string>
+    <string name="video_guide_identity">لم يتعرّف YouTube على المشغّل. حدّث Android System WebView ثم أعد المحاولة.</string>
+    <string name="video_guide_close">إغلاق</string>
+    <string name="video_guide_retry">إعادة المحاولة</string>
+    <string name="ip_alert_system_policy">IP Finder • طُلب التنبيه؛ قد يحدّ Android من الاهتزاز وفق إعدادات عدم الإزعاج.</string>
+</resources>

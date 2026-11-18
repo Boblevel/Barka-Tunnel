@@ -126,16 +126,11 @@ class IpSearchService : Service() {
             AppLogStore.add(this, getString(reason))
             return false
         }
-        if (!androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled())
-            return blocked(R.string.ip_alert_notifications_disabled)
+        // Search completion is requested explicitly by the user. Notification permission
+        // controls the notification, not access to Vibrator. Let Android apply its own
+        // DND policy (priority mode may allow this alert), without bypass flags.
         if (notifications.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL)
-            return blocked(R.string.ip_alert_dnd)
-        if (Build.VERSION.SDK_INT >= 26) {
-            val channel = notifications.getNotificationChannel(FOUND_CHANNEL)
-                ?: return blocked(R.string.ip_alert_channel_disabled)
-            if (!channel.shouldVibrate() || channel.importance < NotificationManager.IMPORTANCE_DEFAULT)
-                return blocked(R.string.ip_alert_channel_disabled)
-        }
+            AppLogStore.add(this, getString(R.string.ip_alert_system_policy))
         val vibrator = if (Build.VERSION.SDK_INT >= 31)
             getSystemService(VibratorManager::class.java)?.defaultVibrator
         else getSystemService(Vibrator::class.java)

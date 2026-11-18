@@ -26,6 +26,7 @@ def valid_download_url(value: str) -> bool:
 
 def _row_to_admin(row) -> dict:
     return {
+        "orange_ip_indicator_enabled": bool(row["orange_ip_indicator_enabled"]),
         "download_in_app": bool(row["download_in_app"]),
         "enabled": bool(row["enabled"]),
         "latest_version_code": int(row["latest_version_code"]),
@@ -52,6 +53,8 @@ def get_app_update_for_client(current_version_code: int) -> dict:
     item = get_app_update_admin()
     available = bool(item["enabled"]) and int(item["latest_version_code"]) > int(current_version_code)
     return {
+        # Display setting is synchronized even when no APK update is available.
+        "orange_ip_indicator_enabled": item["orange_ip_indicator_enabled"],
         # Older installed clients also use enabled to decide notifications.
         "download_in_app": item["download_in_app"],
         "enabled": available,
@@ -63,6 +66,13 @@ def get_app_update_for_client(current_version_code: int) -> dict:
         "message": item["message"],
         "updated_at": item["updated_at"],
     }
+
+
+def set_orange_ip_indicator(enabled: bool) -> dict:
+    # Independent from APK publication: do not change its revision or notification.
+    with transaction() as cx:
+        cx.execute("UPDATE app_update SET orange_ip_indicator_enabled=? WHERE id=1", (int(enabled),))
+    return {"enabled": enabled}
 
 
 def upsert_app_update(payload: dict) -> dict:

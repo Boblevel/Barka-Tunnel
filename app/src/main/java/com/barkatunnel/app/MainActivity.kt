@@ -995,6 +995,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showOrangeIpWarningIfNeeded(currentCellularIp: String?) {
         val shouldWarn = selectedNetwork?.id in listOf("orange_bf", "orange_bf_v2") &&
+            com.barkatunnel.app.networkinfo.OrangeIpIndicator.enabledFor(this, selectedNetwork?.id) &&
             !currentCellularIp.isNullOrBlank() &&
             !IpFinderActivity.isIpCompatible(this, currentCellularIp)
 
@@ -1873,6 +1874,7 @@ class MainActivity : AppCompatActivity() {
         val isVpnInterfaceIp = info.ip == "10.10.0.1" &&
             (info.transportType == NetworkTransport.CELLULAR || info.transportType == NetworkTransport.VPN)
         val visualState = when {
+            !com.barkatunnel.app.networkinfo.OrangeIpIndicator.enabledFor(this, selectedNetwork?.id) -> NetworkIpVisualState.NEUTRAL
             isVpnInterfaceIp -> NetworkIpVisualState.VALID
             cellularIp == null -> NetworkIpVisualState.NEUTRAL
             selectedNetwork?.id in listOf("orange_bf", "orange_bf_v2") -> {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_guide_loading">Chargement de la vidéo…</string>
+    <string name="video_guide_slow">Le chargement prend du temps. Vous pouvez attendre ou réessayer.</string>
+    <string name="video_guide_webview">Le lecteur Android est indisponible ou incompatible avec le VPN. Mettez à jour Android System WebView, puis réessayez.</string>
+    <string name="video_guide_restricted">Cette vidéo est indisponible ou sa lecture intégrée est désactivée par son propriétaire.</string>
+    <string name="video_guide_identity">YouTube ne reconnaît pas le lecteur. Mettez à jour Android System WebView, puis réessayez.</string>
+    <string name="video_guide_close">Fermer</string>
+    <string name="video_guide_retry">Réessayer</string>
+    <string name="ip_alert_system_policy">IP Finder • Alerte demandée ; Android peut limiter la vibration selon le mode Ne pas déranger.</string>
+</resources>

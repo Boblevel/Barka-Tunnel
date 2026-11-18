@@ -32,6 +32,7 @@ from .app_updates import (
     release_apk_path,
     release_apk_url,
     upsert_app_update,
+    set_orange_ip_indicator,
 )
 
 from .request_protection import protect_request
@@ -64,6 +65,7 @@ from .models import (
     AppUpdateAdminResponse,
     AppUpdateAdminUpsert,
     AppUpdateResponse,
+    OrangeIpIndicatorSettings,
     ResellerGenerateSubscriptionRequest,
     ResellerGenerateTestRequest,
     ResellerLoginRequest,
@@ -782,6 +784,15 @@ def admin_reseller_details(reseller_id: int):
 )
 def admin_app_update_get():
     return get_app_update_admin()
+
+
+@app.post(
+    "/v1/admin/app-update/orange-ip-indicator",
+    response_model=OrangeIpIndicatorSettings,
+    dependencies=[Depends(require_admin)],
+)
+def admin_orange_ip_indicator_set(body: OrangeIpIndicatorSettings):
+    return set_orange_ip_indicator(body.enabled)
 
 
 @app.post(

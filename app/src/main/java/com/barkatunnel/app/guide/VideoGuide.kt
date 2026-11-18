@@ -1,8 +1,6 @@
 package com.barkatunnel.app.guide
 
 import android.app.Activity
-import android.content.Intent
-import android.net.Uri
 import android.graphics.Color
 import android.view.View
 import android.webkit.WebChromeClient
@@ -56,11 +54,11 @@ object VideoGuide {
         }
     }
 
-    private fun show(activity: Activity, id: String) {
+    internal fun show(activity: Activity, id: String) {
         val player = try {
             WebView(activity)
         } catch (_: RuntimeException) {
-            openExternal(activity, id)
+            Toast.makeText(activity, R.string.video_guide_webview, Toast.LENGTH_LONG).show()
             return
         }
         player.settings.javaScriptEnabled = true
@@ -75,78 +73,98 @@ object VideoGuide {
         var rendererGone = false
         var routeInitialized = false
         var routedPort: Int? = null
-        val status = android.widget.TextView(activity).apply {
-            setText(R.string.video_guide_intro)
-            setPadding(8, 4, 8, 16)
+        var attempt = 0
+        fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
+        val progress = android.widget.ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
+            isIndeterminate = true
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(ContextCompat.getColor(activity, R.color.barka_blue))
         }
-        fun showPlaybackError() {
-            status.setText(R.string.video_guide_unavailable)
-            player.visibility = View.GONE
+        val status = android.widget.TextView(activity).apply {
+            setText(R.string.video_guide_loading)
+            setTextColor(ContextCompat.getColor(activity, R.color.barka_text_secondary))
+            textSize = 14f
+            setPadding(0, dp(12), 0, dp(16))
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        var failed = false
+        fun showPlaybackError(message: Int = R.string.video_guide_unavailable, diagnostic: String = "network") {
+            if (dismissed) return
+            failed = true
+            progress.visibility = View.INVISIBLE
+            status.setText(message)
+            // Keep the player and its own useful error visible; never collapse the dialog.
+            com.barkatunnel.app.journal.AppLogStore.add(activity, "Guide vidéo • $diagnostic")
         }
         player.webViewClient = object : WebViewClient() {
             override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
                 rendererGone = true
-                showPlaybackError()
+                showPlaybackError(R.string.video_guide_webview, "renderer")
                 (view.parent as? android.view.ViewGroup)?.removeView(view)
                 view.destroy()
                 return true
             }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 // Never launch arbitrary intents received from embedded content.
-                return request.url.scheme != "https"
+                return request.url.scheme != "https" || request.isForMainFrame
             }
+            @Suppress("DEPRECATION")
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = true
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) showPlaybackError()
+                if (request.isForMainFrame) showPlaybackError(diagnostic = "web ${error.errorCode}")
             }
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: android.webkit.WebResourceResponse) {
-                if (request.isForMainFrame) showPlaybackError()
+                if (request.isForMainFrame) showPlaybackError(diagnostic = "http ${response.statusCode}")
             }
         }
         player.setBackgroundColor(Color.BLACK)
-        val origin = "https://api.rhaffservice.com"
-        val html = """
-            <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-            <meta name="referrer" content="strict-origin-when-cross-origin">
-            <style>html,body,iframe,#player{width:100%;height:100%;margin:0;border:0;background:#000}</style>
-            </head><body>
-            <iframe id="player" src="https://www.youtube.com/embed/$id?playsinline=1&amp;enablejsapi=1&amp;origin=$origin"
-                title="YouTube" referrerpolicy="strict-origin-when-cross-origin"
-                allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
-            <script>
-                function onYouTubeIframeAPIReady() {
-                    new YT.Player('player', { events: {
-                        onReady: function () { document.title = 'player-ready'; },
-                        onError: function () { document.title = 'player-error'; }
-                    } });
-                }
-            </script>
-            <script src="https://www.youtube.com/iframe_api"></script>
-            </body></html>
-        """.trimIndent()
+        // YouTube requires the installed app ID as the WebView referrer identity.
+        val origin = VideoGuidePage.origin(activity.packageName)
         var playerReady = false
         player.webChromeClient = object : WebChromeClient() {
             override fun onReceivedTitle(view: WebView, title: String?) {
-                when (title) {
-                    "player-ready" -> {
+                if (dismissed || title == null || !title.startsWith("guide-$attempt-")) return
+                val signal = title.removePrefix("guide-$attempt-")
+                when (signal) {
+                    "ready", "playing" -> {
+                        failed = false
                         playerReady = true
+                        progress.visibility = View.INVISIBLE
                         status.setText(R.string.video_guide_intro)
                     }
-                    "player-error" -> showPlaybackError()
+                    "buffering" -> {
+                        progress.visibility = View.VISIBLE
+                        status.setText(R.string.video_guide_loading)
+                    }
+                    "network" -> showPlaybackError(diagnostic = "iframe API network")
+                    else -> if (signal.startsWith("error-")) {
+                        val code = signal.removePrefix("error-").toIntOrNull() ?: return
+                        showPlaybackError(when (code) {
+                            101, 150, 100 -> R.string.video_guide_restricted
+                            153 -> R.string.video_guide_identity
+                            else -> R.string.video_guide_unavailable
+                        }, "YouTube $code")
+                    }
                 }
             }
         }
         val timeout = Runnable {
-            if (!playerReady) showPlaybackError()
+            // A slow network is not proof of a failed video. Leave playback running.
+            if (!dismissed && !failed && !playerReady) status.setText(R.string.video_guide_slow)
         }
         fun loadPlayer() {
-            if (rendererGone) { openExternal(activity, id); return }
+            if (dismissed || rendererGone) return
+            attempt++
+            val loadAttempt = attempt
+            failed = false
             playerReady = false
-            player.visibility = View.VISIBLE
-            status.setText(R.string.video_guide_intro)
+            progress.visibility = View.VISIBLE
+            status.setText(R.string.video_guide_loading)
             player.removeCallbacks(timeout)
+            player.evaluateJavascript("if(typeof pauseGuide==='function')pauseGuide();", null)
+            player.stopLoading()
             val load = Runnable {
-                if (!dismissed && !rendererGone) {
-                    player.loadDataWithBaseURL("$origin/", html, "text/html", "UTF-8", null)
+                if (!dismissed && !rendererGone && attempt == loadAttempt) {
+                    player.loadDataWithBaseURL("$origin/", VideoGuidePage.html(id, origin, loadAttempt), "text/html", "UTF-8", null)
                     player.postDelayed(timeout, 30_000)
                 }
             }
@@ -160,27 +178,27 @@ object VideoGuide {
                     if (port != null) ProxyController.getInstance().setProxyOverride(
                         ProxyConfig.Builder().addProxyRule("socks://127.0.0.1:$port").build(), uiExecutor, load)
                     else ProxyController.getInstance().clearProxyOverride(uiExecutor, load)
-                } catch (_: RuntimeException) { showPlaybackError() }
+                } catch (_: RuntimeException) { showPlaybackError(diagnostic = "proxy") }
             } else if (port != null) {
-                showPlaybackError()
-                openExternal(activity, id)
+                showPlaybackError(R.string.video_guide_webview, "proxy unsupported")
             } else load.run()
         }
         val content = android.widget.LinearLayout(activity).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(16, 12, 16, 12)
-            addView(status)
+            setPadding(dp(20), dp(8), dp(20), dp(8))
+            addView(progress, android.widget.LinearLayout.LayoutParams(-1, dp(3)))
+            addView(status, android.widget.LinearLayout.LayoutParams(-1, -2))
             val metrics = activity.resources.displayMetrics
             val height = ((metrics.widthPixels - 64 * metrics.density) * 9 / 16)
-                .coerceAtMost(metrics.heightPixels * 0.45f).coerceAtLeast(120 * metrics.density).toInt()
+                .coerceAtMost(metrics.heightPixels * 0.45f).coerceAtLeast(200 * metrics.density).toInt()
             addView(player, android.widget.LinearLayout.LayoutParams(-1, height))
         }
         val owner = activity as? androidx.lifecycle.LifecycleOwner
         var lifecycle: androidx.lifecycle.LifecycleEventObserver? = null
-        val dialog = AlertDialog.Builder(activity).setTitle(R.string.video_guide_title).setView(content)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setNeutralButton(R.string.download_resume, null)
-            .setPositiveButton(R.string.video_guide_external) { _, _ -> openExternal(activity, id) }
+        val scroll = android.widget.ScrollView(activity).apply { addView(content) }
+        val dialog = AlertDialog.Builder(activity).setTitle(R.string.video_guide_title).setView(scroll)
+            .setPositiveButton(R.string.video_guide_close, null)
+            .setNegativeButton(R.string.video_guide_retry, null)
             .create()
         dialog.setOnDismissListener {
             dismissed = true
@@ -197,11 +215,15 @@ object VideoGuide {
             }
         }
         dialog.show()
+        dialog.window?.setLayout(minOf(activity.resources.displayMetrics.widthPixels - dp(24), dp(600)), -2)
+        listOf(android.content.DialogInterface.BUTTON_POSITIVE, android.content.DialogInterface.BUTTON_NEGATIVE).forEach {
+            dialog.getButton(it).setTextColor(ContextCompat.getColor(activity, R.color.barka_blue))
+        }
         dialog.window?.decorView?.let { com.barkatunnel.app.ui.BarkaTypography.apply(it) }
         lifecycle = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> if (!dismissed && !rendererGone) {
-                    player.evaluateJavascript("var p=document.getElementById('player');if(p)p.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), 'https://www.youtube.com');", null)
+                    player.evaluateJavascript("if(typeof pauseGuide==='function')pauseGuide();", null)
                     player.onPause()
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> if (!dismissed && !rendererGone) {
@@ -213,15 +235,9 @@ object VideoGuide {
             }
         }
         owner?.lifecycle?.addObserver(lifecycle)
-        dialog.getButton(android.content.DialogInterface.BUTTON_NEUTRAL).setOnClickListener { loadPlayer() }
-        loadPlayer()
-    }
-
-    private fun openExternal(activity: Activity, id: String) {
-        try {
-            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$id")))
-        } catch (_: RuntimeException) {
-            Toast.makeText(activity, R.string.video_guide_unavailable, Toast.LENGTH_LONG).show()
+        dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE).setOnClickListener {
+            if (rendererGone) { dialog.dismiss(); show(activity, id) } else loadPlayer()
         }
+        loadPlayer()
     }
 }

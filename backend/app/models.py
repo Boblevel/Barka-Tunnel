@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StrictBool, field_validator
 
 
 class DeviceRequest(BaseModel):
@@ -249,9 +249,15 @@ class AppUpdateAdminUpsert(BaseModel):
 
 class AppUpdateAdminResponse(AppUpdateAdminUpsert):
     updated_at: str
+    orange_ip_indicator_enabled: bool = True
+
+
+class OrangeIpIndicatorSettings(BaseModel):
+    enabled: StrictBool
 
 
 class AppUpdateResponse(BaseModel):
+    orange_ip_indicator_enabled: bool = True
     download_in_app: bool = False
     enabled: bool
     update_available: bool

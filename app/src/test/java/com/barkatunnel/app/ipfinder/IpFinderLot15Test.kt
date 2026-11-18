@@ -57,7 +57,7 @@ class IpFinderLot15Test {
             assertEquals("—",activity.findViewById<TextView>(R.id.scanResult).text.toString())
         } finally {controller.pause().stop().destroy()}
     }
-    @Test @Config(sdk=[28,33]) fun serviceVibratesWithoutAnActivityAndHonorsDoNotDisturb() {
+    @Test @Config(sdk=[28,33]) fun serviceVibratesWithoutAnActivityAndDelegatesDndToAndroid() {
         shadowOf(context).grantPermissions("com.barkatunnel.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
         val controller=Robolectric.buildService(IpSearchService::class.java).create()
         try {
@@ -71,7 +71,8 @@ class IpFinderLot15Test {
             service.getSystemService(Vibrator::class.java).cancel()
             manager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
             alert.invoke(service)
-            assertFalse(vibrator.isVibrating)
+            // Robolectric records the request; only a device applies the system DND policy.
+            assertTrue(vibrator.isVibrating)
         } finally {controller.destroy()}
     }
 }

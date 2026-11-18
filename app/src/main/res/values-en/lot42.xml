@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_guide_loading">Loading video…</string>
+    <string name="video_guide_slow">Loading is taking longer. You can wait or retry.</string>
+    <string name="video_guide_webview">The Android player is unavailable or incompatible with the VPN. Update Android System WebView, then retry.</string>
+    <string name="video_guide_restricted">This video is unavailable or its owner has disabled embedded playback.</string>
+    <string name="video_guide_identity">YouTube cannot identify the player. Update Android System WebView, then retry.</string>
+    <string name="video_guide_close">Close</string>
+    <string name="video_guide_retry">Retry</string>
+    <string name="ip_alert_system_policy">IP Finder • Alert requested; Android may limit vibration according to Do Not Disturb settings.</string>
+</resources>

@@ -21,6 +21,7 @@ on:
       - validation/lot39-release
       - validation/lot40-144
       - validation/lot41-145
+      - validation/lot42-145
 
 concurrency:
   group: barka-production-deploy

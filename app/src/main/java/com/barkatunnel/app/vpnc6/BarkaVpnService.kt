@@ -30,6 +30,10 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
+internal fun shouldDisconnectForAccess(
+    access: com.barkatunnel.app.backend.BackendAccessState?, expectedRevision: Long
+): Boolean = access != null && (!access.allowed || access.accessRevision != expectedRevision)
+
 class BarkaVpnService : VpnService() {
     private val worker = Executors.newSingleThreadExecutor()
     private val accessExecutor = Executors.newSingleThreadScheduledExecutor()
@@ -639,8 +643,9 @@ class BarkaVpnService : VpnService() {
                         }
                     }
                 }
-                if ((access != null && (!access.allowed || access.accessRevision != revision)) ||
-                    com.barkatunnel.app.update.AppUpdateGate.isBlocked()) {
+                // An APK update must not cut the transport needed to download it.
+                // Expired/revoked access still stops the tunnel independently.
+                if (shouldDisconnectForAccess(access, revision)) {
                     mainHandler.post {
                         if (connected && !stopping && operationGeneration.get() == accessGeneration) {
                             AppLogStore.add(this, "Accès modifié par le serveur. Déconnexion.")

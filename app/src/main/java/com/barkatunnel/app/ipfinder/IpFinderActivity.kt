@@ -319,7 +319,7 @@ class IpFinderActivity : AppCompatActivity() {
     private fun startSearch() {
         searchPatterns = parsePatterns(ipInput.text.toString())
         val current = currentVisibleIpv4()
-        if (current != null && matchesSearchPattern(current)) { refreshNetworkState(); return }
+        if (current != null && matchesSearchPattern(current)) { refreshNetworkState(); vibrateOnce(); return }
         if (isWifiActive()) {
             Toast.makeText(
                 this,

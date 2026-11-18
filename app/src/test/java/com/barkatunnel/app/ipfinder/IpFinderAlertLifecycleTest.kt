@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
 import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28, 33], application = Application::class)
+@Config(sdk = [23, 28, 33], application = Application::class)
 class IpFinderAlertLifecycleTest {
     private val app get() = RuntimeEnvironment.getApplication()
 
@@ -82,35 +82,44 @@ class IpFinderAlertLifecycleTest {
         assertFalse(IpSearchService.active)
     }
 
-    @Test fun disabledNotificationsAreDiagnosedWithoutLosingTheFoundIp() = withService { service ->
+    @Test fun disabledNotificationsDoNotSuppressTheExplicitSearchAlert() = withService { service ->
         shadowOf(app.getSystemService(NotificationManager::class.java)).setNotificationsEnabled(false)
         succeed(service)
-        assertFalse(shadowOf(app.getSystemService(Vibrator::class.java)).isVibrating)
-        assertTrue(shadowOf(service).isStoppedBySelf)
+        assertTrue(shadowOf(app.getSystemService(Vibrator::class.java)).isVibrating)
+        assertFalse(shadowOf(service).isStoppedBySelf)
         assertEquals("10.161.1.2", IpSearchService.foundIp)
-        assertTrue(AppLogStore.getAll(app).contains(app.getString(R.string.ip_alert_notifications_disabled)))
+        assertTrue(AppLogStore.getAll(app).contains(app.getString(R.string.ip_alert_requested)))
     }
 
-    @Test fun existingSilentChannelIsPreservedAndDiagnosed() {
+    @Test @Config(sdk = [28, 33]) fun existingSilentChannelIsPreservedWithoutBlockingTheExplicitAlert() {
         val manager = app.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel("ip_search_found", "Existing", NotificationManager.IMPORTANCE_HIGH).apply {
             enableVibration(false)
         })
         withService { service ->
             assertFalse(manager.getNotificationChannel("ip_search_found").shouldVibrate())
-            assertFalse(vibrate(service))
-            assertTrue(AppLogStore.getAll(app).contains(app.getString(R.string.ip_alert_channel_disabled)))
+            assertTrue(vibrate(service))
+            assertFalse(manager.getNotificationChannel("ip_search_found").shouldVibrate())
         }
     }
 
-    @Test fun doNotDisturbAndMissingHardwareHaveExplicitDiagnostics() = withService { service ->
+    @Test fun androidDecidesDndPolicyAndMissingHardwareIsDiagnosed() = withService { service ->
         val manager = app.getSystemService(NotificationManager::class.java)
         manager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
-        assertFalse(vibrate(service))
-        assertTrue(AppLogStore.getAll(app).contains(app.getString(R.string.ip_alert_dnd)))
+        assertTrue(vibrate(service))
+        assertTrue(AppLogStore.getAll(app).contains(app.getString(R.string.ip_alert_system_policy)))
         manager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
         shadowOf(app.getSystemService(Vibrator::class.java)).setHasVibrator(false)
         assertFalse(vibrate(service))
         assertTrue(AppLogStore.getAll(app).contains(app.getString(R.string.ip_alert_no_vibrator)))
+    }
+
+    @Test fun repeatedSuccessDoesNotSendAnotherAlert() = withService { service ->
+        succeed(service)
+        val vibrator = app.getSystemService(Vibrator::class.java)
+        vibrator.cancel()
+        IpSearchService::class.java.getDeclaredMethod("success", String::class.java)
+            .apply { isAccessible = true }.invoke(service, "10.161.1.2")
+        assertFalse(shadowOf(vibrator).isVibrating)
     }
 }

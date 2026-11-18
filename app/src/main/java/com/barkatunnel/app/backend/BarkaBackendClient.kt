@@ -202,6 +202,8 @@ class BarkaBackendClient(context: Context) {
         if (available && !AppUpdateDestination.isValid(apkUrl)) {
             throw BarkaBackendException("Lien de mise à jour invalide.")
         }
+        com.barkatunnel.app.networkinfo.OrangeIpIndicator.synchronize(
+            appContext, body.opt("orange_ip_indicator_enabled"))
         return BackendAppUpdate(
             enabled = body.optBoolean("enabled", false),
             updateAvailable = available,
