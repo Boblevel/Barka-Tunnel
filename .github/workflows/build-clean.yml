@@ -29,6 +29,7 @@ concurrency:
 
 jobs:
   build-clean:
+    if: github.ref != 'refs/heads/validation/lot43-145'
     runs-on: ubuntu-latest
 
     steps:

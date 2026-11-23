@@ -19,7 +19,7 @@ import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.vpnc6.BarkaVpnService
 import java.net.URI
 
-/** Only the fixed YouTube embed origin is loaded; the admin supplies an ID through the server. */
+/** Admin-selected YouTube guide with a fixed, hosted MP4 fallback. */
 object VideoGuide {
     fun bind(activity: Activity, button: View, key: String) {
         button.visibility = View.VISIBLE
@@ -45,16 +45,16 @@ object VideoGuide {
                     if (!prefs.getBoolean(key, false)) {
                         AlertDialog.Builder(activity).setTitle(R.string.video_guide_title)
                             .setMessage(R.string.video_guide_intro)
-                            .setPositiveButton(R.string.video_guide_watch) { _, _ -> show(activity, id) }
+                            .setPositiveButton(R.string.video_guide_watch) { _, _ -> show(activity, id, true) }
                             .setNegativeButton(android.R.string.cancel, null).show()
                         prefs.edit().putBoolean(key, true).apply()
-                    } else show(activity, id)
+                    } else show(activity, id, true)
                 }
             }.start()
         }
     }
 
-    internal fun show(activity: Activity, id: String) {
+    internal fun show(activity: Activity, id: String, allowHostedFallback: Boolean = false) {
         val player = try {
             WebView(activity)
         } catch (_: RuntimeException) {
@@ -74,6 +74,15 @@ object VideoGuide {
         var routeInitialized = false
         var routedPort: Int? = null
         var attempt = 0
+        var usingHosted = id == VideoGuidePage.HOSTED_ID
+        var reloadHosted: (() -> Unit)? = null
+        fun useHostedFallback(): Boolean {
+            if (!allowHostedFallback || usingHosted || dismissed || rendererGone) return false
+            usingHosted = true
+            com.barkatunnel.app.journal.AppLogStore.add(activity, "Guide vidéo • lecture MP4 de secours")
+            reloadHosted?.invoke()
+            return true
+        }
         fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
         val progress = android.widget.ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
             isIndeterminate = true
@@ -87,6 +96,7 @@ object VideoGuide {
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
         var failed = false
+        var scheduleBufferingTimeout: (() -> Unit)? = null
         fun showPlaybackError(message: Int = R.string.video_guide_unavailable, diagnostic: String = "network") {
             if (dismissed) return
             failed = true
@@ -110,10 +120,10 @@ object VideoGuide {
             @Suppress("DEPRECATION")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = true
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) showPlaybackError(diagnostic = "web ${error.errorCode}")
+                if (request.isForMainFrame && !useHostedFallback()) showPlaybackError(diagnostic = "web ${error.errorCode}")
             }
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: android.webkit.WebResourceResponse) {
-                if (request.isForMainFrame) showPlaybackError(diagnostic = "http ${response.statusCode}")
+                if (request.isForMainFrame && !useHostedFallback()) showPlaybackError(diagnostic = "http ${response.statusCode}")
             }
         }
         player.setBackgroundColor(Color.BLACK)
@@ -132,12 +142,17 @@ object VideoGuide {
                         status.setText(R.string.video_guide_intro)
                     }
                     "buffering" -> {
+                        playerReady = false
                         progress.visibility = View.VISIBLE
                         status.setText(R.string.video_guide_loading)
+                        scheduleBufferingTimeout?.invoke()
                     }
-                    "network" -> showPlaybackError(diagnostic = "iframe API network")
-                    else -> if (signal.startsWith("error-")) {
+                    "network" -> if (!useHostedFallback()) showPlaybackError(diagnostic = "iframe API network")
+                    else -> if (signal.startsWith("media-error-")) {
+                        showPlaybackError(diagnostic = signal)
+                    } else if (signal.startsWith("error-")) {
                         val code = signal.removePrefix("error-").toIntOrNull() ?: return
+                        if (useHostedFallback()) return
                         showPlaybackError(when (code) {
                             101, 150, 100 -> R.string.video_guide_restricted
                             153 -> R.string.video_guide_identity
@@ -148,8 +163,12 @@ object VideoGuide {
             }
         }
         val timeout = Runnable {
-            // A slow network is not proof of a failed video. Leave playback running.
-            if (!dismissed && !failed && !playerReady) status.setText(R.string.video_guide_slow)
+            // Try the supplied MP4 once when YouTube never becomes ready.
+            if (!dismissed && !failed && !playerReady && !useHostedFallback()) status.setText(R.string.video_guide_slow)
+        }
+        scheduleBufferingTimeout = {
+            player.removeCallbacks(timeout)
+            player.postDelayed(timeout, 30_000)
         }
         fun loadPlayer() {
             if (dismissed || rendererGone) return
@@ -164,7 +183,7 @@ object VideoGuide {
             player.stopLoading()
             val load = Runnable {
                 if (!dismissed && !rendererGone && attempt == loadAttempt) {
-                    player.loadDataWithBaseURL("$origin/", VideoGuidePage.html(id, origin, loadAttempt), "text/html", "UTF-8", null)
+                    player.loadDataWithBaseURL("$origin/", VideoGuidePage.html(if (usingHosted) VideoGuidePage.HOSTED_ID else id, origin, loadAttempt), "text/html", "UTF-8", null)
                     player.postDelayed(timeout, 30_000)
                 }
             }
@@ -183,6 +202,7 @@ object VideoGuide {
                 showPlaybackError(R.string.video_guide_webview, "proxy unsupported")
             } else load.run()
         }
+        reloadHosted = { loadPlayer() }
         val content = android.widget.LinearLayout(activity).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), dp(8))
@@ -236,7 +256,10 @@ object VideoGuide {
         }
         owner?.lifecycle?.addObserver(lifecycle)
         dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE).setOnClickListener {
-            if (rendererGone) { dialog.dismiss(); show(activity, id) } else loadPlayer()
+            if (rendererGone) {
+                dialog.dismiss()
+                show(activity, if (usingHosted) VideoGuidePage.HOSTED_ID else id, allowHostedFallback)
+            } else if (!useHostedFallback()) loadPlayer()
         }
         loadPlayer()
     }

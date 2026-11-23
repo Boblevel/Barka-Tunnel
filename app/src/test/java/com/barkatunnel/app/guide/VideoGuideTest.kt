@@ -26,11 +26,11 @@ class VideoGuideTest {
     private fun children(view: View): List<View> = listOf(view) +
         if (view is ViewGroup) (0 until view.childCount).flatMap { children(view.getChildAt(it)) } else emptyList()
 
-    private fun withPlayer(block: (Activity, AlertDialog, WebView, TextView) -> Unit) {
+    private fun withPlayer(id: String = "abcdefghijk", fallback: Boolean = false, block: (Activity, AlertDialog, WebView, TextView) -> Unit) {
         val controller = Robolectric.buildActivity(Activity::class.java).setup().visible()
         val activity = controller.get()
         activity.setTheme(R.style.Theme_BarkaTunnel)
-        VideoGuide.show(activity, "abcdefghijk")
+        VideoGuide.show(activity, id, fallback)
         val dialog = ShadowDialog.getLatestDialog() as AlertDialog
         try {
             val views = children(dialog.window!!.decorView)
@@ -95,5 +95,45 @@ class VideoGuideTest {
         assertTrue(VideoGuidePage.html("abcdefghijk", origin, 1).contains("origin: '$origin'"))
         assertThrows(IllegalArgumentException::class.java) { VideoGuidePage.html("';alert(1)", origin, 1) }
         assertThrows(IllegalArgumentException::class.java) { VideoGuidePage.origin("bad'<script>") }
+    }
+
+    @Test fun hostedVideoHasNoYoutubeDependency() {
+        val html = VideoGuidePage.html(VideoGuidePage.HOSTED_ID, VideoGuidePage.origin("com.barkatunnel.app"), 1)
+        assertTrue(html.contains("<video"))
+        assertTrue(html.contains(VideoGuidePage.MEDIA_URL))
+        assertTrue(html.contains("loadedmetadata"))
+        assertTrue(html.contains("pauseGuide"))
+        assertFalse(html.contains("youtube"))
+    }
+
+    @Test fun hostedMediaErrorRemainsVisibleAndRetryWorks() = withPlayer(VideoGuidePage.HOSTED_ID) { activity, dialog, web, status ->
+        val client = shadowOf(web).webChromeClient
+        client.onReceivedTitle(web, "guide-1-media-error-2")
+        assertEquals(activity.getString(R.string.video_guide_unavailable), status.text.toString())
+        dialog.getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
+        client.onReceivedTitle(web, "guide-1-media-error-2")
+        assertEquals(activity.getString(R.string.video_guide_loading), status.text.toString())
+        client.onReceivedTitle(web, "guide-2-playing")
+        assertEquals(activity.getString(R.string.video_guide_intro), status.text.toString())
+    }
+
+    @Test fun youtubeBlockSwitchesAutomaticallyOnceToHostedVideo() = withPlayer(fallback = true) { activity, _, web, status ->
+        val client = shadowOf(web).webChromeClient
+        client.onReceivedTitle(web, "guide-1-error-150")
+        assertTrue(shadowOf(web).lastLoadDataWithBaseURL.data.contains(VideoGuidePage.MEDIA_URL))
+        client.onReceivedTitle(web, "guide-1-error-153")
+        assertEquals(activity.getString(R.string.video_guide_loading), status.text.toString())
+        client.onReceivedTitle(web, "guide-2-playing")
+        assertEquals(activity.getString(R.string.video_guide_intro), status.text.toString())
+        client.onReceivedTitle(web, "guide-2-media-error-2")
+        assertEquals(activity.getString(R.string.video_guide_unavailable), status.text.toString())
+    }
+
+    @Test fun stalledYoutubePlaybackAfterReadyUsesHostedFallback() = withPlayer(fallback = true) { _, _, web, _ ->
+        val client = shadowOf(web).webChromeClient
+        client.onReceivedTitle(web, "guide-1-ready")
+        client.onReceivedTitle(web, "guide-1-buffering")
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31))
+        assertTrue(shadowOf(web).lastLoadDataWithBaseURL.data.contains(VideoGuidePage.MEDIA_URL))
     }
 }

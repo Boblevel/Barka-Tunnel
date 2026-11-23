@@ -2,12 +2,36 @@ package com.barkatunnel.app.guide
 
 /** No native JavaScript bridge is exposed to the embedded third-party player. */
 internal object VideoGuidePage {
+    const val HOSTED_ID = "barka_hosted_video"
+    const val MEDIA_URL = "https://api.rhaffservice.com/media/barka-guide-2e66858b2a9fa9c2.mp4"
+
+    fun mediaHtml(attempt: Int): String {
+        require(attempt > 0)
+        return """
+            <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+            <style>html,body,video{width:100%;height:100%;margin:0;background:#000}video{object-fit:contain}</style>
+            </head><body><video id="guideVideo" controls playsinline preload="metadata" src="$MEDIA_URL"></video>
+            <script>
+            var guideVideo=document.getElementById('guideVideo');
+            function signal(value){document.title='guide-$attempt-'+value;}
+            guideVideo.addEventListener('loadedmetadata',function(){signal('ready');});
+            guideVideo.addEventListener('loadeddata',function(){signal('ready');});
+            guideVideo.addEventListener('playing',function(){signal('playing');});
+            guideVideo.addEventListener('waiting',function(){signal('buffering');});
+            guideVideo.addEventListener('error',function(){signal('media-error-'+(guideVideo.error?guideVideo.error.code:0));});
+            function pauseGuide(){guideVideo.pause();}
+            document.addEventListener('visibilitychange',function(){if(document.hidden)pauseGuide();});
+            </script></body></html>
+        """.trimIndent()
+    }
+
     fun origin(packageName: String): String {
         require(packageName.matches(Regex("[A-Za-z0-9_.]+")))
         return "https://$packageName"
     }
 
     fun html(id: String, origin: String, attempt: Int): String {
+        if (id == HOSTED_ID) return mediaHtml(attempt)
         require(id.matches(Regex("[A-Za-z0-9_-]{11}")))
         require(origin.matches(Regex("https://[A-Za-z0-9_.]+")))
         require(attempt > 0)

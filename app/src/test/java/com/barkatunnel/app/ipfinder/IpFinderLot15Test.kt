@@ -3,6 +3,7 @@ package com.barkatunnel.app.ipfinder
 import android.app.Application
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.net.*
 import android.os.Vibrator
 import android.widget.TextView
@@ -74,5 +75,35 @@ class IpFinderLot15Test {
             // Robolectric records the request; only a device applies the system DND policy.
             assertTrue(vibrator.isVibrating)
         } finally {controller.destroy()}
+    }
+
+    @Test fun goodAddressBeforeCycleCompletionTriggersVibration() {
+        shadowOf(context).grantPermissions("com.barkatunnel.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
+        context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE).edit().putString("selected_network_id", "orange_bf").commit()
+        val cm = shadowOf(context.getSystemService(ConnectivityManager::class.java))
+        cm.clearAllNetworks()
+        val network = ShadowNetwork.newInstance(43)
+        cm.addNetwork(network, ShadowNetworkInfo.newInstance(NetworkInfo.DetailedState.CONNECTED, ConnectivityManager.TYPE_MOBILE, 0, true, true))
+        val caps = ShadowNetworkCapabilities.newInstance()
+        shadowOf(caps).addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+        cm.setNetworkCapabilities(network, caps)
+        val link = LinkProperties()
+        val address = ReflectionHelpers.callConstructor(LinkAddress::class.java,
+            ClassParameter.from(InetAddress::class.java, InetAddress.getByName("10.63.77.246")),
+            ClassParameter.from(Int::class.javaPrimitiveType, 24))
+        ReflectionHelpers.callInstanceMethod<Boolean>(link, "addLinkAddress", ClassParameter.from(LinkAddress::class.java, address))
+        cm.setLinkProperties(network, link)
+        val controller = Robolectric.buildService(IpSearchService::class.java).create()
+        try {
+            val service = controller.get()
+            val vibrator = shadowOf(service.getSystemService(Vibrator::class.java))
+            vibrator.setHasVibrator(true)
+            service.onStartCommand(Intent(context, IpSearchService::class.java), 0, 1)
+            IpSearchService::class.java.getDeclaredMethod("inspectIp").apply { isAccessible = true }.invoke(service)
+            assertEquals("10.63.77.246", IpSearchService.foundIp)
+            assertFalse(IpSearchService.active)
+            assertTrue(vibrator.isVibrating)
+            assertFalse(shadowOf(service).isStoppedBySelf)
+        } finally { cm.clearAllNetworks(); controller.destroy() }
     }
 }

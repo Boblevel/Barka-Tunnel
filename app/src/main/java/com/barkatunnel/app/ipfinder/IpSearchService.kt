@@ -97,10 +97,11 @@ class IpSearchService : Service() {
         else handler.postDelayed({ requestCycle() }, 1000)
     }
     private fun inspectIp() {
-        if (!active || !waiting) return
+        if (!active) return
         val ip = NetworkIpProvider.getCellularIpv4(this, includeVpn = false) ?: return
+        // A good address may arrive before the assistant cycle completes.
         if (criteria.matches(ip)) success(ip)
-        else {
+        else if (waiting) {
             waiting = false; handler.removeCallbacksAndMessages(null)
             // Give the radio a rest between unsuccessful attempts.
             handler.postDelayed({ nextCycle() }, minOf(10_000L, 3000L + attempts * 500L))
