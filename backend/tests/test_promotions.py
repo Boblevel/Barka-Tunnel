@@ -64,3 +64,21 @@ def test_legacy_save_preserves_promotions_and_rejects_conflicting_base(env):
         assert c.put('/v1/admin/pricing',json=body).json()['promotions']==current['promotions']
         body['revision']+=1;body['prices']['24h']=100
         assert c.put('/v1/admin/pricing',json=body).status_code==422
+
+
+def test_70_seat_promotion_13000_to_12000(env, monkeypatch):
+    from app import pricing
+    now = 1_800_000_000
+    monkeypatch.setattr(pricing.time, 'time', lambda: now)
+    *_, main, _ = env
+    with client_for(main) as c:
+        catalog = c.get('/v1/admin/pricing').json()
+        prices = {**catalog['base_prices'], 'reseller_2m': 13000}
+        promo = {'amount': 12000, 'starts_at': now + 60, 'ends_at': now + 240}
+        response = c.put('/v1/admin/pricing', json={
+            'revision': catalog['revision'], 'prices': prices, 'promotions': {'reseller_2m': promo}})
+        assert response.status_code == 200
+        now += 60
+        assert c.get('/v1/pricing').json()['prices']['reseller_2m'] == 12000
+        now += 180
+        assert c.get('/v1/pricing').json()['prices'] == prices

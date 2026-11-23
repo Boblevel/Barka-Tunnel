@@ -242,11 +242,12 @@ def list_redeem_codes(limit: int | None = 100, *, connection=None, offset: int =
             """
             SELECT r.id, r.source_ref, r.duration_seconds, r.max_users, r.status,
                    r.created_at, COUNT(u.id) AS usage_count,
-                   SUM(CASE WHEN u.applied_until>? THEN 1 ELSE 0 END) AS active_usage_count,
+                   SUM(CASE WHEN MIN(u.applied_until, COALESCE(d.subscription_expires_at,u.applied_until))>? THEN 1 ELSE 0 END) AS active_usage_count,
                    MAX(u.redeemed_at) AS last_redeemed_at,
-                   MAX(u.applied_until) AS last_expires_at
+                   MAX(MIN(u.applied_until, COALESCE(d.subscription_expires_at,u.applied_until))) AS last_expires_at
             FROM redeem_codes r
             LEFT JOIN redeem_usages u ON u.redeem_code_id=r.id
+            LEFT JOIN devices d ON d.device_id=u.device_id
             WHERE r.deleted_at IS NULL
             GROUP BY r.id
             ORDER BY r.id DESC

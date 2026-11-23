@@ -57,7 +57,7 @@ const APKPURE_URL='https://apkpure.com/p/com.barkatunnel.app';
 const pageMeta={suggestions:['Suggestions','Retours des clients et contrôle des envois'],pricing:['Gestion des tarifs','Abonnements et comptes revendeurs'],dashboard:['Tableau de bord','Vue générale de Barka Tunnel'],subscriptions:['Abonnements','Accès individuels et paiements utilisateurs'],codes:["Codes Redeem",'Codes gratuits multi-utilisateurs'],resellers:['Sous-panels','Comptes revendeurs à permissions limitées'],vpn:['Services VPN','Profils dynamiques des opérateurs'],update:["Mise à jour APK","Publication de l'application"]};
 const $=id=>document.getElementById(id);
 function toggleMenu(force){const app=$('app');if(!app)return;const next=typeof force==='boolean'?force:!app.classList.contains('menu-open');app.classList.toggle('menu-open',next)}
-function showPage(name,btn){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===name));document.querySelectorAll('.nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===name));const meta=pageMeta[name]||pageMeta.dashboard;$('topTitle').textContent=meta[0];$('topSubtitle').textContent=meta[1];toggleMenu(false);if(name==='suggestions'){loadSuggestions(0);loadVideoGuides()};if(name==='pricing')loadPricing().catch(e=>{$('pricingStatus').textContent=e.message});window.scrollTo({top:0,behavior:'smooth'})}
+function showPage(name,btn){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===name));document.querySelectorAll('.nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===name));const meta=pageMeta[name]||pageMeta.dashboard;$('topTitle').textContent=meta[0];$('topSubtitle').textContent=meta[1];toggleMenu(false);if(name==='suggestions'){loadSuggestions(0);loadVideoGuides()};if(name==='codes'&&TOKEN)loadCodes().catch(()=>{});if(name==='pricing')loadPricing().catch(e=>{$('pricingStatus').textContent=e.message});window.scrollTo({top:0,behavior:'smooth'})}
 function toast(msg){const el=$('toast');if(!el)return;el.textContent=msg;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2200)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 async function api(path,opt={}){const headers={'Accept':'application/json','X-Admin-Token':TOKEN,...(opt.headers||{})};if(opt.body)headers['Content-Type']='application/json';const r=await fetch(path,{...opt,headers,cache:'no-store'});let data={};try{data=await r.json()}catch{}if(!r.ok)throw new Error(data.detail||('HTTP '+r.status));return data}
@@ -117,14 +117,23 @@ async function generateSubscriptionCode(){if(subscriptionGenerating)return;const
 let redeemGenerating=false;
 async function generateRedeemCodes(){if(redeemGenerating)return;const duration=Number($('redeemDurationHours').value||0);const maxUsers=Number($('redeemMaxUsers').value||0);const count=Number($('redeemCount').value||1);if(duration<=0||maxUsers<1||count<1){alert('Durée, limite utilisateurs ou quantité invalide.');return}redeemGenerating=true;try{const d=await api('/v1/admin/redeem-codes',{method:'POST',body:JSON.stringify({duration_hours:duration,max_users:maxUsers,count})});$('generated').innerHTML='<div class="status ok">'+d.codes.map(c=>'<div class="code">'+esc(c)+' <button class="secondary" style="padding:6px" onclick="copyText(\''+c+'\')">COPIER</button></div>').join('')+'</div>';void Promise.all([loadCodes(),loadStats()]).catch(e=>alert('Codes créés ; actualisation de la liste impossible : '+e.message))}catch(e){alert(e.message)}finally{redeemGenerating=false}}
 async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Copié')}catch{alert('Copie impossible : sélectionnez le texte et copiez-le manuellement.')}}
-async function loadCodes(){const results=await Promise.all([loadAllCodes('/v1/admin/codes'),loadAllCodes('/v1/admin/redeem-codes')]);latestCodes=results[0];latestRedeems=results[1];renderAccessLists()}
+let redeemExpiryTimer;
+function scheduleRedeemRefresh(){
+  clearTimeout(redeemExpiryTimer);
+  if(!TOKEN||document.hidden||!document.querySelector('.page.active[data-page="codes"]'))return;
+  const now=Date.now();
+  const times=latestRedeems.filter(c=>c.status==='active'&&!c.all_users_finished).map(c=>Date.parse(c.last_expires_at)).filter(t=>Number.isFinite(t)&&t>now);
+  const next=times.reduce((a,b)=>Math.min(a,b),Infinity);
+  if(next-now<=60000)redeemExpiryTimer=setTimeout(()=>loadCodes().catch(()=>{}),next-now+150);
+}
+async function loadCodes(){const results=await Promise.all([loadAllCodes('/v1/admin/codes'),loadAllCodes('/v1/admin/redeem-codes')]);latestCodes=results[0];latestRedeems=results[1];renderAccessLists();scheduleRedeemRefresh()}
 function formatDate(v){if(!v)return '—';const d=new Date(v);if(Number.isNaN(d.getTime()))return '—';return String(d.getUTCDate()).padStart(2,'0')+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+d.getUTCFullYear()}
 function formatDurationSeconds(v){const total=Math.max(0,Number(v||0));if(total%86400===0)return (total/86400)+' j';if(total%3600===0)return (total/3600)+' h';const hours=Math.round(total/3600*100)/100;return hours+' h'}
 function statusLabel(v){return v==='active'?'Actif':v==='issued'?'Disponible':v==='redeemed'?'Actif / utilisé':v==='expired'?'EXPIRÉ':v==='revoked'?'Désactivé':v==='frozen'?'GELÉ (sous-panel expiré)':v}
 function actionButtons(c){if(c.status==='expired')return '<button class="danger" onclick="deleteCode(\''+c.code+'\')">SUPPRIMER</button>';if(c.status==='revoked')return '<button class="secondary" onclick="reactivateCode(\''+c.code+'\')">RÉACTIVER</button><button class="danger" onclick="deleteCode(\''+c.code+'\')">SUPPRIMER</button>';return '<button class="ghost" onclick="revokeCode(\''+c.code+'\')">DÉSACTIVER</button><button class="danger" onclick="deleteCode(\''+c.code+'\')">SUPPRIMER</button>'}
 function renderCodeRows(list,emptyText){return list.length?list.map(c=>{const expired=c.status==='expired';const plan=c.plan_id==='unlimited'?'Illimité':c.code_type==='test'?'TEST 2H':(/^custom_[0-9]+d$/.test(c.plan_id)?c.plan_id.slice(7,-1)+' jours':c.plan_id);const source=c.reseller_username?'Revendeur : '+c.reseller_username:(c.source_type==='PAIEMENT'?'Paiement':'Généré dans le panel');return '<div class="code-row '+(expired?'expired':c.status==='redeemed'||(c.plan_id==='unlimited'&&c.status==='issued')?'in-use':'')+'"><div class="row mobile-stack"><div><div class="code">'+esc(c.code)+'</div><div class="small">'+(c.plan_id==='unlimited'?'<span class="unlimited-label">'+esc(plan)+'</span>':esc(plan))+' • <span class="'+(expired?'expired-label':'')+'">'+esc(statusLabel(c.status))+'</span> • '+esc(source)+'</div><div class="small">Créé : '+creationDate(c.created_at)+' • Expire : '+(c.plan_id==='unlimited'?'<span class="unlimited-label">Illimité</span>':formatDate(c.expires_at))+'</div></div><div class="code-actions">'+actionButtons(c)+'</div></div></div>'}).join(''):'<div class="status">'+esc(emptyText)+'</div>'}
 function redeemActionButtons(c){if(c.status==='expired')return '<button class="danger" onclick="deleteRedeem(\''+c.code+'\')">SUPPRIMER</button>';if(c.status==='revoked')return '<button class="secondary" onclick="reactivateRedeem(\''+c.code+'\')">RÉACTIVER</button><button class="danger" onclick="deleteRedeem(\''+c.code+'\')">SUPPRIMER</button>';return '<button class="ghost" onclick="revokeRedeem(\''+c.code+'\')">DÉSACTIVER</button><button class="danger" onclick="deleteRedeem(\''+c.code+'\')">SUPPRIMER</button>'}
-function renderRedeemRows(list,emptyText){return list.length?list.map(c=>{const expired=c.status==='expired'||c.all_users_finished;return '<div class="code-row '+(expired?'expired':'')+'"><div class="row mobile-stack"><div><div class="code">'+esc(c.code)+'</div><div class="small"><span class="'+(expired?'expired-label':'')+'">'+esc(statusLabel(c.status))+'</span> • Durée : '+esc(formatDurationSeconds(c.duration_seconds))+'</div><div class="small">Utilisations : '+esc(c.usage_count)+' / '+esc(c.max_users)+(c.all_users_finished?' • Tous les utilisateurs ont terminé':'')+' • Créé : '+creationDate(c.created_at)+(c.last_expires_at?' • Dernière expiration attribuée : '+formatDate(c.last_expires_at):'')+'</div></div><div class="code-actions">'+redeemActionButtons(c)+'</div></div></div>'}).join(''):'<div class="status">'+esc(emptyText)+'</div>'}
+function renderRedeemRows(list,emptyText){return list.length?list.map(c=>{const expired=c.status==='expired'||c.all_users_finished;return '<div class="code-row '+(expired?'expired':'')+'"><div class="row mobile-stack"><div><div class="code">'+esc(c.code)+'</div><div class="small"><span class="'+(expired?'expired-label':'')+'">'+esc(statusLabel(c.status))+'</span> • Durée : '+esc(formatDurationSeconds(c.duration_seconds))+'</div><div class="small">Utilisations : '+esc(c.usage_count)+' / '+esc(c.max_users)+(c.all_users_finished?' • Tous les utilisateurs ont terminé':'')+' • Créé : '+creationDate(c.created_at)+(c.last_expires_at?' • Dernière expiration attribuée : '+creationDate(c.last_expires_at):'')+'</div></div><div class="code-actions">'+redeemActionButtons(c)+'</div></div></div>'}).join(''):'<div class="status">'+esc(emptyText)+'</div>'}
 function renderAccessLists(){const cq=($('codeSearch')?.value||'').trim().toLowerCase();const cs=$('codeStatus')?.value||'';const sq=($('subscriptionSearch')?.value||'').trim().toLowerCase();const ss=$('subscriptionStatus')?.value||'';$('codeDeleteFiltered').classList.toggle('hidden',!cs);$('subscriptionDeleteFiltered').classList.toggle('hidden',!ss);const subscriptionMatches=(c,q,st)=>(!st||c.status===st)&&(!q||[c.code,c.plan_id,c.status,c.redeemed_device_id,c.source_type,c.reseller_username,c.code_type].some(v=>String(v||'').toLowerCase().includes(q)));const redeemMatches=(c,q,st)=>(!st||c.status===st)&&(!q||[c.code,c.status].some(v=>String(v||'').toLowerCase().includes(q)));const subscriptions=latestCodes.filter(c=>subscriptionMatches(c,sq,ss));const redeems=latestRedeems.filter(c=>redeemMatches(c,cq,cs));if($('codes'))$('codes').innerHTML=renderRedeemRows(redeems,'Aucun code Redeem correspondant.');if($('subscriptions'))$('subscriptions').innerHTML=renderCodeRows(subscriptions,'Aucun abonnement correspondant.')}
 async function revokeCode(code){if(!confirm('Désactiver cet accès ? L’utilisateur ne pourra plus se connecter à MOOV, Orange ni Telecel.'))return;const d=await api('/v1/admin/codes/revoke',{method:'POST',body:JSON.stringify({code})});alert(d.message);await loadCodes();await loadStats()}
 async function reactivateCode(code){if(!confirm('Réactiver cet accès ?'))return;const d=await api('/v1/admin/codes/reactivate',{method:'POST',body:JSON.stringify({code})});alert(d.message);await loadCodes();await loadStats()}
@@ -334,6 +343,7 @@ async function removeUpdate(){if(!confirm('Retirer la mise à jour ? Les utilisa
 
 const pricingKeys=['24h','1w','2w','1m','3m','reseller_1m','reseller_2m'];
 const pricingLabels={'24h':'24 heures','1w':'1 semaine','2w':'2 semaines','1m':'1 mois','3m':'3 mois'};
+let savedPricing=null;
 let pricingRevision=null,pricingDirty=false,pricingBusy=false;
 function renderPricing(data){
   for(const [key,label] of Object.entries(pricingLabels)){
@@ -341,7 +351,7 @@ function renderPricing(data){
     if(option)option.textContent=label+' — '+Number(data.prices[key]).toLocaleString('fr-FR')+' XOF';
   }
   if(pricingDirty||pricingBusy)return;
-  pricingRevision=data.revision;
+  savedPricing=data;pricingRevision=data.revision;
   $('subscriptionPayments').checked=data.subscription_payments_enabled!==false;
   $('resellerPayments').checked=data.reseller_payments_enabled!==false;
   $('subscriptionPayments').disabled=false;$('resellerPayments').disabled=false;
@@ -349,7 +359,9 @@ function renderPricing(data){
     const price=$('price-'+key);price.value=(data.base_prices||data.prices)[key];price.disabled=false;
     let box=$('promo-'+key);if(!box){box=document.createElement('div');box.id='promo-'+key;box.className='muted-box';
       box.innerHTML='<label class="switch"><input type="checkbox" class="promo-enabled"> Promotion programmée</label><label>Prix promotionnel — XOF<input class="promo-amount" type="number" min="1" max="10000000" step="1"></label><label>Début (heure locale du navigateur)<input class="promo-start" type="datetime-local"></label><label>Fin (heure locale du navigateur)<input class="promo-end" type="datetime-local"></label>';
-      box.addEventListener('input',()=>{pricingDirty=true});const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='RETIRER LA PROMOTION';remove.onclick=()=>{if(pricingBusy)return;box.querySelector('.promo-enabled').checked=false;pricingDirty=true;$('pricingStatus').textContent='Promotion retirée du formulaire. Cliquez sur ENREGISTRER pour confirmer.'};box.appendChild(remove);price.parentElement.appendChild(box)}
+      box.addEventListener('input',()=>{pricingDirty=true});const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='RETIRER LA PROMOTION';remove.onclick=()=>{if(pricingBusy)return;box.querySelector('.promo-enabled').checked=false;pricingDirty=true;$('pricingStatus').textContent='Promotion retirée du formulaire. Cliquez sur ENREGISTRER pour confirmer.'};box.appendChild(remove);
+      const apply=document.createElement('button');apply.type='button';apply.textContent='ENREGISTRER CETTE OFFRE';
+      apply.onclick=()=>savePricing(key);box.appendChild(apply);price.parentElement.appendChild(box)}
     const promo=(data.promotions||{})[key];box.querySelector('.promo-enabled').checked=!!promo;
     box.querySelector('.promo-amount').value=promo?.amount||'';
     box.querySelector('.promo-start').value=promo?localDateTime(new Date(promo.starts_at*1000)):'';
@@ -360,15 +372,35 @@ function renderPricing(data){
 }
 async function loadPricing(){const data=await api('/v1/admin/pricing');renderPricing(data)}
 async function reloadPricing(){if(pricingBusy)return;if(pricingDirty&&!confirm('Abandonner les modifications non enregistrées ?'))return;pricingDirty=false;try{await loadPricing()}catch(e){$('pricingStatus').textContent=e.message}}
-async function savePricing(){
+function promotionTimestamp(field,saved){
+  if(saved!=null && field.value===localDateTime(new Date(saved*1000)))return saved;
+  return Date.parse(field.value)/1000;
+}
+async function savePricing(onlyKey=null){
   if(pricingBusy||pricingRevision===null)return;
-  const prices={};for(const key of pricingKeys){const amount=Number($('price-'+key).value);if(!Number.isInteger(amount)||amount<1||amount>10000000){$('pricingStatus').textContent='Chaque tarif doit être un entier entre 1 et 10 000 000 XOF.';return}prices[key]=amount}
-  const promotions={};for(const key of pricingKeys){const box=$('promo-'+key);if(!box.querySelector('.promo-enabled').checked)continue;
-    const amount=Number(box.querySelector('.promo-amount').value),starts_at=Date.parse(box.querySelector('.promo-start').value)/1000,ends_at=Date.parse(box.querySelector('.promo-end').value)/1000;
-    if(!Number.isInteger(amount)||amount<1||amount>=prices[key]||!Number.isInteger(starts_at)||!Number.isInteger(ends_at)||ends_at<=starts_at){$('pricingStatus').textContent='Promotion invalide : prix inférieur au tarif normal, dates valides et fin après le début.';return}
-    promotions[key]={amount,starts_at,ends_at};}
+  const keys=onlyKey?[onlyKey]:pricingKeys;
+  const prices={...savedPricing.base_prices},promotions={...savedPricing.promotions};
+  for(const key of keys){
+    const price=$('price-'+key), box=$('promo-'+key);
+    const label=price.labels[0].textContent;
+    const invalid=(field,message)=>{ $('pricingStatus').textContent=label+' — '+message;field.focus(); };
+    prices[key]=Number(price.value);
+    if(!Number.isInteger(prices[key])||prices[key]<1||prices[key]>10000000){
+      invalid(price,'Entrez un tarif entier entre 1 et 10 000 000 XOF.');return;
+    }
+    if(!box.querySelector('.promo-enabled').checked){delete promotions[key];continue;}
+    const amountField=box.querySelector('.promo-amount'), start=box.querySelector('.promo-start'), end=box.querySelector('.promo-end');
+    const amount=Number(amountField.value), previous=savedPricing.promotions?.[key];
+    const starts_at=promotionTimestamp(start,previous?.starts_at),ends_at=promotionTimestamp(end,previous?.ends_at);
+    if(!Number.isInteger(amount)||amount<1||amount>=prices[key]){invalid(amountField,'Le prix promotionnel doit être compris entre 1 et '+(prices[key]-1)+' XOF.');return;}
+    if(!Number.isInteger(starts_at)||starts_at<0){invalid(start,'Renseignez la date de début.');return;}
+    if(!Number.isInteger(ends_at)||ends_at<=starts_at){invalid(end,'La fin doit être postérieure au début.');return;}
+    promotions[key]={amount,starts_at,ends_at};
+  }
   pricingBusy=true;$('subscriptionPayments').disabled=true;$('resellerPayments').disabled=true;document.querySelectorAll('[id^="promo-"] input').forEach(el=>el.disabled=true);$('pricingSave').disabled=true;for(const key of pricingKeys)$('price-'+key).disabled=true;
-  try{const data=await api('/v1/admin/pricing',{method:'PUT',body:JSON.stringify({revision:pricingRevision,prices,promotions,subscription_payments_enabled:$('subscriptionPayments').checked,reseller_payments_enabled:$('resellerPayments').checked})});pricingBusy=false;pricingDirty=false;renderPricing(data);$('pricingStatus').textContent='Tarifs enregistrés. Synchronisation automatique dans l’application.'}
+  try{const data=await api('/v1/admin/pricing',{method:'PUT',body:JSON.stringify({revision:pricingRevision,prices,promotions,subscription_payments_enabled:onlyKey?savedPricing.subscription_payments_enabled:$('subscriptionPayments').checked,reseller_payments_enabled:onlyKey?savedPricing.reseller_payments_enabled:$('resellerPayments').checked})});pricingBusy=false;
+    if(onlyKey){savedPricing=data;pricingRevision=data.revision;$('pricingStatus').textContent='Offre enregistrée. Les autres champs du formulaire sont conservés.'}
+    else{pricingDirty=false;renderPricing(data);$('pricingStatus').textContent='Tarifs enregistrés. Synchronisation automatique dans l’application.'}}
   catch(e){$('pricingStatus').textContent=e.message}
   finally{pricingBusy=false;$('subscriptionPayments').disabled=false;$('resellerPayments').disabled=false;document.querySelectorAll('[id^="promo-"] input').forEach(el=>el.disabled=false);$('pricingSave').disabled=false;for(const key of pricingKeys)$('price-'+key).disabled=false}
 }

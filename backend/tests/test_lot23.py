@@ -100,3 +100,24 @@ def test_expired_reseller_cannot_reset_even_with_open_quota_period(env):
         cx.execute('UPDATE reseller_accounts SET expires_at=? WHERE id=?',(svc.now_ts()-1,account['id']))
     with pytest.raises(ValueError):
         rs.adjust_reseller_quota(account['id'],reset=True)
+
+
+def test_shared_code_expires_at_last_effective_grant(env, monkeypatch):
+    db, svc, _, ops, _, _, _ = env
+    now = svc.now_ts()
+    monkeypatch.setattr(ops, 'now_ts', lambda: now)
+    monkeypatch.setattr(svc, 'now_ts', lambda: now)
+    code = svc.issue_redeem_code('lot44', 86400, 2)
+    for device in ('lot44-first', 'lot44-last'):
+        assert svc.redeem_activation_code(device, code)[0]
+        now += 1
+    with db.transaction() as cx:
+        cx.execute("UPDATE devices SET subscription_expires_at=? WHERE device_id='lot44-first'", (now,))
+        cx.execute("UPDATE devices SET subscription_expires_at=? WHERE device_id='lot44-last'", (now + 60,))
+    before = ops.list_redeem_codes()[0]
+    assert before['status'] == 'active' and not before['all_users_finished']
+    assert before['last_expires_at'] == ops.iso(now + 60)
+    now += 60
+    after = ops.list_redeem_codes()[0]
+    assert after['status'] == 'expired' and after['all_users_finished']
+    assert after['usage_count'] == 2
