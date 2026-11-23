@@ -23,6 +23,19 @@ import java.time.Duration
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [23, 28, 33], application = Application::class, qualifiers = "fr-port-mdpi")
 class VideoGuideTest {
+    @Test fun selectionIsIndependentAndDefaultsToHostedOnLegacyConfig() {
+        val config = org.json.JSONObject()
+        for (key in listOf("guide", "ip_finder")) {
+            config.put(key, "https://www.youtube.com/watch?v=abcdefghijk")
+            assertEquals(VideoGuidePage.HOSTED_ID, VideoGuide.selectedId(config, key))
+            config.put("${key}_source", "youtube")
+            assertEquals("abcdefghijk", VideoGuide.selectedId(config, key))
+            config.put("${key}_source", "mp4")
+            config.put(key, "")
+            assertEquals(VideoGuidePage.HOSTED_ID, VideoGuide.selectedId(config, key))
+        }
+    }
+
     private fun children(view: View): List<View> = listOf(view) +
         if (view is ViewGroup) (0 until view.childCount).flatMap { children(view.getChildAt(it)) } else emptyList()
 

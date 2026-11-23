@@ -1,5 +1,6 @@
 """Validated administrator-managed WhatsApp destination."""
 import time
+from typing import Literal
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, ConfigDict, Field
 from .db import transaction
@@ -25,6 +26,8 @@ class VideoGuideConfig(BaseModel):
     model_config = ConfigDict(extra='forbid')
     guide: str = Field(default='', max_length=256)
     ip_finder: str = Field(default='', max_length=256)
+    guide_source: Literal['mp4', 'youtube'] = 'mp4'
+    ip_finder_source: Literal['mp4', 'youtube'] = 'mp4'
 
 
 def video_id(value: str) -> str:
@@ -46,8 +49,10 @@ def video_id(value: str) -> str:
 def get_video_guides(response: Response):
     response.headers['Cache-Control'] = 'no-store'
     with transaction() as cx:
-        rows = dict(cx.execute("SELECT key,value FROM admin_state WHERE key IN ('video_guide','video_ip_finder')").fetchall())
-    return VideoGuideConfig(guide=rows.get('video_guide','https://www.youtube.com/watch?v=NUe3oG-R5hI'), ip_finder=rows.get('video_ip_finder',''))
+        rows = dict(cx.execute("SELECT key,value FROM admin_state WHERE key IN ('video_guide','video_ip_finder','video_guide_source','video_ip_finder_source')").fetchall())
+    return VideoGuideConfig(guide=rows.get('video_guide','https://www.youtube.com/watch?v=NUe3oG-R5hI'), ip_finder=rows.get('video_ip_finder',''),
+                           guide_source=rows.get('video_guide_source','mp4'),
+                           ip_finder_source=rows.get('video_ip_finder_source','mp4'))
 
 @router.put('/v1/admin/video-guides', dependencies=[Depends(require_admin)])
 def set_video_guides(body: VideoGuideConfig, response: Response):
@@ -55,10 +60,17 @@ def set_video_guides(body: VideoGuideConfig, response: Response):
     try: guide, ip = video_id(body.guide.strip()), video_id(body.ip_finder.strip())
     except ValueError as e: raise HTTPException(422, str(e)) from e
     with transaction() as cx:
-        for key, value in [('video_guide',guide),('video_ip_finder',ip)]:
+        values = [('video_guide', guide), ('video_ip_finder', ip)]
+        for field, link in [('guide_source', guide), ('ip_finder_source', ip)]:
+            if field in body.model_fields_set:
+                source = getattr(body, field)
+                if source == 'youtube' and not link:
+                    raise HTTPException(422, 'Un lien YouTube est requis pour la rubrique sélectionnée.')
+                values.append(('video_' + field, source))
+        for key, value in values:
             cx.execute('INSERT INTO admin_state(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at', (key,value,int(time.time())))
     response.headers['Cache-Control']='no-store'
-    return VideoGuideConfig(guide=guide,ip_finder=ip)
+    return get_video_guides(response)
 
 class ShareLinkConfig(BaseModel):
     model_config = ConfigDict(extra='forbid')

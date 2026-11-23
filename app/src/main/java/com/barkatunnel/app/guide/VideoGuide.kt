@@ -19,7 +19,7 @@ import com.barkatunnel.app.backend.BarkaBackendClient
 import com.barkatunnel.app.vpnc6.BarkaVpnService
 import java.net.URI
 
-/** Admin-selected YouTube guide with a fixed, hosted MP4 fallback. */
+/** Each section opens the source selected by the administrator. */
 object VideoGuide {
     fun bind(activity: Activity, button: View, key: String) {
         button.visibility = View.VISIBLE
@@ -27,12 +27,7 @@ object VideoGuide {
             button.isEnabled = false
             Thread {
                 val id = runCatching {
-                    val link = BarkaBackendClient(activity).videoGuides().optString(key)
-                    val uri = URI(link)
-                    require(uri.scheme == "https" && uri.host == "www.youtube.com" && uri.path == "/watch")
-                    val value = uri.rawQuery?.removePrefix("v=") ?: ""
-                    require(value.matches(Regex("[A-Za-z0-9_-]{11}")))
-                    value
+                    selectedId(BarkaBackendClient(activity).videoGuides(), key)
                 }.getOrNull()
                 activity.runOnUiThread {
                     if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
@@ -52,6 +47,18 @@ object VideoGuide {
                 }
             }.start()
         }
+    }
+
+    internal fun selectedId(config: org.json.JSONObject, key: String): String {
+        require(key == "guide" || key == "ip_finder")
+        val source = config.optString("${key}_source", "mp4")
+        if (source == "mp4") return VideoGuidePage.HOSTED_ID
+        require(source == "youtube")
+        val uri = URI(config.getString(key))
+        require(uri.scheme == "https" && uri.rawAuthority == "www.youtube.com" && uri.path == "/watch")
+        val query = requireNotNull(uri.rawQuery)
+        require(query.matches(Regex("v=[A-Za-z0-9_-]{11}")))
+        return query.removePrefix("v=")
     }
 
     internal fun show(activity: Activity, id: String, allowHostedFallback: Boolean = false) {
