@@ -30,3 +30,18 @@ def test_independent_sources_and_legacy_save(env):
             for invalid in [{section:''}, {section+'_source':'untrusted'}]:
                 assert c.put('/v1/admin/video-guides', json={**body, **invalid}).status_code == 422
                 assert c.get('/v1/video-guides').json() == body
+
+
+def test_public_video_supports_playback_and_seeking(env):
+    import hashlib
+    *_, main, _ = env
+    with client_for(main) as client:
+        for prefix in ("/media/", "/downloads/"):
+            path = prefix + "barka-guide-2e66858b2a9fa9c2.mp4"
+            full = client.get(path)
+            assert full.status_code == 200 and full.headers["content-type"] == "video/mp4"
+            assert hashlib.sha256(full.content).hexdigest() == "2e66858b2a9fa9c239c8f237febcc71d3c58509b2874841a74a7ef40eb40fcc5"
+            partial = client.get(path, headers={"Range": "bytes=32-95"})
+            assert partial.status_code == 206 and partial.content == full.content[32:96]
+            assert partial.headers["content-range"] == f"bytes 32-95/{len(full.content)}"
+            assert client.head(path).headers["content-length"] == str(len(full.content))

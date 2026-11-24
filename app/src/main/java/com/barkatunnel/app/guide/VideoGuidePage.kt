@@ -5,12 +5,14 @@ internal object VideoGuidePage {
     const val HOSTED_ID = "barka_hosted_video"
     const val MEDIA_URL = "https://api.rhaffservice.com/media/barka-guide-2e66858b2a9fa9c2.mp4"
 
+    const val API_MEDIA_URL = "https://api.rhaffservice.com/downloads/barka-guide-2e66858b2a9fa9c2.mp4"
+
     fun mediaHtml(attempt: Int): String {
         require(attempt > 0)
         return """
             <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
             <style>html,body,video{width:100%;height:100%;margin:0;background:#000}video{object-fit:contain}</style>
-            </head><body><video id="guideVideo" controls playsinline preload="metadata" src="$MEDIA_URL"></video>
+            </head><body><video id="guideVideo" controls playsinline preload="metadata"></video>
             <script>
             var guideVideo=document.getElementById('guideVideo');
             function signal(value){document.title='guide-$attempt-'+value;}
@@ -18,7 +20,16 @@ internal object VideoGuidePage {
             guideVideo.addEventListener('loadeddata',function(){signal('ready');});
             guideVideo.addEventListener('playing',function(){signal('playing');});
             guideVideo.addEventListener('waiting',function(){signal('buffering');});
-            guideVideo.addEventListener('error',function(){signal('media-error-'+(guideVideo.error?guideVideo.error.code:0));});
+            var retried=false;
+            guideVideo.addEventListener('error',function(){
+                if (!retried) {
+                    retried=true;
+                    signal('buffering');
+                    guideVideo.src='$API_MEDIA_URL';
+                    guideVideo.load();
+                } else signal('media-error-'+(guideVideo.error?guideVideo.error.code:0));
+            });
+            guideVideo.src='$MEDIA_URL';
             function pauseGuide(){guideVideo.pause();}
             document.addEventListener('visibilitychange',function(){if(document.hidden)pauseGuide();});
             </script></body></html>

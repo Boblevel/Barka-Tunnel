@@ -89,10 +89,11 @@ class IpFinderLot15Test {
         cm.setNetworkCapabilities(network, caps)
         val link = LinkProperties()
         val address = ReflectionHelpers.callConstructor(LinkAddress::class.java,
-            ClassParameter.from(InetAddress::class.java, InetAddress.getByName("10.63.77.246")),
+            ClassParameter.from(InetAddress::class.java, InetAddress.getByName("10.206.42.39")),
             ClassParameter.from(Int::class.javaPrimitiveType, 24))
         ReflectionHelpers.callInstanceMethod<Boolean>(link, "addLinkAddress", ClassParameter.from(LinkAddress::class.java, address))
         cm.setLinkProperties(network, link)
+        val screen = Robolectric.buildActivity(IpFinderActivity::class.java).setup()
         val controller = Robolectric.buildService(IpSearchService::class.java).create()
         try {
             val service = controller.get()
@@ -100,10 +101,11 @@ class IpFinderLot15Test {
             vibrator.setHasVibrator(true)
             service.onStartCommand(Intent(context, IpSearchService::class.java), 0, 1)
             IpSearchService::class.java.getDeclaredMethod("inspectIp").apply { isAccessible = true }.invoke(service)
-            assertEquals("10.63.77.246", IpSearchService.foundIp)
+            assertEquals("10.206.42.39", IpSearchService.foundIp)
             assertFalse(IpSearchService.active)
             assertTrue(vibrator.isVibrating)
+            assertTrue(com.barkatunnel.app.journal.AppLogStore.getAll(context).contains("IP Finder • vibration écran"))
             assertFalse(shadowOf(service).isStoppedBySelf)
-        } finally { cm.clearAllNetworks(); controller.destroy() }
+        } finally { cm.clearAllNetworks(); controller.destroy(); screen.pause().stop().destroy() }
     }
 }

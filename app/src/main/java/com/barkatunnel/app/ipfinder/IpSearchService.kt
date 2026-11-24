@@ -114,7 +114,7 @@ class IpSearchService : Service() {
             .putString(IpFinderActivity.KEY_LAST_FOUND_IP, ip).apply()
         val message = getString(R.string.ip_finder_found_detail, ip)
         AppLogStore.add(this, getString(R.string.ip_finder_log_found_format, ip))
-        runCatching { notifications.notify(FOUND_NOTIFICATION, notification(FOUND_CHANNEL, message, false)) }
+        runCatching { notifications.notify(FOUND_NOTIFICATION, notification(FOUND_CHANNEL, message, false, quiet = IpFinderActivity.isSearchScreenVisible)) }
             .onFailure { AppLogStore.add(this, getString(R.string.ip_alert_notification_failed, it.javaClass.simpleName)) }
         val vibrationRequested = vibrateFound()
         // Stop searching immediately, but keep the foreground service alive until the alert ends.
@@ -136,19 +136,24 @@ class IpSearchService : Service() {
             getSystemService(VibratorManager::class.java)?.defaultVibrator
         else getSystemService(Vibrator::class.java)
         if (vibrator?.hasVibrator() != true) return blocked(R.string.ip_alert_no_vibrator)
+        val foregroundFeedback = IpFinderActivity.isSearchScreenVisible
         val pattern = FOUND_VIBRATION_PATTERN
         return runCatching {
             if (Build.VERSION.SDK_INT >= 33) {
                 vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1),
-                    VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_NOTIFICATION).build())
+                    VibrationAttributes.Builder().setUsage(
+                        if (foregroundFeedback) VibrationAttributes.USAGE_TOUCH else VibrationAttributes.USAGE_NOTIFICATION
+                    ).build())
             } else {
                 val attributes = android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                    .setUsage(if (foregroundFeedback) android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION
+                        else android.media.AudioAttributes.USAGE_NOTIFICATION)
                     .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
                 if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1), attributes)
                 else vibrator.vibrate(pattern, -1, attributes)
             }
             AppLogStore.add(this, getString(R.string.ip_alert_requested))
+            AppLogStore.add(this, if (foregroundFeedback) "IP Finder • vibration écran" else "IP Finder • vibration en arrière-plan")
             true
         }.getOrElse {
             AppLogStore.add(this, getString(R.string.ip_alert_failed, it.javaClass.simpleName))
@@ -156,7 +161,7 @@ class IpSearchService : Service() {
         }
     }
 
-    private fun notification(channel: String, message: String, ongoing: Boolean): Notification {
+    private fun notification(channel: String, message: String, ongoing: Boolean, quiet: Boolean = false): Notification {
         val open = PendingIntent.getActivity(this, 0, Intent(this, IpFinderActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, IpSearchService::class.java).setAction(STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, channel).setSmallIcon(R.drawable.ic_menu_ip_finder)
@@ -164,6 +169,7 @@ class IpSearchService : Service() {
             .setContentText(message).setContentIntent(open).setOngoing(ongoing).setAutoCancel(!ongoing)
             .setPriority(if (ongoing) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_HIGH)
             .apply { if (ongoing) { setSilent(true); addAction(0, getString(R.string.ip_finder_stop), stop) }
+                else if (quiet) setSilent(true)
                 else setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE) }.build()
     }
     private fun publish(message: String) {

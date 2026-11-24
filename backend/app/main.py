@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import uuid
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
@@ -814,6 +815,13 @@ def admin_app_update_set(body: AppUpdateAdminUpsert):
 )
 def admin_app_update_remove():
     return remove_app_update()
+
+
+@app.api_route("/downloads/barka-guide-2e66858b2a9fa9c2.mp4", methods=["GET", "HEAD"], include_in_schema=False)
+@app.api_route("/media/barka-guide-2e66858b2a9fa9c2.mp4", methods=["GET", "HEAD"], include_in_schema=False)
+def download_guide_video():
+    video = Path(__file__).parent / "media" / "barka-guide-2e66858b2a9fa9c2.mp4"
+    return FileResponse(video, media_type="video/mp4", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @app.get("/downloads/BarkaTunnel.apk", include_in_schema=False)

@@ -166,6 +166,16 @@ class IpFinderActivity : AppCompatActivity() {
         refreshNetworkState()
     }
 
+    override fun onStart() {
+        super.onStart()
+        visibleActivities++
+    }
+
+    override fun onStop() {
+        visibleActivities--
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
         if (::setAssistantButton.isInitialized) {
@@ -482,6 +492,9 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     companion object {
+        // The search service and activity lifecycle callbacks run on the main thread.
+        private var visibleActivities = 0
+        internal val isSearchScreenVisible get() = visibleActivities > 0
         fun captureCriteria(context: Context) = IpSearchCriteria(usesOrangeRules(context), loadSearchPattern(context))
         fun isIpCompatible(context: Context, ip: String?): Boolean {
             if (ip.isNullOrBlank()) return false

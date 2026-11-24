@@ -130,6 +130,9 @@ object VideoGuide {
                 if (request.isForMainFrame && !useHostedFallback()) showPlaybackError(diagnostic = "web ${error.errorCode}")
             }
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: android.webkit.WebResourceResponse) {
+                if (usingHosted && request.url.toString() in listOf(VideoGuidePage.MEDIA_URL, VideoGuidePage.API_MEDIA_URL)) {
+                    com.barkatunnel.app.journal.AppLogStore.add(activity, "Guide vidéo • MP4 HTTP ${response.statusCode} ${request.url.path}")
+                }
                 if (request.isForMainFrame && !useHostedFallback()) showPlaybackError(diagnostic = "http ${response.statusCode}")
             }
         }
