@@ -83,6 +83,10 @@
     [
       "Requesting a suspension review",
       "If access is suspended, contact barkatunnel@gmail.com with the relevant device and the reason for your request. Unblocking suggestions and unblocking the app are independent. Unblocking does not renew an expired subscription or restore access revoked for another reason."
+    ],
+    [
+      "Vibration and video guides",
+      "When a compatible IP is found during a search, IP Finder requests two vibration pulses. Playback depends on hardware and Android settings, including vibration, touch feedback, notifications and Do Not Disturb. When disabled settings can be detected, the app offers to open settings; if their state is unknown, it asks you to check them. You may decline and continue searching. The app does not change these settings or request special permission to bypass them. Opening a video guide starts playback automatically, with sound according to phone settings. Playback uses the available connection and may consume mobile data; controls let you pause or close it."
     ]
   ]
 }

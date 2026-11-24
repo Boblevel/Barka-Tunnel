@@ -83,6 +83,10 @@
     [
       "Solicitar la revisión de una suspensión",
       "Si se suspende el acceso, escribe a barkatunnel@gmail.com indicando el dispositivo y el motivo de tu solicitud. El desbloqueo de sugerencias y el de la aplicación son independientes. El desbloqueo no renueva una suscripción caducada ni restablece derechos retirados por otro motivo."
+    ],
+    [
+      "Vibración y guías de vídeo",
+      "Cuando encuentra una IP compatible durante la búsqueda, IP Finder solicita dos pulsos de vibración. Su ejecución depende del hardware y de los ajustes de Android, como vibración, respuesta táctil, notificaciones y No molestar. Si se detecta la desactivación, la aplicación ofrece abrir los ajustes; si se desconoce su estado, invita a comprobarlos. Puedes rechazarlo y seguir buscando. La aplicación no cambia estos ajustes ni solicita permisos especiales para eludirlos. Al abrir una guía de vídeo, la reproducción comienza automáticamente, con sonido según los ajustes del teléfono. Utiliza la conexión disponible y puede consumir datos móviles; los controles permiten pausarla o cerrarla."
     ]
   ]
 }

@@ -398,4 +398,11 @@
     <string name="guide_12_text">التحقق من الإصدار\nاستخدم البحث عن التحديثات في الإعدادات أو الدعوة داخل التطبيق.\n\nالتنزيل\nعند توفر تنزيل داخلي يظهر التقدم في الرئيسية. بعد الانقطاع عد للاستئناف إذا سمح الخادم. لا تمسح بيانات التطبيق أثناء العملية.\n\nالتثبيت\nاتبع تأكيد التثبيت في Android. إن طُلب، اسمح لـ Barka Tunnel بتثبيت التحديث ثم عد. يتحكم Android بهذا الإذن.\n\nبعد التثبيت\nافتح Barka Tunnel وتحقق من الإصدار في حول التطبيق واترك المزامنة تكتمل. إذا رفض Android إصدارًا أقدم، استشر الدعم قبل إزالة التطبيق لتجنب فقدان البيانات المحلية.</string>
     <string name="settings_whatsapp_channel">قناة واتساب الرسمية</string>
     <string name="payments_paused">المدفوعات معطلة مؤقتًا</string>
+    <string name="ip_vibration_settings_title">اهتزاز IP Finder</string>
+    <string name="ip_vibration_settings_disabled">يشير أحد إعدادات Android إلى تعطيل الاهتزاز أو الاستجابة اللمسية. لتلقي نبضتين عند العثور على عنوان IP متوافق، فعّل الاهتزاز والاستجابة اللمسية في إعدادات الهاتف. يمكنك المتابعة دون اهتزاز.</string>
+    <string name="ip_vibration_settings_unknown">لا يتيح هذا الهاتف للتطبيق قراءة جميع إعدادات الاهتزاز. لتلقي نبضتي IP Finder، تحقق من تفعيل الاهتزاز والاستجابة اللمسية. يمكنك المتابعة دون تغيير الإعدادات.</string>
+    <string name="ip_vibration_settings_no_hardware">لا يشير هذا الهاتف إلى وجود هزاز متاح. يمكنك متابعة استخدام IP Finder ورؤية النتائج على الشاشة.</string>
+    <string name="ip_vibration_open_settings">فتح الإعدادات</string>
+    <string name="ip_vibration_continue">متابعة</string>
+    <string name="ip_vibration_settings_manual">افتح إعدادات الهاتف ثم الصوت والاهتزاز أو تسهيل الاستخدام للتحقق من الاهتزاز.</string>
 </resources>

@@ -12,10 +12,19 @@ internal object VideoGuidePage {
         return """
             <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
             <style>html,body,video{width:100%;height:100%;margin:0;background:#000}video{object-fit:contain}</style>
-            </head><body><video id="guideVideo" controls playsinline preload="metadata"></video>
+            </head><body><video id="guideVideo" controls playsinline autoplay preload="auto"></video>
             <script>
             var guideVideo=document.getElementById('guideVideo');
             function signal(value){document.title='guide-$attempt-'+value;}
+            var autoStart=true;
+            var pausedByOwner=false;
+            function startGuide(){
+                if (!autoStart || document.hidden) return;
+                autoStart=false;
+                var playing=guideVideo.play();
+                if (playing && playing.catch) playing.catch(function(){signal('ready');});
+            }
+            guideVideo.addEventListener('canplay',startGuide);
             guideVideo.addEventListener('loadedmetadata',function(){signal('ready');});
             guideVideo.addEventListener('loadeddata',function(){signal('ready');});
             guideVideo.addEventListener('playing',function(){signal('playing');});
@@ -26,11 +35,12 @@ internal object VideoGuidePage {
                     retried=true;
                     signal('buffering');
                     guideVideo.src='$API_MEDIA_URL';
+                    autoStart=!pausedByOwner;
                     guideVideo.load();
                 } else signal('media-error-'+(guideVideo.error?guideVideo.error.code:0));
             });
             guideVideo.src='$MEDIA_URL';
-            function pauseGuide(){guideVideo.pause();}
+            function pauseGuide(){pausedByOwner=true;autoStart=false;guideVideo.autoplay=false;guideVideo.pause();}
             document.addEventListener('visibilitychange',function(){if(document.hidden)pauseGuide();});
             </script></body></html>
         """.trimIndent()
@@ -56,9 +66,9 @@ internal object VideoGuidePage {
             function onYouTubeIframeAPIReady() {
                 guidePlayer = new YT.Player('player', {
                     videoId: '$id', width: '100%', height: '100%',
-                    playerVars: { playsinline: 1, origin: '$origin' },
+                    playerVars: { playsinline: 1, autoplay: autoStart && !document.hidden ? 1 : 0, origin: '$origin' },
                     events: {
-                        onReady: function () { signal('ready'); },
+                        onReady: function (event) { signal('ready'); if (!document.hidden && autoStart) event.target.playVideo(); },
                         onStateChange: function (event) {
                             if (event.data === 1) signal('playing');
                             else if (event.data === 3) signal('buffering');
@@ -68,7 +78,9 @@ internal object VideoGuidePage {
                     }
                 });
             }
-            function pauseGuide() { if (guidePlayer && guidePlayer.pauseVideo) guidePlayer.pauseVideo(); }
+            var autoStart=true;
+            function pauseGuide() { autoStart=false; if (guidePlayer && guidePlayer.pauseVideo) guidePlayer.pauseVideo(); }
+            document.addEventListener('visibilitychange',function(){if(document.hidden)pauseGuide();});
             </script><script src="https://www.youtube.com/iframe_api" onerror="signal('network')"></script>
             </body></html>
         """.trimIndent()

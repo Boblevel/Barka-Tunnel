@@ -14,6 +14,7 @@ import com.barkatunnel.app.journal.AppLogStore
 /** User-started, cancellable search, independent of the activity lifecycle. */
 class IpSearchService : Service() {
     private val handler = Handler(Looper.getMainLooper())
+    private val foundVibration by lazy { IpFoundVibration(this) }
     private lateinit var criteria: IpSearchCriteria
     private var attempts = 0
     private var failures = 0
@@ -66,6 +67,7 @@ class IpSearchService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) { finishSearch(getString(R.string.ip_finder_stopped)); return START_NOT_STICKY }
         if (active) return START_NOT_STICKY
+        foundVibration.cancelPending()
         handler.removeCallbacks(stopAfterAlert)
         criteria = IpFinderActivity.captureCriteria(this)
         active = true; foundIp = null; attempts = 0
@@ -114,7 +116,8 @@ class IpSearchService : Service() {
             .putString(IpFinderActivity.KEY_LAST_FOUND_IP, ip).apply()
         val message = getString(R.string.ip_finder_found_detail, ip)
         AppLogStore.add(this, getString(R.string.ip_finder_log_found_format, ip))
-        runCatching { notifications.notify(FOUND_NOTIFICATION, notification(FOUND_CHANNEL, message, false, quiet = IpFinderActivity.isSearchScreenVisible)) }
+        // The explicit alert owns both pulses; the notification must not add another vibration.
+        runCatching { notifications.notify(FOUND_NOTIFICATION, notification(FOUND_CHANNEL, message, false, quiet = true)) }
             .onFailure { AppLogStore.add(this, getString(R.string.ip_alert_notification_failed, it.javaClass.simpleName)) }
         val vibrationRequested = vibrateFound()
         // Stop searching immediately, but keep the foreground service alive until the alert ends.
@@ -123,41 +126,15 @@ class IpSearchService : Service() {
     @Suppress("DEPRECATION")
     private fun vibrateFound(): Boolean {
         // A notification usage is required for vibration while the activity is hidden.
-        fun blocked(reason: Int): Boolean {
-            AppLogStore.add(this, getString(reason))
-            return false
-        }
         // Search completion is requested explicitly by the user. Notification permission
         // controls the notification, not access to Vibrator. Let Android apply its own
         // DND policy (priority mode may allow this alert), without bypass flags.
         if (notifications.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL)
             AppLogStore.add(this, getString(R.string.ip_alert_system_policy))
-        val vibrator = if (Build.VERSION.SDK_INT >= 31)
-            getSystemService(VibratorManager::class.java)?.defaultVibrator
-        else getSystemService(Vibrator::class.java)
-        if (vibrator?.hasVibrator() != true) return blocked(R.string.ip_alert_no_vibrator)
         val foregroundFeedback = IpFinderActivity.isSearchScreenVisible
-        val pattern = FOUND_VIBRATION_PATTERN
-        return runCatching {
-            if (Build.VERSION.SDK_INT >= 33) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1),
-                    VibrationAttributes.Builder().setUsage(
-                        if (foregroundFeedback) VibrationAttributes.USAGE_TOUCH else VibrationAttributes.USAGE_NOTIFICATION
-                    ).build())
-            } else {
-                val attributes = android.media.AudioAttributes.Builder()
-                    .setUsage(if (foregroundFeedback) android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION
-                        else android.media.AudioAttributes.USAGE_NOTIFICATION)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
-                if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1), attributes)
-                else vibrator.vibrate(pattern, -1, attributes)
-            }
-            AppLogStore.add(this, getString(R.string.ip_alert_requested))
-            AppLogStore.add(this, if (foregroundFeedback) "IP Finder • vibration écran" else "IP Finder • vibration en arrière-plan")
-            true
-        }.getOrElse {
-            AppLogStore.add(this, getString(R.string.ip_alert_failed, it.javaClass.simpleName))
-            false
+        return foundVibration.request(foregroundFeedback).also { requested ->
+            if (requested) AppLogStore.add(this, if (foregroundFeedback)
+                "IP Finder • vibration écran" else "IP Finder • vibration en arrière-plan")
         }
     }
 
@@ -185,10 +162,12 @@ class IpSearchService : Service() {
         else stopSearchService()
     }
     private fun stopSearchService() {
+        foundVibration.cancelPending()
         if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE) else { @Suppress("DEPRECATION") stopForeground(true) }
         stopSelf()
     }
     override fun onDestroy() {
+        foundVibration.cancelPending()
         val interrupted = active
         active = false; handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)

@@ -294,4 +294,11 @@
     <string name="price_offer_three_months">3 MOIS — %1$s XOF</string>
     <string name="settings_whatsapp_channel">Canal WhatsApp officiel</string>
     <string name="payments_paused">Paiements temporairement désactivés</string>
+    <string name="ip_vibration_settings_title">Vibration IP Finder</string>
+    <string name="ip_vibration_settings_disabled">Un réglage Android indique que les vibrations ou le retour tactile sont désactivés. Pour recevoir deux impulsions lorsqu’une IP compatible est trouvée, activez le vibreur et le retour tactile dans les réglages du téléphone. Vous pouvez continuer sans vibration.</string>
+    <string name="ip_vibration_settings_unknown">Ce téléphone ne communique pas tous ses réglages de vibration à l’application. Pour recevoir les deux impulsions IP Finder, vérifiez que le vibreur et le retour tactile sont activés. Vous pouvez continuer sans modifier les réglages.</string>
+    <string name="ip_vibration_settings_no_hardware">Ce téléphone ne signale aucun vibreur disponible. IP Finder reste utilisable et affiche les résultats à l’écran.</string>
+    <string name="ip_vibration_open_settings">Ouvrir les réglages</string>
+    <string name="ip_vibration_continue">Continuer</string>
+    <string name="ip_vibration_settings_manual">Ouvrez les paramètres du téléphone, puis Son et vibreur ou Accessibilité, pour vérifier les vibrations.</string>
 </resources>

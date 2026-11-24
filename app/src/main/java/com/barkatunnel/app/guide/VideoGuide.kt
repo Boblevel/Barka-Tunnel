@@ -36,14 +36,7 @@ object VideoGuide {
                         Toast.makeText(activity, R.string.video_guide_unavailable, Toast.LENGTH_LONG).show()
                         return@runOnUiThread
                     }
-                    val prefs = activity.getSharedPreferences("video_guide_intro", Activity.MODE_PRIVATE)
-                    if (!prefs.getBoolean(key, false)) {
-                        AlertDialog.Builder(activity).setTitle(R.string.video_guide_title)
-                            .setMessage(R.string.video_guide_intro)
-                            .setPositiveButton(R.string.video_guide_watch) { _, _ -> show(activity, id, true) }
-                            .setNegativeButton(android.R.string.cancel, null).show()
-                        prefs.edit().putBoolean(key, true).apply()
-                    } else show(activity, id, true)
+                    show(activity, id, true)
                 }
             }.start()
         }
@@ -70,7 +63,7 @@ object VideoGuide {
         }
         player.settings.javaScriptEnabled = true
         player.settings.domStorageEnabled = true
-        player.settings.mediaPlaybackRequiresUserGesture = true
+        player.settings.mediaPlaybackRequiresUserGesture = false
         player.settings.allowFileAccess = false
         player.settings.allowContentAccess = false
         player.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
@@ -80,6 +73,8 @@ object VideoGuide {
         var rendererGone = false
         var routeInitialized = false
         var routedPort: Int? = null
+        var foreground = true
+        var loadPending = false
         var attempt = 0
         var usingHosted = id == VideoGuidePage.HOSTED_ID
         var reloadHosted: (() -> Unit)? = null
@@ -193,6 +188,8 @@ object VideoGuide {
             player.stopLoading()
             val load = Runnable {
                 if (!dismissed && !rendererGone && attempt == loadAttempt) {
+                    if (!foreground) { loadPending = true; return@Runnable }
+                    loadPending = false
                     player.loadDataWithBaseURL("$origin/", VideoGuidePage.html(if (usingHosted) VideoGuidePage.HOSTED_ID else id, origin, loadAttempt), "text/html", "UTF-8", null)
                     player.postDelayed(timeout, 30_000)
                 }
@@ -228,7 +225,6 @@ object VideoGuide {
         val scroll = android.widget.ScrollView(activity).apply { addView(content) }
         val dialog = AlertDialog.Builder(activity).setTitle(R.string.video_guide_title).setView(scroll)
             .setPositiveButton(R.string.video_guide_close, null)
-            .setNegativeButton(R.string.video_guide_retry, null)
             .create()
         dialog.setOnDismissListener {
             dismissed = true
@@ -246,31 +242,26 @@ object VideoGuide {
         }
         dialog.show()
         dialog.window?.setLayout(minOf(activity.resources.displayMetrics.widthPixels - dp(24), dp(600)), -2)
-        listOf(android.content.DialogInterface.BUTTON_POSITIVE, android.content.DialogInterface.BUTTON_NEGATIVE).forEach {
-            dialog.getButton(it).setTextColor(ContextCompat.getColor(activity, R.color.barka_blue))
-        }
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
+            .setTextColor(ContextCompat.getColor(activity, R.color.barka_blue))
         dialog.window?.decorView?.let { com.barkatunnel.app.ui.BarkaTypography.apply(it) }
         lifecycle = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> if (!dismissed && !rendererGone) {
+                    foreground = false
                     player.evaluateJavascript("if(typeof pauseGuide==='function')pauseGuide();", null)
                     player.onPause()
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> if (!dismissed && !rendererGone) {
+                    foreground = true
                     player.onResume()
-                    if (routeInitialized && routedPort != BarkaVpnService.connectedSocksPort()) loadPlayer()
+                    if (loadPending || (routeInitialized && routedPort != BarkaVpnService.connectedSocksPort())) loadPlayer()
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> dialog.dismiss()
                 else -> Unit
             }
         }
         owner?.lifecycle?.addObserver(lifecycle)
-        dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE).setOnClickListener {
-            if (rendererGone) {
-                dialog.dismiss()
-                show(activity, if (usingHosted) VideoGuidePage.HOSTED_ID else id, allowHostedFallback)
-            } else if (!useHostedFallback()) loadPlayer()
-        }
         loadPlayer()
     }
 }

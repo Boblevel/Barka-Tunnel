@@ -285,4 +285,11 @@
     <string name="price_offer_three_months">3 MONTHS — %1$s XOF</string>
     <string name="settings_whatsapp_channel">Official WhatsApp channel</string>
     <string name="payments_paused">Payments temporarily disabled</string>
+    <string name="ip_vibration_settings_title">IP Finder vibration</string>
+    <string name="ip_vibration_settings_disabled">An Android setting indicates that vibration or touch feedback is disabled. To receive two pulses when a compatible IP is found, enable vibration and touch feedback in phone settings. You can continue without vibration.</string>
+    <string name="ip_vibration_settings_unknown">This phone does not share all vibration settings with the app. To receive the two IP Finder pulses, check that vibration and touch feedback are enabled. You can continue without changing settings.</string>
+    <string name="ip_vibration_settings_no_hardware">This phone reports no available vibrator. You can still use IP Finder and see results on screen.</string>
+    <string name="ip_vibration_open_settings">Open settings</string>
+    <string name="ip_vibration_continue">Continue</string>
+    <string name="ip_vibration_settings_manual">Open phone settings, then Sound and vibration or Accessibility, to check vibration.</string>
 </resources>

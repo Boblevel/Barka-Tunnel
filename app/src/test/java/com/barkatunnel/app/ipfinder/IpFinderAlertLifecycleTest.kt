@@ -122,4 +122,25 @@ class IpFinderAlertLifecycleTest {
             .apply { isAccessible = true }.invoke(service, "10.161.1.2")
         assertFalse(shadowOf(vibrator).isVibrating)
     }
+
+    @Test @Config(sdk = [29, 33]) fun finishingSearchDoesNotCancelTheSecondPulse() = withService { service ->
+        succeed(service)
+        val vibrator = app.getSystemService(Vibrator::class.java)
+        vibrator.cancel()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(250))
+        assertTrue(shadowOf(vibrator).isVibrating)
+        assertFalse(IpSearchService.active)
+        assertFalse(shadowOf(service).isStoppedBySelf)
+    }
+
+    @Test @Config(sdk = [29, 33]) fun restartingSearchCancelsTheOldSecondPulse() = withService { service ->
+        succeed(service)
+        val vibrator = app.getSystemService(Vibrator::class.java)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
+        service.onStartCommand(Intent(app, IpSearchService::class.java), 0, 2)
+        vibrator.cancel()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(200))
+        assertFalse(shadowOf(vibrator).isVibrating)
+        assertTrue(IpSearchService.active)
+    }
 }

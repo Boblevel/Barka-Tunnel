@@ -83,6 +83,10 @@
     [
       "Demander le réexamen d’une suspension",
       "En cas de suspension, contactez barkatunnel@gmail.com et indiquez l’appareil concerné ainsi que le motif de votre demande. Le déblocage des suggestions et celui de l’application sont indépendants. Le déblocage ne renouvelle pas un abonnement expiré et ne rétablit pas un droit retiré pour un autre motif."
+    ],
+    [
+      "Vibrations et lecture des guides",
+      "Lorsqu’une IP compatible est trouvée pendant une recherche, IP Finder demande deux impulsions au téléphone. Leur exécution dépend du matériel et des réglages Android, notamment du vibreur, du retour tactile, des notifications et du mode Ne pas déranger. Lorsque la désactivation est détectable, l’application propose d’ouvrir les réglages ; si leur état est inconnu, elle invite à les vérifier. Vous pouvez refuser et continuer la recherche. L’application ne modifie pas ces réglages et ne demande pas d’autorisation spéciale pour les contourner. Ouvrir un guide vidéo lance automatiquement sa lecture, avec le son selon les réglages du téléphone. La lecture utilise la connexion disponible et peut consommer des données mobiles ; les commandes permettent de la mettre en pause ou de la fermer."
     ]
   ]
 }

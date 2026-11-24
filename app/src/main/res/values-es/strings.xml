@@ -398,4 +398,11 @@
     <string name="guide_12_text">Buscar versión\nUsa la búsqueda de actualizaciones en Ajustes o la invitación de la aplicación.\n\nDescargar\nSi se ofrece descarga interna, verás el progreso en Inicio. Tras una interrupción vuelve para reanudar cuando el servidor lo permita. No borres los datos de la aplicación durante el proceso.\n\nInstalar\nSigue la confirmación de instalación de Android. Si lo solicita, permite a Barka Tunnel instalar la actualización y vuelve. Android controla ese permiso.\n\nDespués\nAbre Barka Tunnel, comprueba la versión en ACERCA DE y deja sincronizar. Si Android rechaza una versión anterior, consulta al soporte antes de desinstalar para evitar perder datos locales.</string>
     <string name="settings_whatsapp_channel">Canal oficial de WhatsApp</string>
     <string name="payments_paused">Pagos temporalmente desactivados</string>
+    <string name="ip_vibration_settings_title">Vibración de IP Finder</string>
+    <string name="ip_vibration_settings_disabled">Un ajuste de Android indica que la vibración o la respuesta táctil está desactivada. Para recibir dos pulsos al encontrar una IP compatible, activa ambas en los ajustes del teléfono. Puedes continuar sin vibración.</string>
+    <string name="ip_vibration_settings_unknown">Este teléfono no comparte todos sus ajustes de vibración con la aplicación. Para recibir los dos pulsos de IP Finder, comprueba que la vibración y la respuesta táctil estén activadas. Puedes continuar sin cambiar los ajustes.</string>
+    <string name="ip_vibration_settings_no_hardware">Este teléfono no indica ningún vibrador disponible. Puedes seguir usando IP Finder y ver los resultados en pantalla.</string>
+    <string name="ip_vibration_open_settings">Abrir ajustes</string>
+    <string name="ip_vibration_continue">Continuar</string>
+    <string name="ip_vibration_settings_manual">Abre los ajustes del teléfono y después Sonido y vibración o Accesibilidad para comprobar la vibración.</string>
 </resources>

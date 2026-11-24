@@ -14,11 +14,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.provider.Settings
-import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
@@ -37,6 +33,8 @@ import java.net.Inet4Address
 class IpFinderActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
+    private val vibrationSettings by lazy { IpVibrationSettings(this) }
+    private val foundVibration by lazy { IpFoundVibration(this) }
     private val connectivityManager by lazy {
         getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
@@ -187,6 +185,7 @@ class IpFinderActivity : AppCompatActivity() {
             networkRegistered = true
         }
         renderSearchState()
+        if (!searching) vibrationSettings.offerIfNeeded()
         displayHandler.removeCallbacks(displayPoll)
         displayHandler.postDelayed(displayPoll, NETWORK_POLL_DELAY_MS)
     }
@@ -199,6 +198,8 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        vibrationSettings.close()
+        foundVibration.cancelPending()
         if (networkRegistered) connectivityManager.unregisterNetworkCallback(networkCallback)
         networkRegistered = false
         searching = false
@@ -381,30 +382,7 @@ class IpFinderActivity : AppCompatActivity() {
 
     private fun vibrateOnce() {
         if (isFinishing || isDestroyed) return
-        runCatching {
-            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                getSystemService(VibratorManager::class.java)?.defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            }
-
-            if (vibrator?.hasVibrator() == true) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator.vibrate(
-                        VibrationEffect.createOneShot(
-                            IP_FINDER_VIBRATION_MS,
-                            VibrationEffect.DEFAULT_AMPLITUDE
-                        )
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    vibrator.vibrate(IP_FINDER_VIBRATION_MS)
-                }
-            } else if (::scanButton.isInitialized) {
-                scanButton.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-            }
-        }
+        foundVibration.request(foreground = true)
     }
 
     private fun parsePatterns(value: String): List<String> = value
@@ -539,7 +517,6 @@ class IpFinderActivity : AppCompatActivity() {
         private const val LEGACY_IP_SEQUENCE = "10.208;10.210"
         private const val UPDATED_IP_SEQUENCE = "10.208;10.209;10.210"
         private val RETIRED_IP_PREFIXES = setOf("10.148", "10.194", "10.80", "10.10194")
-        private const val IP_FINDER_VIBRATION_MS = 70L
         private const val MAX_NETWORK_POLLS = 15
         private const val MAX_SERVICE_READY_RETRIES = 20
         private const val MAX_FAILED_CYCLES = 2

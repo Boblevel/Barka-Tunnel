@@ -63,22 +63,19 @@ class VideoGuideTest {
         assertEquals(activity.getString(R.string.video_guide_intro), status.text.toString())
     }
 
-    @Test fun errorsStayVisibleAndRetryIgnoresOldCallbacks() = withPlayer { activity, dialog, web, status ->
+    @Test fun errorsStayVisibleWithoutARetryButton() = withPlayer { activity, dialog, web, status ->
         val client = shadowOf(web).webChromeClient
         client.onReceivedTitle(web, "guide-1-error-150")
         assertEquals(activity.getString(R.string.video_guide_restricted), status.text.toString())
         assertEquals(View.VISIBLE, web.visibility)
-        dialog.getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
-        client.onReceivedTitle(web, "guide-1-error-153")
-        assertEquals(activity.getString(R.string.video_guide_loading), status.text.toString())
-        client.onReceivedTitle(web, "guide-2-ready")
-        assertEquals(activity.getString(R.string.video_guide_intro), status.text.toString())
+        assertEquals(View.GONE, dialog.getButton(DialogInterface.BUTTON_NEGATIVE).visibility)
         assertTrue(dialog.isShowing)
     }
 
-    @Test fun dialogHasOnlyRetryAndCloseAndNeverLaunchesAnExternalActivity() = withPlayer { activity, dialog, _, _ ->
+    @Test fun dialogHasOnlyCloseAndAllowsAutoplayWithoutLaunchingAnExternalActivity() = withPlayer { activity, dialog, web, _ ->
         assertEquals(View.GONE, dialog.getButton(DialogInterface.BUTTON_NEUTRAL).visibility)
-        assertEquals(activity.getString(R.string.video_guide_retry), dialog.getButton(DialogInterface.BUTTON_NEGATIVE).text)
+        assertEquals(View.GONE, dialog.getButton(DialogInterface.BUTTON_NEGATIVE).visibility)
+        assertFalse(web.settings.mediaPlaybackRequiresUserGesture)
         dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
         shadowOf(Looper.getMainLooper()).idle()
         assertFalse(dialog.isShowing)
@@ -119,15 +116,13 @@ class VideoGuideTest {
         assertFalse(html.contains("youtube"))
     }
 
-    @Test fun hostedMediaErrorRemainsVisibleAndRetryWorks() = withPlayer(VideoGuidePage.HOSTED_ID) { activity, dialog, web, status ->
+    @Test fun hostedMediaErrorRemainsVisibleWithoutRetry() = withPlayer(VideoGuidePage.HOSTED_ID) { activity, dialog, web, status ->
         val client = shadowOf(web).webChromeClient
         client.onReceivedTitle(web, "guide-1-media-error-2")
         assertEquals(activity.getString(R.string.video_guide_unavailable), status.text.toString())
-        dialog.getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
-        client.onReceivedTitle(web, "guide-1-media-error-2")
-        assertEquals(activity.getString(R.string.video_guide_loading), status.text.toString())
-        client.onReceivedTitle(web, "guide-2-playing")
-        assertEquals(activity.getString(R.string.video_guide_intro), status.text.toString())
+        assertEquals(View.GONE, dialog.getButton(DialogInterface.BUTTON_NEGATIVE).visibility)
+        assertTrue(dialog.isShowing)
+        assertFalse(web.settings.mediaPlaybackRequiresUserGesture)
     }
 
     @Test fun youtubeBlockSwitchesAutomaticallyOnceToHostedVideo() = withPlayer(fallback = true) { activity, _, web, status ->
