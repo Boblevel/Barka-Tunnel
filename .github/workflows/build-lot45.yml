@@ -126,7 +126,19 @@ jobs:
         run: gradle clean assembleRelease --no-daemon --no-build-cache --rerun-tasks --stacktrace
 
       - name: Verifier sauvegarde et restauration de la consommation
+        id: android_tests
         run: gradle testReleaseUnitTest --no-daemon --no-build-cache --stacktrace
+
+      - name: Conserver les rapports des tests Android
+        if: ${{ always() && (steps.android_tests.outcome == 'success' || steps.android_tests.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: BarkaTunnel-Android-test-reports
+          path: |
+            app/build/reports/tests/testReleaseUnitTest/
+            app/build/test-results/testReleaseUnitTest/*.xml
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Verifier les moteurs ARM64 et ARMv7 dans APK
         shell: bash
