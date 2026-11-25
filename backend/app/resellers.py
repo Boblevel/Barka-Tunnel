@@ -7,6 +7,7 @@ import hmac
 import secrets
 import string
 import uuid
+from contextlib import nullcontext
 from datetime import datetime, timezone
 
 from fastapi import Header, HTTPException, status
@@ -102,14 +103,19 @@ def reset_reseller_password(reseller_id: int) -> dict:
     return reseller_credentials(reseller_id)
 
 
-def renew_reseller_month(reseller_id: int) -> dict:
+def renew_reseller_month(reseller_id: int, months: int = 1, expected_expires_at: datetime | None = None) -> dict:
+    if type(months) is not int or not 1 <= months <= 120:
+        raise ValueError("Indiquez entre 1 et 120 mois.")
     with transaction() as cx:
         row = cx.execute("SELECT * FROM reseller_accounts WHERE id=? AND deleted_at IS NULL", (reseller_id,)).fetchone()
         if not row:
             raise ValueError("Sous-panel introuvable.")
+        if expected_expires_at is not None and int(expected_expires_at.timestamp()) != int(row["expires_at"]):
+            raise ValueError("L’expiration a changé. Rechargez le sous-panel avant de prolonger.")
         now = now_ts()
         start = datetime.fromtimestamp(max(now, int(row["expires_at"])), timezone.utc)
-        year, month = (start.year + 1, 1) if start.month == 12 else (start.year, start.month + 1)
+        month_index = start.year * 12 + start.month - 1 + months
+        year, month = month_index // 12, month_index % 12 + 1
         end = start.replace(year=year, month=month, day=min(start.day, calendar.monthrange(year, month)[1]))
         expiry = _expiry_timestamp(end)
         settle_reseller_pauses(cx, reseller_id, now)
@@ -118,7 +124,9 @@ def renew_reseller_month(reseller_id: int) -> dict:
         reseller_quotas.renewed(cx, reseller_id, now)
         record_event(cx, reseller_id, "renewed", detail=iso(expiry))
         row = cx.execute("SELECT * FROM reseller_accounts WHERE id=?", (reseller_id,)).fetchone()
-    return _public_account(row)
+        result = {**_public_account(row), "quota_reset": True,
+                  "quota": reseller_quotas.summary(cx, row, now)}
+    return result
 
 
 def _generate_password() -> str:
@@ -289,20 +297,24 @@ def update_reseller_expiry(reseller_id: int, expires_at: datetime) -> dict:
         )
         if expiry > int(row["expires_at"]):
             reseller_quotas.renewed(cx, reseller_id, now)
+            record_event(cx, reseller_id, "renewed", detail=iso(expiry))
         else:
             updated = cx.execute("SELECT * FROM reseller_accounts WHERE id=?", (reseller_id,)).fetchone()
             reseller_quotas.current_period(cx, updated, now)
         _revoke_sessions(cx, reseller_id, now)
+        quota_reset = expiry > int(row["expires_at"])
         row = cx.execute(
             "SELECT * FROM reseller_accounts WHERE id=?",
             (reseller_id,),
         ).fetchone()
-    return _public_account(row)
+        result = {**_public_account(row), "quota_reset": quota_reset,
+                  "quota": reseller_quotas.summary(cx, row, now)}
+    return result
 
 
-def delete_reseller(reseller_id: int) -> None:
+def delete_reseller(reseller_id: int, *, connection=None) -> None:
     now = now_ts()
-    with transaction() as cx:
+    with (nullcontext(connection) if connection is not None else transaction()) as cx:
         row = cx.execute(
             "SELECT id FROM reseller_accounts WHERE id=? AND deleted_at IS NULL",
             (reseller_id,),

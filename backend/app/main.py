@@ -22,7 +22,7 @@ from .admin_ops import (
     revoke_activation_code,
     revoke_redeem_code,
 )
-from .panel_management import FilterRequest, filtered_codes, reseller_details
+from .panel_management import FilterRequest, filtered_codes, reseller_details, ResellerFilterRequest, filtered_resellers
 from .custom_subscriptions import CustomSubscriptionRequest, issue_custom_subscription
 from .admin_panel import ADMIN_PANEL_HTML
 from .reseller_panel import RESELLER_PANEL_HTML
@@ -61,6 +61,7 @@ from .models import (
     AdminCodeRevokeResponse,
     AdminResellerCreateRequest,
     AdminResellerExpiryRequest,
+    AdminResellerRenewRequest,
     AdminResellerQuotaRequest,
     AdminStatsResetRequest,
     AppUpdateAdminResponse,
@@ -650,9 +651,9 @@ def admin_reseller_password(reseller_id: int, body: AdminStatsResetRequest, resp
 
 
 @app.post("/v1/admin/resellers/{reseller_id}/renew", dependencies=[Depends(require_admin)])
-def admin_reseller_renew(reseller_id: int, body: AdminStatsResetRequest):
+def admin_reseller_renew(reseller_id: int, body: AdminResellerRenewRequest):
     try:
-        return renew_reseller_month(reseller_id)
+        return renew_reseller_month(reseller_id, body.months, body.expected_expires_at)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
@@ -756,6 +757,16 @@ def reseller_code_delete(
 @app.post("/v1/admin/codes/filter-preview", dependencies=[Depends(require_admin)])
 def admin_filter_preview(body: FilterRequest):
     return filtered_codes(body)
+
+
+@app.post("/v1/admin/resellers/filter-preview", dependencies=[Depends(require_admin)])
+def admin_reseller_filter_preview(body: ResellerFilterRequest):
+    return filtered_resellers(body)
+
+
+@app.post("/v1/admin/resellers/delete-filtered", dependencies=[Depends(require_admin)])
+def admin_reseller_filter_delete(body: ResellerFilterRequest):
+    return filtered_resellers(body, delete=True)
 
 
 @app.post("/v1/admin/codes/delete-filtered", dependencies=[Depends(require_admin)])

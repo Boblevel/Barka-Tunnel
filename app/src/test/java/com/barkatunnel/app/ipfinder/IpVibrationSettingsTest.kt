@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.DialogInterface
 import android.os.Vibrator
+import android.os.Looper
 import android.provider.Settings
 import androidx.appcompat.app.AlertDialog
 import com.barkatunnel.app.R
@@ -38,6 +39,7 @@ class IpVibrationSettingsTest {
         val dialog = ShadowDialog.getLatestDialog() as AlertDialog
         assertTrue(dialog.isShowing)
         dialog.getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         settings.offerIfNeeded()
         assertFalse(dialog.isShowing)
         assertNull(shadowOf(activity).nextStartedActivity)
@@ -53,6 +55,7 @@ class IpVibrationSettingsTest {
         settings.offerIfNeeded()
         val dialog = ShadowDialog.getLatestDialog() as AlertDialog
         dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals(Settings.ACTION_SOUND_SETTINGS, shadowOf(activity).nextStartedActivity.action)
         assertEquals(0, Settings.System.getInt(activity.contentResolver, "vibrate_on"))
         settings.offerIfNeeded()

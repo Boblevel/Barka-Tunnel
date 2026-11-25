@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from .admin_ops import delete_activation_code, delete_redeem_code, list_activation_codes, list_redeem_codes
 from .db import connect, transaction
-from .resellers import public_reseller_account
+from .resellers import public_reseller_account, delete_reseller
 from .services import iso, now_ts
 
 
@@ -19,6 +19,45 @@ class FilterRequest(BaseModel):
     status: Literal["issued", "redeemed", "expired", "revoked", "active", "all"]
     query: str = Field(default="", max_length=200)
     fingerprint: str | None = Field(default=None, min_length=64, max_length=64)
+
+
+class ResellerFilterRequest(BaseModel):
+    status: Literal["active", "expired", "frozen", "all"]
+    query: str = Field(default="", max_length=200)
+    fingerprint: str | None = Field(default=None, min_length=64, max_length=64)
+
+
+def filtered_resellers(body: ResellerFilterRequest, *, delete: bool = False) -> dict:
+    query = body.query.strip().lower()
+    if body.status == "all" and not query:
+        raise HTTPException(400, "Choisissez un statut ou saisissez une recherche.")
+    with transaction() as cx:
+        accounts = cx.execute("SELECT * FROM reseller_accounts WHERE deleted_at IS NULL ORDER BY id DESC").fetchall()
+        rows = []
+        snapshot = []
+        now = now_ts()
+        for account in accounts:
+            state = "expired" if account["expires_at"] <= now else account["status"]
+            label = {"active": "Actif", "frozen": "Inactif • Gelé", "expired": "Inactif • Expiré"}[state]
+            if body.status != "all" and state != body.status:
+                continue
+            if query and not any(query in str(v).lower() for v in (account["id"], account["username"], state, label)):
+                continue
+            rows.append(account)
+            # Revalidate the actual accounts AND their grants before deleting.
+            # A renewal, freeze or newly generated/activated code cancels the batch.
+            grants = [dict(r) for r in cx.execute("""SELECT id,status,redeemed_device_id,
+                applied_from,applied_until,deleted_at FROM activation_codes
+                WHERE created_by_reseller_id=? ORDER BY id""", (account["id"],))]
+            snapshot.append([dict(account), state, grants])
+        fingerprint = hashlib.sha256(json.dumps([body.status, query, snapshot], sort_keys=True).encode()).hexdigest()
+        if not delete:
+            return {"count": len(rows), "fingerprint": fingerprint}
+        if body.fingerprint is None or not hmac.compare_digest(body.fingerprint, fingerprint):
+            raise HTTPException(409, "La liste a changé. Rechargez puis confirmez à nouveau ; aucun sous-panel supprimé.")
+        for account in rows:
+            delete_reseller(account["id"], connection=cx)
+    return {"success": True, "deleted": len(rows), "message": f"{len(rows)} sous-panel(s) du filtre et leurs codes supprimés."}
 
 
 def filtered_codes(body: FilterRequest, reseller_id: int | None = None, *, delete: bool = False) -> dict:

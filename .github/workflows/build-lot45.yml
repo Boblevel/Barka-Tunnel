@@ -1,7 +1,7 @@
-name: APK LOT45 à LOT47
+name: APK LOT45 à LOT48
 on:
   push:
-    branches: [validation/lot45-145, validation/lot46-145, validation/lot47-145]
+    branches: [validation/lot45-145, validation/lot46-145, validation/lot47-145, validation/lot48-145]
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
-    if: github.ref == 'refs/heads/validation/lot45-145' || github.ref == 'refs/heads/validation/lot46-145' || github.ref == 'refs/heads/validation/lot47-145'
+    if: github.ref == 'refs/heads/validation/lot45-145' || github.ref == 'refs/heads/validation/lot46-145' || github.ref == 'refs/heads/validation/lot47-145' || github.ref == 'refs/heads/validation/lot48-145'
     timeout-minutes: 45
     runs-on: ubuntu-latest
 
@@ -73,6 +73,7 @@ jobs:
           node backend/tests/panel_lot25.test.cjs
           node backend/tests/panel_lot44.test.cjs
           node backend/tests/panel_lot45.test.cjs
+          node backend/tests/panel_lot48.test.cjs
           node scripts/test_lot47_video.cjs
 
       - name: Préparer les moteurs natifs C6

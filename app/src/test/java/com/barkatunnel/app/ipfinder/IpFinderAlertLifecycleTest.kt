@@ -9,6 +9,7 @@ import android.os.Vibrator
 import com.barkatunnel.app.R
 import com.barkatunnel.app.journal.AppLogStore
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,6 +24,8 @@ import java.time.Duration
 @Config(sdk = [23, 28, 33], application = Application::class)
 class IpFinderAlertLifecycleTest {
     private val app get() = RuntimeEnvironment.getApplication()
+
+    @Before fun clearRecordedRequests() = RecordingSystemVibrator.resetRequests()
 
     @After fun reset() {
         for ((key, value) in listOf("active" to false, "foundIp" to null, "status" to "")) {
@@ -123,24 +126,25 @@ class IpFinderAlertLifecycleTest {
         assertFalse(shadowOf(vibrator).isVibrating)
     }
 
-    @Test @Config(sdk = [29, 33]) fun finishingSearchDoesNotCancelTheSecondPulse() = withService { service ->
+    @Test @Config(sdk = [29, 33], shadows = [RecordingSystemVibrator::class])
+    fun finishingSearchDoesNotCancelTheSecondPulse() = withService { service ->
         succeed(service)
-        val vibrator = app.getSystemService(Vibrator::class.java)
-        vibrator.cancel()
+        assertEquals(1, RecordingSystemVibrator.getRequestTimes().size)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(250))
-        assertTrue(shadowOf(vibrator).isVibrating)
+        val times = RecordingSystemVibrator.getRequestTimes()
+        assertEquals(2, times.size)
+        assertEquals(250L, times[1] - times[0])
         assertFalse(IpSearchService.active)
         assertFalse(shadowOf(service).isStoppedBySelf)
     }
 
-    @Test @Config(sdk = [29, 33]) fun restartingSearchCancelsTheOldSecondPulse() = withService { service ->
+    @Test @Config(sdk = [29, 33], shadows = [RecordingSystemVibrator::class])
+    fun restartingSearchCancelsTheOldSecondPulse() = withService { service ->
         succeed(service)
-        val vibrator = app.getSystemService(Vibrator::class.java)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
         service.onStartCommand(Intent(app, IpSearchService::class.java), 0, 2)
-        vibrator.cancel()
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(200))
-        assertFalse(shadowOf(vibrator).isVibrating)
+        assertEquals(1, RecordingSystemVibrator.getRequestTimes().size)
         assertTrue(IpSearchService.active)
     }
 }

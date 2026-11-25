@@ -102,6 +102,8 @@ class AdminRedeemCodeListItem(BaseModel):
     duration_seconds: int
     max_users: int
     all_users_finished: bool = False
+    unfinished_usage_count: int = 0
+    waiting_usage_count: int = 0
     usage_count: int
     created_at: str
     last_redeemed_at: str | None = None
@@ -189,6 +191,12 @@ class AdminResellerQuotaRequest(BaseModel):
 
 class AdminResellerExpiryRequest(BaseModel):
     expires_at: datetime
+
+
+class AdminResellerRenewRequest(BaseModel):
+    confirmation: Literal["oui"]
+    months: int = Field(default=1, strict=True, ge=1, le=120)
+    expected_expires_at: datetime | None = None
 
 
 class ResellerLoginRequest(BaseModel):

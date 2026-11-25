@@ -28,7 +28,7 @@ internal class IpVibrationSettings(private val activity: Activity) {
         // These read-only AOSP keys may be missing or inaccessible on OEM devices.
         // Missing values must never be reported as disabled (or definitely enabled).
         fun read(key: String): Int? = runCatching {
-            Settings.System.getString(activity.contentResolver, key)?.toIntOrNull()
+            Settings.System.getInt(activity.contentResolver, key)
         }.getOrNull()
         val global = read("vibrate_on")
         @Suppress("DEPRECATION")
