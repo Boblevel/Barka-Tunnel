@@ -61,7 +61,7 @@ class IpFinderAlertLifecycleTest {
         assertEquals("10.161.1.2", IpSearchService.foundIp)
         assertFalse(shadowOf(service).isStoppedBySelf)
         assertTrue(shadowOf(app.getSystemService(Vibrator::class.java)).isVibrating)
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1199))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(329))
         assertFalse(shadowOf(service).isStoppedBySelf)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1))
         assertTrue(shadowOf(service).isStoppedBySelf)
@@ -71,9 +71,9 @@ class IpFinderAlertLifecycleTest {
 
     @Test fun startingAnotherSearchCancelsThePreviousDelayedStop() = withService { service ->
         succeed(service)
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(500))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
         service.onStartCommand(Intent(app, IpSearchService::class.java), 0, 2)
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(700))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(230))
         assertTrue(IpSearchService.active)
         assertFalse(shadowOf(service).isStoppedBySelf)
     }
@@ -127,19 +127,18 @@ class IpFinderAlertLifecycleTest {
     }
 
     @Test @Config(sdk = [29, 33], shadows = [RecordingSystemVibrator::class])
-    fun finishingSearchDoesNotCancelTheSecondPulse() = withService { service ->
+    fun finishingSearchProducesOnlyOnePulse() = withService { service ->
         succeed(service)
         assertEquals(1, RecordingSystemVibrator.getRequestTimes().size)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(250))
         val times = RecordingSystemVibrator.getRequestTimes()
-        assertEquals(2, times.size)
-        assertEquals(250L, times[1] - times[0])
+        assertEquals(1, times.size)
         assertFalse(IpSearchService.active)
         assertFalse(shadowOf(service).isStoppedBySelf)
     }
 
     @Test @Config(sdk = [29, 33], shadows = [RecordingSystemVibrator::class])
-    fun restartingSearchCancelsTheOldSecondPulse() = withService { service ->
+    fun restartingSearchDoesNotReplayThePreviousAlert() = withService { service ->
         succeed(service)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
         service.onStartCommand(Intent(app, IpSearchService::class.java), 0, 2)

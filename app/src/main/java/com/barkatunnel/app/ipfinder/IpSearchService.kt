@@ -67,7 +67,6 @@ class IpSearchService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) { finishSearch(getString(R.string.ip_finder_stopped)); return START_NOT_STICKY }
         if (active) return START_NOT_STICKY
-        foundVibration.cancelPending()
         handler.removeCallbacks(stopAfterAlert)
         criteria = IpFinderActivity.captureCriteria(this)
         active = true; foundIp = null; attempts = 0
@@ -116,7 +115,7 @@ class IpSearchService : Service() {
             .putString(IpFinderActivity.KEY_LAST_FOUND_IP, ip).apply()
         val message = getString(R.string.ip_finder_found_detail, ip)
         AppLogStore.add(this, getString(R.string.ip_finder_log_found_format, ip))
-        // The explicit alert owns both pulses; the notification must not add another vibration.
+        // The explicit alert owns the single click; the notification must not vibrate again.
         runCatching { notifications.notify(FOUND_NOTIFICATION, notification(FOUND_CHANNEL, message, false, quiet = true)) }
             .onFailure { AppLogStore.add(this, getString(R.string.ip_alert_notification_failed, it.javaClass.simpleName)) }
         val vibrationRequested = vibrateFound()
@@ -132,7 +131,7 @@ class IpSearchService : Service() {
         if (notifications.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL)
             AppLogStore.add(this, getString(R.string.ip_alert_system_policy))
         val foregroundFeedback = IpFinderActivity.isSearchScreenVisible
-        return foundVibration.request(foregroundFeedback).also { requested ->
+        return foundVibration.request(foregroundFeedback, IpFinderActivity.visibleFeedbackView()).also { requested ->
             if (requested) AppLogStore.add(this, if (foregroundFeedback)
                 "IP Finder • vibration écran" else "IP Finder • vibration en arrière-plan")
         }
@@ -162,12 +161,10 @@ class IpSearchService : Service() {
         else stopSearchService()
     }
     private fun stopSearchService() {
-        foundVibration.cancelPending()
         if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE) else { @Suppress("DEPRECATION") stopForeground(true) }
         stopSelf()
     }
     override fun onDestroy() {
-        foundVibration.cancelPending()
         val interrupted = active
         active = false; handler.removeCallbacksAndMessages(null)
         BarkaAssistantService.cancelAirplaneCycle(this)
@@ -183,7 +180,7 @@ class IpSearchService : Service() {
         private const val FOUND_CHANNEL = "ip_search_found"
         private const val NOTIFICATION = 740
         private const val FOUND_NOTIFICATION = 741
-        private val FOUND_VIBRATION_PATTERN = longArrayOf(0, 400, 150, 400)
+        private val FOUND_VIBRATION_PATTERN = longArrayOf(0, 80)
         @Volatile var active = false; private set
         @Volatile var status = ""; private set
         @Volatile var foundIp: String? = null; private set

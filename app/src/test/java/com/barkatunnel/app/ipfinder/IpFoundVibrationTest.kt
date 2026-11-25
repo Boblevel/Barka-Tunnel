@@ -4,6 +4,8 @@ import android.app.Application
 import android.os.Looper
 import android.os.Vibrator
 import android.os.VibrationEffect
+import android.view.View
+import android.view.HapticFeedbackConstants
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -19,7 +21,7 @@ import java.time.Duration
 class IpFoundVibrationTest {
     @Before fun clearRecordedRequests() = RecordingSystemVibrator.resetRequests()
 
-    @Test fun sendsSecondPulseAt250msAndNeverRepeats() {
+    @Test fun sendsOneVpnButtonClickAndNeverRepeats() {
         val app = RuntimeEnvironment.getApplication()
         val vibrator = app.getSystemService(Vibrator::class.java)
         shadowOf(vibrator).setHasVibrator(true)
@@ -30,23 +32,55 @@ class IpFoundVibrationTest {
         assertEquals(1, RecordingSystemVibrator.getRequestTimes().size)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1))
         val times = RecordingSystemVibrator.getRequestTimes()
-        assertEquals(2, times.size)
-        assertEquals(250L, times[1] - times[0])
-        val effect = VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
-        assertEquals(listOf(effect, effect), RecordingSystemVibrator.getRequestedEffects())
+        assertEquals(1, times.size)
+        val effect = VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+        assertEquals(listOf(effect), RecordingSystemVibrator.getRequestedEffects())
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2))
-        assertEquals(2, RecordingSystemVibrator.getRequestTimes().size)
-        alert.cancelPending()
+        assertEquals(1, RecordingSystemVibrator.getRequestTimes().size)
     }
 
-    @Test fun stoppingOrReplacingAnAlertCancelsItsPendingPulse() {
+    @Test fun backgroundAlertHasNoDelayedSecondPulse() {
         val app = RuntimeEnvironment.getApplication()
         val vibrator = app.getSystemService(Vibrator::class.java)
         shadowOf(vibrator).setHasVibrator(true)
         val alert = IpFoundVibration(app)
         assertTrue(alert.request(foreground = false))
-        alert.cancelPending()
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(500))
         assertEquals(1, RecordingSystemVibrator.getRequestTimes().size)
     }
+
+    @Test fun acceptedVpnStyleViewFeedbackDoesNotAlsoCallVibrator() {
+        val app = RuntimeEnvironment.getApplication()
+        var calls = 0
+        val view = object : View(app) {
+            override fun isShown() = true
+            override fun performHapticFeedback(kind: Int, flags: Int): Boolean {
+                calls++
+                assertEquals(HapticFeedbackConstants.VIRTUAL_KEY, kind)
+                @Suppress("DEPRECATION")
+                val expected = HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                assertEquals(expected, flags)
+                return true
+            }
+        }
+        assertTrue(IpFoundVibration(app).request(true, view))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2))
+        assertEquals(1, calls)
+        assertTrue(RecordingSystemVibrator.getRequestTimes().isEmpty())
+    }
+
+    @Test fun rejectedViewFeedbackFallsBackToExactlyOneClick() {
+        val app = RuntimeEnvironment.getApplication()
+        shadowOf(app.getSystemService(Vibrator::class.java)).setHasVibrator(true)
+        val view = object : View(app) {
+            override fun isShown() = true
+            override fun performHapticFeedback(kind: Int, flags: Int) = false
+        }
+        assertTrue(IpFoundVibration(app).request(true, view))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2))
+        assertEquals(listOf(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)),
+            RecordingSystemVibrator.getRequestedEffects())
+    }
+
 }

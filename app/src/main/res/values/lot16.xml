@@ -5,7 +5,7 @@
     <string name="ip_alert_dnd">IP Finder • Vibration directe non demandée : filtrage Ne pas déranger actif ou indéterminé.</string>
     <string name="ip_alert_channel_disabled">IP Finder • Vibration non demandée : vérifiez la vibration et le mode sonore du canal « IP compatible trouvée » dans les paramètres Android.</string>
     <string name="ip_alert_no_vibrator">IP Finder • Aucun vibreur disponible détecté par Android.</string>
-    <string name="ip_alert_requested">IP Finder • Vibration demandée à Android (deux impulsions). Cela ne confirme pas son exécution matérielle.</string>
+    <string name="ip_alert_requested">IP Finder • Vibration demandée à Android (une impulsion). Cela ne confirme pas son exécution matérielle.</string>
     <string name="ip_alert_failed">IP Finder • Échec de la demande de vibration : %1$s.</string>
     <string name="ip_alert_notification_failed">IP Finder • Échec de la notification de réussite : %1$s.</string>
 </resources>

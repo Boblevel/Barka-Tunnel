@@ -5,7 +5,7 @@
     <string name="ip_alert_dnd">IP Finder • لم يُطلب الاهتزاز المباشر: تصفية عدم الإزعاج نشطة أو حالتها غير معروفة.</string>
     <string name="ip_alert_channel_disabled">IP Finder • لم يُطلب الاهتزاز: تحقق من الاهتزاز ووضع التنبيه لقناة «تم العثور على IP متوافق» في إعدادات Android.</string>
     <string name="ip_alert_no_vibrator">IP Finder • لم يكتشف Android أي محرّك اهتزاز متاح.</string>
-    <string name="ip_alert_requested">IP Finder • طُلب من Android الاهتزاز مرتين. هذا لا يؤكد حدوث الاهتزاز فعليًا.</string>
+    <string name="ip_alert_requested">IP Finder • طُلب من Android الاهتزاز مرة واحدة. هذا لا يؤكد حدوث الاهتزاز فعليًا.</string>
     <string name="ip_alert_failed">IP Finder • تعذر طلب الاهتزاز: %1$s.</string>
     <string name="ip_alert_notification_failed">IP Finder • تعذر إرسال إشعار النجاح: %1$s.</string>
 </resources>

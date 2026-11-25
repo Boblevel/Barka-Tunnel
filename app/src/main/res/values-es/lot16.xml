@@ -5,7 +5,7 @@
     <string name="ip_alert_dnd">IP Finder • Vibración directa no solicitada: el filtro No molestar está activo o su estado es desconocido.</string>
     <string name="ip_alert_channel_disabled">IP Finder • Vibración no solicitada: comprueba la vibración y el modo de alerta del canal «IP compatible encontrada» en los ajustes de Android.</string>
     <string name="ip_alert_no_vibrator">IP Finder • Android no detectó ningún vibrador disponible.</string>
-    <string name="ip_alert_requested">IP Finder • Vibración solicitada a Android (dos pulsos). Esto no confirma la vibración física.</string>
+    <string name="ip_alert_requested">IP Finder • Vibración solicitada a Android (un pulso). Esto no confirma la vibración física.</string>
     <string name="ip_alert_failed">IP Finder • Error al solicitar la vibración: %1$s.</string>
     <string name="ip_alert_notification_failed">IP Finder • Error en la notificación de éxito: %1$s.</string>
 </resources>

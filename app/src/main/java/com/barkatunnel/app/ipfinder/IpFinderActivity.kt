@@ -29,11 +29,11 @@ import com.barkatunnel.app.ui.SystemBars
 import com.barkatunnel.app.vpnc6.BarkaVpnService
 import com.google.android.material.button.MaterialButton
 import java.net.Inet4Address
+import java.lang.ref.WeakReference
 
 class IpFinderActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
-    private val vibrationSettings by lazy { IpVibrationSettings(this) }
     private val foundVibration by lazy { IpFoundVibration(this) }
     private val connectivityManager by lazy {
         getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -167,10 +167,12 @@ class IpFinderActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         visibleActivities++
+        feedbackView = WeakReference(resultText)
     }
 
     override fun onStop() {
         visibleActivities--
+        if (feedbackView?.get() === resultText) feedbackView = null
         super.onStop()
     }
 
@@ -185,7 +187,6 @@ class IpFinderActivity : AppCompatActivity() {
             networkRegistered = true
         }
         renderSearchState()
-        if (!searching) vibrationSettings.offerIfNeeded()
         displayHandler.removeCallbacks(displayPoll)
         displayHandler.postDelayed(displayPoll, NETWORK_POLL_DELAY_MS)
     }
@@ -198,8 +199,6 @@ class IpFinderActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        vibrationSettings.close()
-        foundVibration.cancelPending()
         if (networkRegistered) connectivityManager.unregisterNetworkCallback(networkCallback)
         networkRegistered = false
         searching = false
@@ -382,7 +381,7 @@ class IpFinderActivity : AppCompatActivity() {
 
     private fun vibrateOnce() {
         if (isFinishing || isDestroyed) return
-        foundVibration.request(foreground = true)
+        foundVibration.request(foreground = true, feedbackView = resultText)
     }
 
     private fun parsePatterns(value: String): List<String> = value
@@ -473,6 +472,9 @@ class IpFinderActivity : AppCompatActivity() {
         // The search service and activity lifecycle callbacks run on the main thread.
         private var visibleActivities = 0
         internal val isSearchScreenVisible get() = visibleActivities > 0
+        private var feedbackView: WeakReference<View>? = null
+        internal fun visibleFeedbackView(): View? =
+            if (isSearchScreenVisible) feedbackView?.get()?.takeIf { it.isShown } else null
         fun captureCriteria(context: Context) = IpSearchCriteria(usesOrangeRules(context), loadSearchPattern(context))
         fun isIpCompatible(context: Context, ip: String?): Boolean {
             if (ip.isNullOrBlank()) return false
