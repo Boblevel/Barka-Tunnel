@@ -50,28 +50,6 @@ def mark_connection_attempt(device_id: str) -> None:
         )
 
 
-def mark_vpn_presence(device_id: str, session_id: str, connected: bool) -> None:
-    # Présence déclarée uniquement par le service VPN Android, sans changer
-    # les droits d'accès ni le compteur historique des tentatives.
-    now = now_ts()
-    with transaction() as cx:
-        if connected:
-            cx.execute(
-                """UPDATE devices SET vpn_session_id=?, vpn_online_until=?
-                   WHERE device_id=? AND (
-                       vpn_session_id IS NULL OR vpn_session_id<>? OR vpn_online_until>0
-                   )""",
-                (session_id, now + 90, device_id, session_id),
-            )
-        else:
-            # Une déconnexion tardive d'une ancienne session ne doit pas
-            # déconnecter la nouvelle session du même appareil.
-            cx.execute(
-                "UPDATE devices SET vpn_online_until=0 WHERE device_id=? AND vpn_session_id=?",
-                (device_id, session_id),
-            )
-
-
 def access_state(device_id: str) -> dict:
     ensure_device(device_id)
     now = now_ts()

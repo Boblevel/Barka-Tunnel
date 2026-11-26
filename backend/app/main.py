@@ -36,7 +36,7 @@ from .app_updates import (
 
 from .request_protection import protect_request
 from .config import settings
-from .db import connect, init_db
+from .db import connect, init_db, transaction
 from .saspay import SasPayError, create_payment, get_payment
 from .models import (
     AccessResponse,
@@ -109,7 +109,7 @@ from .services import (
     mark_payment_failed,
     mark_payment_paid,
     mark_connection_attempt,
-    mark_vpn_presence,
+    now_ts,
     pending_payments_for_reconciliation,
     recent_pending_payment,
     redeem_activation_code,
@@ -199,6 +199,28 @@ def check_access(body: DeviceRequest):
 def device_connection_attempt(body: DeviceRequest):
     mark_connection_attempt(body.device_id)
     return {"ok": True}
+
+
+def mark_vpn_presence(device_id: str, session_id: str, connected: bool) -> None:
+    # Présence déclarée uniquement par le service VPN Android, sans changer
+    # les droits d'accès ni le compteur historique des tentatives.
+    now = now_ts()
+    with transaction() as cx:
+        if connected:
+            cx.execute(
+                """UPDATE devices SET vpn_session_id=?, vpn_online_until=?
+                   WHERE device_id=? AND (
+                       vpn_session_id IS NULL OR vpn_session_id<>? OR vpn_online_until>0
+                   )""",
+                (session_id, now + 90, device_id, session_id),
+            )
+        else:
+            # Une déconnexion tardive d'une ancienne session ne doit pas
+            # déconnecter la nouvelle session du même appareil.
+            cx.execute(
+                "UPDATE devices SET vpn_online_until=0 WHERE device_id=? AND vpn_session_id=?",
+                (device_id, session_id),
+            )
 
 
 @app.post("/v1/device/vpn-presence")
