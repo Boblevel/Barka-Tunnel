@@ -15,6 +15,11 @@ class DeviceRequest(BaseModel):
         return value.strip()
 
 
+class VpnPresenceRequest(DeviceRequest):
+    session_id: str = Field(min_length=36, max_length=36, pattern=r"^[0-9a-fA-F-]{36}$")
+    connected: bool
+
+
 class AccessResponse(BaseModel):
     allowed: bool
     unlimited: bool = False
@@ -101,6 +106,7 @@ class AdminRedeemCodeListItem(BaseModel):
     duration_seconds: int
     max_users: int
     usage_count: int
+    is_full: bool = False
     created_at: str
     last_redeemed_at: str | None = None
     last_expires_at: str | None = None

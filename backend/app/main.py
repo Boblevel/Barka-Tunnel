@@ -48,6 +48,7 @@ from .models import (
     AdminRedeemCodeRequest,
     AdminRedeemCodeResponse,
     DeviceRequest,
+    VpnPresenceRequest,
     PaymentStartRequest,
     PaymentStartResponse,
     PaymentStatusRequest,
@@ -108,6 +109,7 @@ from .services import (
     mark_payment_failed,
     mark_payment_paid,
     mark_connection_attempt,
+    mark_vpn_presence,
     pending_payments_for_reconciliation,
     recent_pending_payment,
     redeem_activation_code,
@@ -196,6 +198,12 @@ def check_access(body: DeviceRequest):
 @app.post("/v1/device/connection-attempt")
 def device_connection_attempt(body: DeviceRequest):
     mark_connection_attempt(body.device_id)
+    return {"ok": True}
+
+
+@app.post("/v1/device/vpn-presence")
+def device_vpn_presence(body: VpnPresenceRequest):
+    mark_vpn_presence(body.device_id, body.session_id, body.connected)
     return {"ok": True}
 
 

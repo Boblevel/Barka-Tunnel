@@ -33,6 +33,8 @@ import java.util.concurrent.atomic.AtomicLong
 class BarkaVpnService : VpnService() {
     private val worker = Executors.newSingleThreadExecutor()
     private val accessExecutor = Executors.newSingleThreadScheduledExecutor()
+    private val presenceExecutor = Executors.newSingleThreadExecutor()
+    @Volatile private var presenceSessionId: String? = null
     private var accessFuture: ScheduledFuture<*>? = null
     @Volatile private var sessionAccessRevision = 0L
     private val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
@@ -184,6 +186,9 @@ class BarkaVpnService : VpnService() {
         accessFuture?.cancel(true)
         accessExecutor.shutdownNow()
         keepAliveExecutor.shutdownNow()
+        // Envoyer le dernier état hors du thread principal, puis fermer l'exécuteur.
+        clearVpnPresence()
+        presenceExecutor.shutdown()
         // La fermeture native attend une réponse Binder : ne pas bloquer Android.
         worker.execute { stopTunnel() }
         worker.shutdown()
@@ -480,7 +485,21 @@ class BarkaVpnService : VpnService() {
         C6VpnRuntime.complete(requestId, C6VpnResult.Disconnected)
     }
 
+    private fun clearVpnPresence() {
+        val sessionId = presenceSessionId ?: return
+        presenceSessionId = null
+        runCatching {
+            presenceExecutor.execute {
+                runCatching {
+                    com.barkatunnel.app.backend.BarkaBackendClient(this)
+                        .reportVpnPresence(sessionId, false)
+                }
+            }
+        }
+    }
+
     private fun stopTunnel() {
+        clearVpnPresence()
         val interrupted = Thread.interrupted()
         try {
             runtimeSocksPort = null
@@ -612,14 +631,32 @@ class BarkaVpnService : VpnService() {
 
     private fun startConnectionMonitor(protocol: VpnProfileProtocol) {
         accessFuture?.cancel(true)
+        presenceSessionId = java.util.UUID.randomUUID().toString()
         val accessGeneration = operationGeneration.get()
         val revision = sessionAccessRevision
+        var nextPresenceAt = 0L
         var nextUpdateCheckAt = 0L
         var lastUpdateRevision = ""
         accessFuture = accessExecutor.scheduleWithFixedDelay({
             if (connected && !stopping && operationGeneration.get() == accessGeneration) {
                 val access = runCatching { com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess(socksPort(protocol)) }.getOrNull()
                 val now = android.os.SystemClock.elapsedRealtime()
+                if (access?.allowed == true && engine?.isRunning() == true && now >= nextPresenceAt) {
+                    nextPresenceAt = now + 30_000L
+                    val sessionId = presenceSessionId
+                    if (sessionId != null) {
+                        runCatching {
+                            presenceExecutor.execute {
+                                if (connected && !stopping && presenceSessionId == sessionId) {
+                                    runCatching {
+                                        com.barkatunnel.app.backend.BarkaBackendClient(this)
+                                            .reportVpnPresence(sessionId, true, socksPort(protocol))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if (now >= nextUpdateCheckAt) {
                     nextUpdateCheckAt = now + 60_000L
                     val update = runCatching {
@@ -725,6 +762,7 @@ class BarkaVpnService : VpnService() {
             runtimeConnectedAtElapsedMs
         }
         connected = false
+        clearVpnPresence()
         updateRuntimeState(
             RuntimeConnectionState.CONNECTING,
             session.profileName,

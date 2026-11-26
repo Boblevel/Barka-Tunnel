@@ -30,6 +30,17 @@ class BarkaBackendClient(context: Context) {
         )
     }
 
+    fun reportVpnPresence(sessionId: String, connected: Boolean, socksPort: Int? = null) {
+        post(
+            path = "/v1/device/vpn-presence",
+            payload = JSONObject()
+                .put("device_id", deviceId)
+                .put("session_id", sessionId)
+                .put("connected", connected),
+            socksPort = socksPort
+        )
+    }
+
     fun checkAccess(socksPort: Int? = BarkaVpnService.connectedSocksPort()): BackendAccessState {
         val body = post(
             path = "/v1/access/check",

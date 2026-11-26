@@ -251,6 +251,10 @@ def init_db() -> None:
                 cx.execute("ALTER TABLE devices ADD COLUMN access_disabled INTEGER NOT NULL DEFAULT 0")
             if "last_connect_attempt_at" not in device_columns:
                 cx.execute("ALTER TABLE devices ADD COLUMN last_connect_attempt_at INTEGER")
+            if "vpn_session_id" not in device_columns:
+                cx.execute("ALTER TABLE devices ADD COLUMN vpn_session_id TEXT")
+            if "vpn_online_until" not in device_columns:
+                cx.execute("ALTER TABLE devices ADD COLUMN vpn_online_until INTEGER NOT NULL DEFAULT 0")
 
             code_columns = {row["name"] for row in cx.execute("PRAGMA table_info(activation_codes)").fetchall()}
             if "applied_from" not in code_columns:

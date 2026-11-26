@@ -271,6 +271,7 @@ def list_redeem_codes(limit: int | None = 100, *, connection=None, offset: int =
                 "duration_seconds": int(row["duration_seconds"]),
                 "max_users": int(row["max_users"]),
                 "usage_count": usage_count,
+                "is_full": usage_count >= int(row["max_users"]),
                 "created_at": iso(int(row["created_at"])),
                 "last_redeemed_at": iso(row["last_redeemed_at"]),
                 "last_expires_at": iso(row["last_expires_at"]),
@@ -486,6 +487,10 @@ def admin_stats_extended() -> dict:
             (now, now, devices_rowid, reset_at),
         ).fetchone()["n"]
         enabled_profiles = cx.execute("SELECT COUNT(*) AS n FROM vpn_profiles WHERE enabled=1").fetchone()["n"]
+        vpn_online = cx.execute(
+            "SELECT COUNT(*) AS n FROM devices WHERE vpn_online_until>?",
+            (now,),
+        ).fetchone()["n"]
         redeem_active = cx.execute(
             """SELECT COUNT(*) AS n FROM redeem_codes
                WHERE status='active' AND deleted_at IS NULL AND id>?""",
@@ -500,6 +505,7 @@ def admin_stats_extended() -> dict:
     return {
         "devices": int(devices),
         "users": int(users),
+        "vpn_online": int(vpn_online),
         "payments_paid": int(paid),
         "payments_pending": int(pending),
         "codes_issued": int(issued),
