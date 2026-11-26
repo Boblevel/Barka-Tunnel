@@ -1,0 +1,155 @@
+name: Barka Tunnel - déploiement ciblé VPS (préserver l'existant)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: barka-vps-targeted-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy-targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Vérifier les sources GitHub sans modifier le backend
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Valider les fichiers de la mise à jour 2.4.1.2 (145)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          grep -q 'versionCode = 145' app/build.gradle.kts
+          grep -q 'versionName = "2.4.1.2"' app/build.gradle.kts
+          python3 -m py_compile backend/recovery/barka_vps_targeted.py
+          test -f backend/recovery/barka_vps_targeted.py
+
+      - name: Récupérer exclusivement l'APK préalablement compilé pour afcb27d
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TARGET_COMMIT="$(git rev-list HEAD | grep '^afcb27d' | head -n 1)"
+          test -n "$TARGET_COMMIT"
+          echo "APK_SOURCE_COMMIT=$TARGET_COMMIT"
+          RUN_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${TARGET_COMMIT}&per_page=100" \
+            --jq '.workflow_runs | map(select(.name=="Build propre Barka Tunnel")) | sort_by(.created_at) | last | .id')"
+          test -n "$RUN_ID" && test "$RUN_ID" != null || { echo 'STOP : build de référence introuvable'; exit 1; }
+          echo "APK_SOURCE_RUN=$RUN_ID"
+          mkdir -p staged
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name BarkaTunnel-APK --dir staged
+          test -s staged/BarkaTunnel-release.apk
+          test "$(stat -c '%s' staged/BarkaTunnel-release.apk)" -gt 1000000
+          unzip -tq staged/BarkaTunnel-release.apk
+          sha256sum staged/BarkaTunnel-release.apk
+
+      - name: Installer et vérifier les accès SSH déjà configurés
+        shell: bash
+        env:
+          BARKA_VPS_HOST: ${{ secrets.BARKA_VPS_HOST }}
+          BARKA_VPS_USER: ${{ secrets.BARKA_VPS_USER }}
+          BARKA_VPS_SSH_KEY: ${{ secrets.BARKA_VPS_SSH_KEY }}
+          BARKA_VPS_PORT: ${{ secrets.BARKA_VPS_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "$BARKA_VPS_HOST" && test -n "$BARKA_VPS_USER" && test -n "$BARKA_VPS_SSH_KEY"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$BARKA_VPS_SSH_KEY" > "$HOME/.ssh/barka_vps_key"
+          chmod 600 "$HOME/.ssh/barka_vps_key"
+          ssh-keyscan -p "${BARKA_VPS_PORT:-22}" -H "$BARKA_VPS_HOST" >> "$HOME/.ssh/known_hosts"
+
+      - name: Déployer seulement 5 fichiers Python et l'APK avec sauvegarde et rollback
+        shell: bash
+        env:
+          BARKA_VPS_HOST: ${{ secrets.BARKA_VPS_HOST }}
+          BARKA_VPS_USER: ${{ secrets.BARKA_VPS_USER }}
+          BARKA_VPS_PORT: ${{ secrets.BARKA_VPS_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${BARKA_VPS_PORT:-22}"
+          TARGET="$BARKA_VPS_USER@$BARKA_VPS_HOST"
+          PATCH_REMOTE="/tmp/barka-targeted-${GITHUB_RUN_ID}.py"
+          APK_REMOTE="/tmp/barka-apk-${GITHUB_RUN_ID}.apk"
+          PATCH_SHA="$(sha256sum backend/recovery/barka_vps_targeted.py | awk '{print $1}')"
+          APK_SHA="$(sha256sum staged/BarkaTunnel-release.apk | awk '{print $1}')"
+          scp -P "$PORT" -i "$HOME/.ssh/barka_vps_key" \
+            backend/recovery/barka_vps_targeted.py "$TARGET:$PATCH_REMOTE"
+          scp -P "$PORT" -i "$HOME/.ssh/barka_vps_key" \
+            staged/BarkaTunnel-release.apk "$TARGET:$APK_REMOTE"
+
+          ssh -p "$PORT" -i "$HOME/.ssh/barka_vps_key" "$TARGET" \
+            "PATCH_REMOTE='$PATCH_REMOTE' APK_REMOTE='$APK_REMOTE' PATCH_SHA='$PATCH_SHA' APK_SHA='$APK_SHA' bash -se" <<'REMOTE_SCRIPT'
+          set -Eeuo pipefail
+          umask 077
+          ROOT=/opt/Barka-Tunnel/backend
+          FINAL_APK="$ROOT/data/releases/BarkaTunnel.apk"
+          FILES=(admin_panel.py admin_ops.py db.py main.py models.py)
+          test -f "$ROOT/.env"
+          test -d "$ROOT/data" && test -f "$ROOT/docker-compose.yml" && test -d "$ROOT/app"
+          test "$(sha256sum "$PATCH_REMOTE" | awk '{print $1}')" = "$PATCH_SHA"
+          test "$(sha256sum "$APK_REMOTE" | awk '{print $1}')" = "$APK_SHA"
+          test ! -L "$FINAL_APK"
+
+          # No changes if a running payment-capable production instance is not healthy.
+          curl -fsS --max-time 15 http://127.0.0.1:8085/health | \
+            python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") and d.get("payment_configured") else 1)'
+          python3 "$PATCH_REMOTE" --root "$ROOT" --check
+          BACKUP="$(mktemp -d /root/.barka-targeted-backup.XXXXXXXX)"
+          for file in "${FILES[@]}"; do cp -a "$ROOT/app/$file" "$BACKUP/$file"; done
+          OLD_APK=0
+          if [ -f "$FINAL_APK" ]; then
+            cp -a "$FINAL_APK" "$BACKUP/BarkaTunnel.apk"
+            OLD_APK=1
+          fi
+          echo "SAFE_BACKUP=$BACKUP"
+          STARTED=0
+          SUCCEEDED=0
+          rollback() {
+            rc=$?
+            trap - EXIT
+            if [ "$STARTED" -eq 1 ] && [ "$SUCCEEDED" -ne 1 ]; then
+              echo 'ROLLBACK: restoring exactly five original backend files'
+              for file in "${FILES[@]}"; do cp -a "$BACKUP/$file" "$ROOT/app/$file"; done
+              if [ "$OLD_APK" -eq 1 ]; then
+                cp -a "$BACKUP/BarkaTunnel.apk" "$FINAL_APK"
+              else
+                rm -f "$FINAL_APK"
+              fi
+              (cd "$ROOT" && docker compose up -d --build) || echo 'ROLLBACK RESTART FAILED - inspect immediately'
+              echo "BACKUP_RETAINED=$BACKUP"
+            fi
+            rm -f "$PATCH_REMOTE" "$APK_REMOTE"
+            exit "$rc"
+          }
+          trap rollback EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          STARTED=1
+          python3 "$PATCH_REMOTE" --root "$ROOT" --apply
+          python3 -m py_compile \
+            "$ROOT/app/admin_panel.py" "$ROOT/app/admin_ops.py" \
+            "$ROOT/app/db.py" "$ROOT/app/main.py" "$ROOT/app/models.py"
+          (cd "$ROOT" && docker compose up -d --build)
+          curl -fsS --max-time 15 --retry 10 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:8085/health | \
+            python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") and d.get("payment_configured") else 1)'
+          install -d -m 755 "$(dirname "$FINAL_APK")"
+          install -m 644 "$APK_REMOTE" "$FINAL_APK.new.${GITHUB_RUN_ID:-targeted}"
+          mv -f "$FINAL_APK.new.${GITHUB_RUN_ID:-targeted}" "$FINAL_APK"
+          test "$(sha256sum "$FINAL_APK" | awk '{print $1}')" = "$APK_SHA"
+          SUCCEEDED=1
+          echo 'TARGETED_BACKEND=DEPLOYED'
+          echo 'APK_VERSION=2.4.1.2'
+          echo 'APK_VERSION_CODE=145'
+          echo "APK_SHA256=$APK_SHA"
+          echo "SAFE_BACKUP=$BACKUP"
+          REMOTE_SCRIPT
