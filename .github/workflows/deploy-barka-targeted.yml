@@ -41,8 +41,9 @@ jobs:
           TARGET_COMMIT="$(git rev-list HEAD | grep '^afcb27d' | head -n 1)"
           test -n "$TARGET_COMMIT"
           echo "APK_SOURCE_COMMIT=$TARGET_COMMIT"
-          RUN_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${TARGET_COMMIT}&per_page=100" \
-            --jq '.workflow_runs | map(select(.name=="Build propre Barka Tunnel")) | sort_by(.created_at) | last | .id')"
+          RUN_ID="$(gh api --paginate --slurp \
+            "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=BarkaTunnel-APK&per_page=100" \
+            --jq "(map(.artifacts // []) | add // []) | map(select(.name==\"BarkaTunnel-APK\" and .expired==false and .workflow_run.head_sha==\"${TARGET_COMMIT}\")) | sort_by(.created_at) | last | .workflow_run.id")"
           test -n "$RUN_ID" && test "$RUN_ID" != null || { echo 'STOP : build de référence introuvable'; exit 1; }
           echo "APK_SOURCE_RUN=$RUN_ID"
           mkdir -p staged
