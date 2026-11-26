@@ -2,6 +2,11 @@ name: Barka Tunnel - déploiement ciblé VPS (préserver l'existant)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/deploy-barka-targeted.yml'
 
 permissions:
   contents: read
@@ -14,7 +19,7 @@ concurrency:
 jobs:
   deploy-targeted:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 50
     steps:
       - name: Vérifier les sources GitHub sans modifier le backend
         uses: actions/checkout@v4
@@ -32,26 +37,97 @@ jobs:
           python3 -m py_compile backend/recovery/barka_vps_targeted.py
           test -f backend/recovery/barka_vps_targeted.py
 
-      - name: Récupérer exclusivement l'APK préalablement compilé pour afcb27d
+      # Ne pas dépendre d'un ancien artefact, ni des API GitHub de recherche.
+      # Reproduit les étapes de build/signature/ABI de build-clean.yml,
+      # tout en conservant le déploiement ciblé et ses contrôles VPS.
+      - name: Préparer Java 17 pour Android
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Installer Go 1.24 pour les moteurs DNSTT
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+
+      - name: Installer Python 3.12 pour valider le backend
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Tests du backend original GitHub (lecture seule)
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TARGET_COMMIT="$(git rev-list HEAD | grep '^afcb27d' | head -n 1)"
-          test -n "$TARGET_COMMIT"
-          echo "APK_SOURCE_COMMIT=$TARGET_COMMIT"
-          RUN_ID="$(gh api --paginate --slurp \
-            "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=BarkaTunnel-APK&per_page=100" \
-            --jq "(map(.artifacts // []) | add // []) | map(select(.name==\"BarkaTunnel-APK\" and .expired==false and .workflow_run.head_sha==\"${TARGET_COMMIT}\")) | sort_by(.created_at) | last | .workflow_run.id")"
-          test -n "$RUN_ID" && test "$RUN_ID" != null || { echo 'STOP : build de référence introuvable'; exit 1; }
-          echo "APK_SOURCE_RUN=$RUN_ID"
+          python -m pip install --disable-pip-version-check -r backend/requirements.txt
+          PYTHONPATH=backend python -m pytest backend/tests -q
+
+      - name: Préparer les moteurs natifs C6 existants
+        shell: bash
+        run: bash ./scripts/c6_prepare_native.sh
+
+      - name: Configurer Gradle 8.9 sans réutiliser le cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          cache-disabled: true
+
+      - name: Charger la signature Android habituelle depuis GitHub Secrets
+        shell: bash
+        env:
+          BARKA_KEYSTORE_BASE64: ${{ secrets.BARKA_KEYSTORE_BASE64 }}
+          BARKA_KEY_ALIAS_SECRET: ${{ secrets.BARKA_KEY_ALIAS }}
+          BARKA_STORE_PASSWORD_SECRET: ${{ secrets.BARKA_STORE_PASSWORD }}
+          BARKA_KEY_PASSWORD_SECRET: ${{ secrets.BARKA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$BARKA_KEYSTORE_BASE64" || { echo "STOP : clé de signature manquante"; exit 1; }
+          test -n "$BARKA_KEY_ALIAS_SECRET" && test -n "$BARKA_STORE_PASSWORD_SECRET" && test -n "$BARKA_KEY_PASSWORD_SECRET"
+          KEYSTORE_PATH="$RUNNER_TEMP/barka-tunnel-release.jks"
+          printf '%s' "$BARKA_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$BARKA_STORE_PASSWORD_SECRET" -alias "$BARKA_KEY_ALIAS_SECRET" >/dev/null
+          echo "BARKA_SIGNING_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "BARKA_SIGNING_STORE_PASSWORD=$BARKA_STORE_PASSWORD_SECRET" >> "$GITHUB_ENV"
+          echo "BARKA_SIGNING_KEY_ALIAS=$BARKA_KEY_ALIAS_SECRET" >> "$GITHUB_ENV"
+          echo "BARKA_SIGNING_KEY_PASSWORD=$BARKA_KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
+
+      - name: Compiler l'APK 2.4.1.2 (145) avec les moteurs natifs
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle clean assembleRelease --no-daemon --no-build-cache --rerun-tasks --stacktrace
+          gradle testReleaseUnitTest --no-daemon --no-build-cache --stacktrace
+
+      - name: Contrôler ARM64, ARMv7 et préparer l'APK signé
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_SOURCE="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK_SOURCE"
+          APK_ENTRIES="$(unzip -Z1 "$APK_SOURCE")"
+          for abi in arm64-v8a armeabi-v7a; do
+            for core in libbarka_xray.so libbarka_dnstt.so libtun2socks.so; do
+              grep -Fxq "lib/$abi/$core" <<< "$APK_ENTRIES" || {
+                echo "STOP : moteur absent : lib/$abi/$core"
+                exit 1
+              }
+            done
+          done
           mkdir -p staged
-          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name BarkaTunnel-APK --dir staged
-          test -s staged/BarkaTunnel-release.apk
-          test "$(stat -c '%s' staged/BarkaTunnel-release.apk)" -gt 1000000
+          cp "$APK_SOURCE" staged/BarkaTunnel-release.apk
           unzip -tq staged/BarkaTunnel-release.apk
+          test "$(stat -c '%s' staged/BarkaTunnel-release.apk)" -gt 1000000
           sha256sum staged/BarkaTunnel-release.apk
+          echo 'APK_SIGNÉ=PRÊT_VERSION_2.4.1.2_CODE_145'
+
+      - name: Conserver l'APK signé dans les artefacts GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: BarkaTunnel-APK
+          path: staged/BarkaTunnel-release.apk
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Installer et vérifier les accès SSH déjà configurés
         shell: bash
