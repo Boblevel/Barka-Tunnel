@@ -1,16 +1,16 @@
-name: APK LOT50 - application et présence panel
+name: APK LOT51 - diagnostic ciblé Orange V2
 on:
   push:
-    branches: [validation/lot45-145, validation/lot46-145, validation/lot47-145, validation/lot48-145, validation/lot49-145, validation/lot50-145]
+    branches: [validation/lot45-145, validation/lot46-145, validation/lot47-145, validation/lot48-145, validation/lot49-145, validation/lot50-145, validation/lot51-145]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: ${{ (github.ref_name == 'validation/lot49-145' || github.ref_name == 'validation/lot50-145') && 'barka-production-deploy' || format('barka-build-{0}', github.ref_name) }}
+  group: ${{ (github.ref_name == 'validation/lot49-145' || github.ref_name == 'validation/lot50-145' || github.ref_name == 'validation/lot51-145') && 'barka-production-deploy' || format('barka-build-{0}', github.ref_name) }}
   cancel-in-progress: false
 jobs:
   build:
-    if: github.ref == 'refs/heads/validation/lot45-145' || github.ref == 'refs/heads/validation/lot46-145' || github.ref == 'refs/heads/validation/lot47-145' || github.ref == 'refs/heads/validation/lot48-145' || (github.ref == 'refs/heads/validation/lot49-145' || github.ref == 'refs/heads/validation/lot50-145')
+    if: github.ref == 'refs/heads/validation/lot45-145' || github.ref == 'refs/heads/validation/lot46-145' || github.ref == 'refs/heads/validation/lot47-145' || github.ref == 'refs/heads/validation/lot48-145' || (github.ref == 'refs/heads/validation/lot49-145' || github.ref == 'refs/heads/validation/lot50-145' || github.ref == 'refs/heads/validation/lot51-145')
     timeout-minutes: 45
     runs-on: ubuntu-latest
 
@@ -196,7 +196,7 @@ jobs:
           retention-days: 30
 
       - name: Publier uniquement APK sur le lien VPS existant
-        if: (github.ref == 'refs/heads/validation/lot49-145' || github.ref == 'refs/heads/validation/lot50-145')
+        if: (github.ref == 'refs/heads/validation/lot49-145' || github.ref == 'refs/heads/validation/lot50-145' || github.ref == 'refs/heads/validation/lot51-145')
         env:
           BARKA_VPS_HOST: ${{ secrets.BARKA_VPS_HOST }}
           BARKA_VPS_USER: ${{ secrets.BARKA_VPS_USER }}
@@ -206,7 +206,7 @@ jobs:
         run: bash scripts/lot49_publish_apk.sh
 
       - name: Conserver le lien VPS vérifié
-        if: (github.ref == 'refs/heads/validation/lot49-145' || github.ref == 'refs/heads/validation/lot50-145')
+        if: (github.ref == 'refs/heads/validation/lot49-145' || github.ref == 'refs/heads/validation/lot50-145' || github.ref == 'refs/heads/validation/lot51-145')
         uses: actions/upload-artifact@v4
         with:
           name: BarkaTunnel-VPS

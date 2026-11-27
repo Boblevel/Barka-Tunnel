@@ -33,7 +33,7 @@ class XrayVlessEngine(
             "destination=${ConnectionDiagnostics.host(outboundAddress)}:${config.port} • IP explicite=${!config.ip.isNullOrBlank()}",
             "proxy=${ConnectionDiagnostics.host(config.proxyHost.orEmpty())}:${config.proxyPort ?: 0} • en-têtes=${config.proxyHeaders.size}",
             "WS Host=${ConnectionDiagnostics.host(config.host)}",
-            "certificat attendu=${ConnectionDiagnostics.host(config.verifyCertName ?: config.sni)} • Mux=${config.mux}",
+            "certificat attendu=${ConnectionDiagnostics.host(config.verifyCertName ?: config.sni)} • certificat épinglé=${config.pinnedCertSha256 != null} • Mux=${config.mux}",
             "WS chemin=${com.barkatunnel.app.journal.DiagnosticRedactor.clean(config.path)} • longueur=${config.path.length} • empreinte=${ConnectionDiagnostics.fingerprint(config.path)} • paramètres=${'?' in config.path}",
             "SNI=${ConnectionDiagnostics.host(config.sni)} • TLS=${config.security == "tls"} • WS=${config.network == "ws"}",
             "empreinte TLS=${ConnectionDiagnostics.host(config.fingerprint.orEmpty())} • pont CONNECT=${!config.proxyHost.isNullOrBlank() && (config.proxyHeaders.isNotEmpty() || !config.proxyPayload.isNullOrBlank())}"

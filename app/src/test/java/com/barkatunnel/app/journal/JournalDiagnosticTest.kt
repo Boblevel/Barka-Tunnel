@@ -35,6 +35,7 @@ class JournalDiagnosticTest {
         assertFalse(binder.safeDiagnostic("Diagnostic VPN • vless://private@example.invalid/path").contains("private"))
         assertFalse(binder.safeDiagnostic("Diagnostic VLESS • config VLESS • WS=private.example/secret").contains("private"))
         assertTrue(binder.safeDiagnostic("Diagnostic VLESS • CONNECT • statut 403").contains("403"))
+        assertFalse(binder.safeDiagnostic("""Diagnostic VPN • {"password": "PRIVATE", "token": "PRIVATE"}""").contains("PRIVATE"))
     }
     @Test fun temporaryDiagnosticsDoNotEvictNormalJournalEntries() {
         val context = RuntimeEnvironment.getApplication()
@@ -53,5 +54,27 @@ class JournalDiagnosticTest {
         assertTrue(AppLogStore.getAll(context).contains("statut 429"))
         AppLogStore.clear(context)
         prefs.edit().remove("selected_network_id").commit()
+    }
+
+    @Test fun orangeV2StoresAndDisplaysFailuresWithoutCredentials() {
+        val context = RuntimeEnvironment.getApplication()
+        val prefs = context.getSharedPreferences("barka_home_preferences", android.content.Context.MODE_PRIVATE)
+        AppLogStore.clear(context)
+        prefs.edit().putString("selected_network_id", "orange_bf_v2").commit()
+        try {
+            AppLogStore.add(context, "Diagnostic VPN • profil VLESS utilisé • réseau=orange_bf_v2 • version=42 • source=cache • lot=51.")
+            AppLogStore.add(context, "Diagnostic VLESS • bilan moteur • x509: certificate expired • uuid=aaaa1111-bbbb-4ccc-8ddd-eeeeffff0000 • token=PRIVATE")
+            val log = AppLogStore.getAll(context)
+            assertTrue(log.contains("version=42"))
+            assertTrue(log.contains("source=cache"))
+            assertTrue(log.contains("x509: certificate expired"))
+            assertFalse(log.contains("aaaa1111"))
+            assertFalse(log.contains("PRIVATE"))
+            val parse = JournalUiBinder::class.java.getDeclaredMethod("toJournalEvent", String::class.java).apply { isAccessible = true }
+            log.lines().forEach { assertNotNull(parse.invoke(binder(), it)) }
+        } finally {
+            AppLogStore.clear(context)
+            prefs.edit().remove("selected_network_id").commit()
+        }
     }
 }

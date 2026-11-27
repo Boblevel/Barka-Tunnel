@@ -330,6 +330,7 @@ class BarkaVpnService : VpnService() {
             if (error !is Exception && error !is LinkageError) throw error
             val technicalMessage = sanitizeError(error.message ?: "Échec interne de la connexion.")
             Log.e(TAG, "Connection failure: $technicalMessage", error)
+            AppLogStore.add(this, "Diagnostic VPN • préparation de connexion échouée • $technicalMessage")
             AppLogStore.add(this, "Connexion refusée.")
             stopTunnel()
             activeSession = null

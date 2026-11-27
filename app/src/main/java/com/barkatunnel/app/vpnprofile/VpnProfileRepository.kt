@@ -151,7 +151,7 @@ class VpnProfileRepository(
     private fun reportLoadedProfile(profile: VpnProfile, source: String): VpnProfile {
         if (profile.protocol == VpnProfileProtocol.VLESS) runCatching {
             AppLogStore.add(appContext,
-                "Diagnostic VPN • profil VLESS utilisé • version=${profile.version} • source=$source.")
+                "Diagnostic VPN • profil VLESS utilisé • réseau=${profile.networkId} • version=${profile.version} • source=$source • configuration=${com.barkatunnel.app.vpnc6.ConnectionDiagnostics.fingerprint(profile.configJson)} • lot=51.")
         }
         return profile
     }
