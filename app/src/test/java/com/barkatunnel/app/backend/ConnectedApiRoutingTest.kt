@@ -22,6 +22,7 @@ class ConnectedApiRoutingTest {
             { backend.getVpnProfile("moov_tiktok") }, { backend.startPayment("24h") },
             { backend.checkPaymentStatus("test-reference") }, { backend.redeemActivationCode("BARKA-TEST") },
             { backend.checkAppUpdate(110) }, { backend.getPricing() }, { backend.checkAccess() },
+            { backend.reportVpnPresence("12345678-1234-1234-1234-123456789abc", true, BarkaVpnService.connectedSocksPort()) },
             { backend.resellerPurchase("account", org.json.JSONObject().put("owner_key", "test")) },
             { backend.resellerPurchase("cancel", org.json.JSONObject().put("owner_key", "test").put("payment_reference", "BTR-test")) })
         val executor = Executors.newSingleThreadExecutor()

@@ -37,6 +37,13 @@ internal fun shouldDisconnectForAccess(
 class BarkaVpnService : VpnService() {
     private val worker = Executors.newSingleThreadExecutor()
     private val accessExecutor = Executors.newSingleThreadScheduledExecutor()
+    private val presence = VpnPresenceReporter(
+        send = { sessionId, online, port ->
+            com.barkatunnel.app.backend.BarkaBackendClient(this)
+                .reportVpnPresence(sessionId, online, port)
+        },
+        now = { SystemClock.elapsedRealtime() }
+    )
     private var accessFuture: ScheduledFuture<*>? = null
     @Volatile private var sessionAccessRevision = 0L
     private val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
@@ -188,6 +195,7 @@ class BarkaVpnService : VpnService() {
         accessFuture?.cancel(true)
         accessExecutor.shutdownNow()
         keepAliveExecutor.shutdownNow()
+        presence.close()
         // La fermeture native attend une réponse Binder : ne pas bloquer Android.
         worker.execute { stopTunnel() }
         worker.shutdown()
@@ -485,6 +493,7 @@ class BarkaVpnService : VpnService() {
     }
 
     private fun stopTunnel() {
+        presence.stop()
         val interrupted = Thread.interrupted()
         try {
             runtimeSocksPort = null
@@ -616,6 +625,7 @@ class BarkaVpnService : VpnService() {
 
     private fun startConnectionMonitor(protocol: VpnProfileProtocol) {
         accessFuture?.cancel(true)
+        val presenceSession = presence.start()
         val accessGeneration = operationGeneration.get()
         val revision = sessionAccessRevision
         var nextUpdateCheckAt = 0L
@@ -624,6 +634,11 @@ class BarkaVpnService : VpnService() {
             if (connected && !stopping && operationGeneration.get() == accessGeneration) {
                 val access = runCatching { com.barkatunnel.app.backend.BarkaBackendClient(this).checkAccess(socksPort(protocol)) }.getOrNull()
                 val now = android.os.SystemClock.elapsedRealtime()
+                if (access?.allowed == true && access.accessRevision == revision &&
+                    connected && !stopping && operationGeneration.get() == accessGeneration &&
+                    engine?.isRunning() == true) {
+                    presence.heartbeat(presenceSession, socksPort(protocol))
+                }
                 if (now >= nextUpdateCheckAt) {
                     val power = getSystemService(android.os.PowerManager::class.java)
                     nextUpdateCheckAt = now + if (!power.isInteractive || power.isPowerSaveMode) 300_000L else 60_000L
@@ -734,6 +749,7 @@ class BarkaVpnService : VpnService() {
             runtimeConnectedAtElapsedMs
         }
         connected = false
+        presence.stop()
         updateRuntimeState(
             RuntimeConnectionState.CONNECTING,
             session.profileName,
