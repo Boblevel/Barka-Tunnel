@@ -317,7 +317,7 @@ class BarkaVpnService : VpnService() {
                 lastFailure?.message ?: "Échec interne de la connexion."
             )
             Log.w(TAG, "Connection failed after retries: $finalMessage")
-            AppLogStore.add(this, "Connexion refusée.")
+            AppLogStore.add(this, "Impossible de se connecter.")
             activeSession = null
             updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)
             finishServiceIfIdle(connectGeneration)
@@ -331,7 +331,7 @@ class BarkaVpnService : VpnService() {
             val technicalMessage = sanitizeError(error.message ?: "Échec interne de la connexion.")
             Log.e(TAG, "Connection failure: $technicalMessage", error)
             AppLogStore.add(this, "Diagnostic VPN • préparation de connexion échouée • $technicalMessage")
-            AppLogStore.add(this, "Connexion refusée.")
+            AppLogStore.add(this, "Impossible de se connecter.")
             stopTunnel()
             activeSession = null
             updateRuntimeState(RuntimeConnectionState.DISCONNECTED, null, 0L)

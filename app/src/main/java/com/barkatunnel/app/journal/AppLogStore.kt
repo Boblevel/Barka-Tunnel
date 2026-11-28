@@ -18,8 +18,7 @@ object AppLogStore {
         message: String
     ) {
         val diagnostic = message.trimStart().startsWith("Diagnostic ", ignoreCase = true)
-        if (diagnostic && context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE)
-                .getString("selected_network_id", null) !in setOf("global_world", "orange_bf_v2")) return
+        if (diagnostic) return
         val prefs = context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
@@ -55,7 +54,7 @@ object AppLogStore {
             PREFS,
             Context.MODE_PRIVATE
         ).getString(KEY_LOGS, "")
-            .orEmpty()
+            .orEmpty().lines().filterNot { it.substringAfter("] ", it).trimStart().startsWith("Diagnostic ", ignoreCase = true) }.joinToString("\n")
     }
 
     fun clear(context: Context) {

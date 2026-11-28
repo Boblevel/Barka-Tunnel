@@ -60,7 +60,7 @@
     <string name="access_refreshed">Accès et informations actualisés.</string>
     <string name="notification_permission_help">Autorise les notifications de Barka Tunnel pour afficher l’état de connexion.</string>
     <string name="connection_pending_help">Connexion en cours. Appuie sur le bouton pour arrêter puis réessaie.</string>
-    <string name="connection_failed_help">La connexion n’a pas pu être établie. Réessaie.</string>
+    <string name="connection_failed_help">Impossible de se connecter.</string>
     <string name="no_access_active">Aucun accès actif.</string>
     <string name="vpn_still_connected">Le VPN est toujours connecté.</string>
     <string name="disconnect_refused">Déconnexion refusée.</string>
@@ -160,8 +160,8 @@
     <string name="journal_empty">Aucune connexion enregistrée.</string>
     <string name="journal_connecting_title">Connexion en cours</string>
     <string name="journal_connecting_message">Tentative de connexion%1$s.</string>
-    <string name="journal_refused_title">Connexion refusée</string>
-    <string name="journal_refused_message">La connexion n’a pas abouti%1$s.</string>
+    <string name="journal_refused_title">Impossible de se connecter</string>
+    <string name="journal_refused_message">Impossible de se connecter%1$s.</string>
     <string name="journal_retry_title">Nouvelle tentative</string>
     <string name="journal_retry_message">Nouvelle tentative de connexion%1$s.</string>
     <string name="journal_connected_title">Connecté</string>
@@ -301,4 +301,6 @@
     <string name="ip_vibration_open_settings">Ouvrir les réglages</string>
     <string name="ip_vibration_continue">Continuer</string>
     <string name="ip_vibration_settings_manual">Ouvrez les paramètres du téléphone, puis Son et vibreur ou Accessibilité, pour vérifier les vibrations.</string>
+    <string name="video_guide_hint">Cliquez ici pour voir la vidéo</string>
+    <string name="video_guide_subtitle">Découvrez les étapes en vidéo</string>
 </resources>

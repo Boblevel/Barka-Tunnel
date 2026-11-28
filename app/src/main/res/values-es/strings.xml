@@ -87,7 +87,7 @@
     <string name="access_refreshed">Acceso e información actualizados.</string>
     <string name="notification_permission_help">Permite las notificaciones de Barka Tunnel para ver el estado de conexión.</string>
     <string name="connection_pending_help">Conectando. Pulsa el botón para detener y vuelve a intentarlo.</string>
-    <string name="connection_failed_help">No se pudo establecer la conexión. Inténtalo de nuevo.</string>
+    <string name="connection_failed_help">No se puede conectar.</string>
     <string name="no_access_active">Sin acceso activo.</string>
     <string name="vpn_still_connected">El VPN sigue conectado.</string>
     <string name="disconnect_refused">Desconexión rechazada.</string>
@@ -181,8 +181,8 @@
     <string name="journal_empty">Ninguna conexión registrada.</string>
     <string name="journal_connecting_title">Conectando</string>
     <string name="journal_connecting_message">Intentando conectar%1$s.</string>
-    <string name="journal_refused_title">Conexión rechazada</string>
-    <string name="journal_refused_message">No se pudo conectar%1$s.</string>
+    <string name="journal_refused_title">No se puede conectar</string>
+    <string name="journal_refused_message">No se puede conectar%1$s.</string>
     <string name="journal_retry_title">Nuevo intento</string>
     <string name="journal_retry_message">Nuevo intento de conexión%1$s.</string>
     <string name="journal_connected_title">Conectado</string>
@@ -405,4 +405,6 @@
     <string name="ip_vibration_open_settings">Abrir ajustes</string>
     <string name="ip_vibration_continue">Continuar</string>
     <string name="ip_vibration_settings_manual">Abre los ajustes del teléfono y después Sonido y vibración o Accesibilidad para comprobar la vibración.</string>
+    <string name="video_guide_hint">Toca aquí para ver el vídeo</string>
+    <string name="video_guide_subtitle">Sigue los pasos en vídeo</string>
 </resources>

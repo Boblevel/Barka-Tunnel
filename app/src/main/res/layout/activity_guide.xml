@@ -47,6 +47,20 @@
                 android:contentDescription="@string/video_guide_title"
                 android:textColor="?attr/barkaAccent" />
         </LinearLayout>
+        <TextView
+            android:id="@+id/videoGuideHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="40dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_network_selected"
+            android:gravity="center"
+            android:padding="8dp"
+            android:text="@string/video_guide_hint"
+            android:textColor="?attr/barkaAccent"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
     </LinearLayout>
 
     <ScrollView

@@ -60,6 +60,7 @@ class JournalUiBinder(
         val clock = parsed?.groupValues?.getOrNull(1).orEmpty()
         val message = parsed?.groupValues?.getOrNull(2)?.trim().orEmpty().ifBlank { line }
         val value = message.lowercase()
+        if (value.startsWith("diagnostic ")) return null
         val networkName = NETWORK_NAME.find(message)?.value
 
         if (!value.startsWith("diagnostic ") &&
@@ -85,7 +86,8 @@ class JournalUiBinder(
                 EventType.DISCONNECTING
             value.contains("déconnexion") || value.contains("déconnecté") ->
                 EventType.DISCONNECTED
-            value.contains("connexion refusée") ||
+            value.contains("impossible de se connecter") ||
+                value.contains("connexion refusée") ||
                 value.contains("connexion n’a pas abouti") ||
                 value.contains("vérification du réseau nécessaire") ||
                 value.contains("out of range") ||

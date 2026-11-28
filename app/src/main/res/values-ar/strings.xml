@@ -87,7 +87,7 @@
     <string name="access_refreshed">تم تحديث الوصول والمعلومات.</string>
     <string name="notification_permission_help">اسمح بإشعارات Barka Tunnel لعرض حالة الاتصال.</string>
     <string name="connection_pending_help">جارٍ الاتصال. اضغط الزر للإيقاف ثم حاول مجددًا.</string>
-    <string name="connection_failed_help">تعذر إنشاء الاتصال. حاول مجددًا.</string>
+    <string name="connection_failed_help">يتعذر الاتصال.</string>
     <string name="no_access_active">لا يوجد وصول نشط.</string>
     <string name="vpn_still_connected">ما زال VPN متصلًا.</string>
     <string name="disconnect_refused">تم رفض قطع الاتصال.</string>
@@ -181,8 +181,8 @@
     <string name="journal_empty">لا توجد اتصالات مسجلة.</string>
     <string name="journal_connecting_title">جارٍ الاتصال</string>
     <string name="journal_connecting_message">محاولة الاتصال%1$s.</string>
-    <string name="journal_refused_title">تم رفض الاتصال</string>
-    <string name="journal_refused_message">تعذر الاتصال%1$s.</string>
+    <string name="journal_refused_title">يتعذر الاتصال</string>
+    <string name="journal_refused_message">يتعذر الاتصال%1$s.</string>
     <string name="journal_retry_title">محاولة جديدة</string>
     <string name="journal_retry_message">محاولة اتصال جديدة%1$s.</string>
     <string name="journal_connected_title">متصل</string>
@@ -405,4 +405,6 @@
     <string name="ip_vibration_open_settings">فتح الإعدادات</string>
     <string name="ip_vibration_continue">متابعة</string>
     <string name="ip_vibration_settings_manual">افتح إعدادات الهاتف ثم الصوت والاهتزاز أو تسهيل الاستخدام للتحقق من الاهتزاز.</string>
+    <string name="video_guide_hint">اضغط هنا لمشاهدة الفيديو</string>
+    <string name="video_guide_subtitle">تابع الخطوات في الفيديو</string>
 </resources>

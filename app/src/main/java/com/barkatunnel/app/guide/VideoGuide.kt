@@ -23,6 +23,26 @@ import java.net.URI
 object VideoGuide {
     fun bind(activity: Activity, button: View, key: String) {
         button.visibility = View.VISIBLE
+        val hint = activity.findViewById<View>(R.id.videoGuideHint)
+        val prefs = activity.getSharedPreferences("barka_video_discovery", Activity.MODE_PRIVATE)
+        val seenKey = "opened_$key"
+        fun stopHint() { hint?.clearAnimation(); hint?.visibility = View.GONE }
+        val owner = activity as? androidx.lifecycle.LifecycleOwner
+        owner?.lifecycle?.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
+                if (!prefs.getBoolean(seenKey, false)) {
+                    hint?.visibility = View.VISIBLE
+                    hint?.startAnimation(android.view.animation.AlphaAnimation(1f, 0.45f).apply {
+                        duration = 900
+                        repeatMode = android.view.animation.Animation.REVERSE
+                        repeatCount = android.view.animation.Animation.INFINITE
+                    })
+                } else stopHint()
+            }
+            override fun onPause(owner: androidx.lifecycle.LifecycleOwner) { hint?.clearAnimation() }
+            override fun onDestroy(owner: androidx.lifecycle.LifecycleOwner) { stopHint() }
+        })
+        hint?.setOnClickListener { button.performClick() }
         button.setOnClickListener {
             button.isEnabled = false
             Thread {
@@ -36,6 +56,8 @@ object VideoGuide {
                         Toast.makeText(activity, R.string.video_guide_unavailable, Toast.LENGTH_LONG).show()
                         return@runOnUiThread
                     }
+                    prefs.edit().putBoolean(seenKey, true).apply()
+                    stopHint()
                     show(activity, id, true)
                 }
             }.start()
@@ -212,18 +234,40 @@ object VideoGuide {
         reloadHosted = { loadPlayer() }
         val content = android.widget.LinearLayout(activity).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), dp(8))
+            setPadding(dp(20), dp(20), dp(20), dp(8))
+            setBackgroundColor(ContextCompat.getColor(activity, R.color.barka_card))
+            addView(android.widget.TextView(activity).apply {
+                setText(R.string.video_guide_title)
+                textSize = 23f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(ContextCompat.getColor(activity, R.color.barka_blue))
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_video_guide, 0, 0, 0)
+                compoundDrawablePadding = dp(12)
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }, android.widget.LinearLayout.LayoutParams(-1, -2))
+            addView(android.widget.TextView(activity).apply {
+                setText(R.string.video_guide_subtitle)
+                textSize = 14f
+                setTextColor(ContextCompat.getColor(activity, R.color.barka_text_secondary))
+                setPadding(0, dp(8), 0, dp(16))
+            }, android.widget.LinearLayout.LayoutParams(-1, -2))
             addView(progress, android.widget.LinearLayout.LayoutParams(-1, dp(3)))
             addView(status, android.widget.LinearLayout.LayoutParams(-1, -2))
             val metrics = activity.resources.displayMetrics
             val height = ((metrics.widthPixels - 64 * metrics.density) * 9 / 16)
-                .coerceAtMost(metrics.heightPixels * 0.45f).coerceAtLeast(200 * metrics.density).toInt()
-            addView(player, android.widget.LinearLayout.LayoutParams(-1, height))
+                .coerceAtMost(metrics.heightPixels * 0.45f).coerceAtLeast(120 * metrics.density).toInt()
+            val frame = androidx.cardview.widget.CardView(activity).apply {
+                radius = dp(16).toFloat()
+                cardElevation = 0f
+                setCardBackgroundColor(Color.BLACK)
+                addView(player, android.widget.FrameLayout.LayoutParams(-1, -1))
+            }
+            addView(frame, android.widget.LinearLayout.LayoutParams(-1, height))
         }
         val owner = activity as? androidx.lifecycle.LifecycleOwner
         var lifecycle: androidx.lifecycle.LifecycleEventObserver? = null
         val scroll = android.widget.ScrollView(activity).apply { addView(content) }
-        val dialog = AlertDialog.Builder(activity).setTitle(R.string.video_guide_title).setView(scroll)
+        val dialog = AlertDialog.Builder(activity).setView(scroll)
             .setPositiveButton(R.string.video_guide_close, null)
             .create()
         dialog.setOnDismissListener {
@@ -233,7 +277,7 @@ object VideoGuide {
             if (!rendererGone) {
                 player.stopLoading()
                 player.onPause()
-                content.removeView(player)
+                (player.parent as? android.view.ViewGroup)?.removeView(player)
                 player.destroy()
             }
             if (proxySupported) runCatching {
