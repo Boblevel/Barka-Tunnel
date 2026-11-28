@@ -43,4 +43,7 @@
     <string name="reseller_payment_exists">Un paiement est déjà en cours. Vérifiez sa confirmation.</string>
     <string name="reseller_not_found">Paiement introuvable.</string>
     <string name="reseller_processing">VÉRIFICATION EN COURS…</string>
+    <string name="reseller_join_team">REJOINDRE LA TEAM DES REVENDEURS</string>
+    <string name="reseller_team_label">Groupe WhatsApp des revendeurs</string>
+    <string name="reseller_copy_field">COPIER</string>
 </resources>

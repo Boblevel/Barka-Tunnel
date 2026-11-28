@@ -31,7 +31,7 @@ class StatusRequest(OwnerRequest):
 
 class RestoreRequest(OwnerRequest):
     username: str = Field(min_length=1, max_length=200)
-    password: str = Field(min_length=12, max_length=200)
+    password: str = Field(min_length=8, max_length=200)
 
 def key_hash(key):
     return hashlib.sha256(key.encode()).hexdigest()
@@ -82,7 +82,7 @@ def fulfill(cx, payment):
         resellers._revoke_sessions(cx, target, now)
         record_event(cx, target, 'renewed', detail=services.iso(expiry))
     else:
-        nonce = secrets.token_hex(32)
+        nonce = "v2:" + secrets.token_hex(32)
         password = resellers._recoverable_password(nonce)
         salt = secrets.token_bytes(16)
         username = readable_username(cx)

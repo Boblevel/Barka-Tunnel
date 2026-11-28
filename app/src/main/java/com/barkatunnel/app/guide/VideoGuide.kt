@@ -125,6 +125,7 @@ object VideoGuide {
             if (dismissed) return
             failed = true
             progress.visibility = View.INVISIBLE
+            status.visibility = View.VISIBLE
             status.setText(message)
             // Keep the player and its own useful error visible; never collapse the dialog.
             com.barkatunnel.app.journal.AppLogStore.add(activity, "Guide vidéo • $diagnostic")
@@ -166,11 +167,12 @@ object VideoGuide {
                         failed = false
                         playerReady = true
                         progress.visibility = View.INVISIBLE
-                        status.setText(R.string.video_guide_intro)
+                        status.visibility = View.GONE
                     }
                     "buffering" -> {
                         playerReady = false
                         progress.visibility = View.VISIBLE
+                        status.visibility = View.VISIBLE
                         status.setText(R.string.video_guide_loading)
                         scheduleBufferingTimeout?.invoke()
                     }
@@ -204,6 +206,7 @@ object VideoGuide {
             failed = false
             playerReady = false
             progress.visibility = View.VISIBLE
+            status.visibility = View.VISIBLE
             status.setText(R.string.video_guide_loading)
             player.removeCallbacks(timeout)
             player.evaluateJavascript("if(typeof pauseGuide==='function')pauseGuide();", null)
@@ -245,13 +248,10 @@ object VideoGuide {
                 compoundDrawablePadding = dp(12)
                 gravity = android.view.Gravity.CENTER_VERTICAL
             }, android.widget.LinearLayout.LayoutParams(-1, -2))
-            addView(android.widget.TextView(activity).apply {
-                setText(R.string.video_guide_subtitle)
-                textSize = 14f
-                setTextColor(ContextCompat.getColor(activity, R.color.barka_text_secondary))
-                setPadding(0, dp(8), 0, dp(16))
-            }, android.widget.LinearLayout.LayoutParams(-1, -2))
-            addView(progress, android.widget.LinearLayout.LayoutParams(-1, dp(3)))
+            addView(progress, android.widget.LinearLayout.LayoutParams(-1, dp(3)).apply {
+                topMargin = dp(12)
+                bottomMargin = dp(12)
+            })
             addView(status, android.widget.LinearLayout.LayoutParams(-1, -2))
             val metrics = activity.resources.displayMetrics
             val height = ((metrics.widthPixels - 64 * metrics.density) * 9 / 16)

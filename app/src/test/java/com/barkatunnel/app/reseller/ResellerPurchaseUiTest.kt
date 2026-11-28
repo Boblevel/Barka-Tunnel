@@ -38,6 +38,17 @@ class ResellerPurchaseUiTest {
             views.first { it.text.toString()=="TOUT COPIER" }.performClick()
             val copied=activity.getSystemService(ClipboardManager::class.java).primaryClip!!.getItemAt(0).text.toString()
             for(value in listOf("https://example.org/reseller","rev-example","sample-password","2026-11-15"))assertTrue(copied.contains(value))
+            val team="https://chat.whatsapp.com/CmsqtcjJKF08hdslcUgoc5?s=cl&p=a&iam=2"
+            assertTrue(copied.contains(team))
+            assertTrue(copied.contains(":\nrev-example\n\n"))
+            for (id in listOf(R.id.resellerLink,R.id.resellerUsername,R.id.resellerPassword)) {
+                val field=activity.findViewById<TextView>(id)
+                val parent=field.parent as ViewGroup
+                parent.getChildAt(parent.indexOfChild(field)+1).performClick()
+                assertEquals(field.text.toString(),activity.getSystemService(ClipboardManager::class.java).primaryClip!!.getItemAt(0).text.toString())
+            }
+            views.first { it.text.toString()==activity.getString(R.string.reseller_join_team) }.performClick()
+            assertEquals(team,org.robolectric.Shadows.shadowOf(activity).nextStartedActivity.data.toString())
         } finally { controller.destroy() }
     }
     @Test @Config(qualifiers="en") fun resellerPageUsesEnglishAndKeepsCardPresentation() {

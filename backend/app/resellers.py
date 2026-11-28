@@ -67,7 +67,8 @@ def _recoverable_password(nonce: str) -> str:
     digest = hmac.new(settings.code_secret.encode("utf-8"),
                       ("barka-reseller-password-v1:" + nonce).encode("ascii"),
                       hashlib.sha256).digest()
-    return "Bt7!" + base64.urlsafe_b64encode(digest).decode("ascii")[:24]
+    encoded = base64.urlsafe_b64encode(digest).decode("ascii")
+    return encoded[:8] if nonce.startswith("v2:") else "Bt7!" + encoded[:24]
 
 
 def reseller_credentials(reseller_id: int) -> dict:
@@ -88,7 +89,7 @@ def reseller_credentials(reseller_id: int) -> dict:
 
 
 def reset_reseller_password(reseller_id: int) -> dict:
-    nonce = secrets.token_hex(32)
+    nonce = "v2:" + secrets.token_hex(32)
     password = _recoverable_password(nonce)
     salt = secrets.token_bytes(16)
     with transaction() as cx:
@@ -170,7 +171,7 @@ def create_reseller(username: str, expires_at: datetime, quota_limit: int = 30) 
         raise ValueError("Choisissez 30 ou 70 codes par mois.")
     normalized_username = username.strip().lower()
     expiry = _expiry_timestamp(expires_at)
-    nonce = secrets.token_hex(32)
+    nonce = "v2:" + secrets.token_hex(32)
     password = _recoverable_password(nonce)
     salt = secrets.token_bytes(16)
     digest = _password_digest(password, salt)

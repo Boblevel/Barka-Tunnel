@@ -56,6 +56,26 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         status = findViewById(R.id.resellerStatus)
         statusCard = findViewById(R.id.resellerStatusCard)
         credentialsCard = findViewById(R.id.resellerCredentialsCard)
+        for (id in listOf(R.id.resellerLink, R.id.resellerUsername, R.id.resellerPassword)) {
+            val field = findViewById<TextView>(id)
+            val parent = field.parent as LinearLayout
+            val copy = MaterialButton(this).apply {
+                setText(R.string.reseller_copy_field)
+                setOnClickListener {
+                    if (id == R.id.resellerPassword && account?.isNull("password") != false) return@setOnClickListener
+                    getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(getString(R.string.reseller_credentials), field.text))
+                    Toast.makeText(this@ResellerPurchaseActivity, R.string.reseller_copied, Toast.LENGTH_SHORT).show()
+                }
+            }
+            parent.addView(copy, parent.indexOfChild(field) + 1, LinearLayout.LayoutParams(-1, -2))
+        }
+        (credentialsCard as LinearLayout).addView(MaterialButton(this).apply {
+            setText(R.string.reseller_join_team)
+            setOnClickListener {
+                runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(resellerTeamUrl))) }
+                    .onFailure { Toast.makeText(this@ResellerPurchaseActivity, resellerTeamUrl, Toast.LENGTH_LONG).show() }
+            }
+        }, LinearLayout.LayoutParams(-1, -2))
         account = state.optJSONObject("account")
         account?.let { showCredentials(it) }
         pay.setText(if (account == null) R.string.subscription_pay else R.string.reseller_renew)
@@ -92,6 +112,8 @@ class ResellerPurchaseActivity : AppCompatActivity() {
         return if (key != null) getString(key) else message.orEmpty()
             .replace(Regex("(?i)sous[- ]panel"), if (androidx.core.os.ConfigurationCompat.getLocales(resources.configuration)[0]?.language == "en") "reseller account" else "compte revendeur")
     }
+
+    private val resellerTeamUrl = "https://chat.whatsapp.com/CmsqtcjJKF08hdslcUgoc5?s=cl&p=a&iam=2"
 
     private fun showCredentials(value: JSONObject) {
         credentialsCard.visibility = View.VISIBLE
@@ -259,7 +281,8 @@ class ResellerPurchaseActivity : AppCompatActivity() {
             getString(R.string.reseller_link) to value.optString("panel_url"),
             getString(R.string.reseller_username) to value.optString("username"),
             getString(R.string.reseller_password) to passwordText(value),
-            getString(R.string.reseller_expiry) to expiryText(value)
-        ).joinToString("\n") { (label, text) -> "$label : $text" }
+            getString(R.string.reseller_expiry) to expiryText(value),
+            getString(R.string.reseller_team_label) to resellerTeamUrl
+        ).joinToString("\n\n") { (label, text) -> "$label :\n$text" }
     }
 }

@@ -106,6 +106,7 @@ class AdminRedeemCodeListItem(BaseModel):
     waiting_usage_count: int = 0
     usage_count: int
     created_at: str
+    activation_dates: list[str] = Field(default_factory=list)
     last_redeemed_at: str | None = None
     last_expires_at: str | None = None
 
@@ -201,7 +202,7 @@ class AdminResellerRenewRequest(BaseModel):
 
 class ResellerLoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=200)
-    password: str = Field(min_length=12, max_length=200)
+    password: str = Field(min_length=8, max_length=200)
 
     @field_validator("username", mode="before")
     @classmethod

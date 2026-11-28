@@ -60,7 +60,7 @@ class VideoGuideTest {
         assertEquals(View.VISIBLE, web.visibility)
         assertEquals(activity.getString(R.string.video_guide_slow), status.text.toString())
         shadowOf(web).webChromeClient.onReceivedTitle(web, "guide-1-ready")
-        assertEquals(activity.getString(R.string.video_guide_intro), status.text.toString())
+        assertEquals(View.GONE, status.visibility)
     }
 
     @Test fun errorsStayVisibleWithoutARetryButton() = withPlayer { activity, dialog, web, status ->
@@ -132,7 +132,7 @@ class VideoGuideTest {
         client.onReceivedTitle(web, "guide-1-error-153")
         assertEquals(activity.getString(R.string.video_guide_loading), status.text.toString())
         client.onReceivedTitle(web, "guide-2-playing")
-        assertEquals(activity.getString(R.string.video_guide_intro), status.text.toString())
+        assertEquals(View.GONE, status.visibility)
         client.onReceivedTitle(web, "guide-2-media-error-2")
         assertEquals(activity.getString(R.string.video_guide_unavailable), status.text.toString())
     }

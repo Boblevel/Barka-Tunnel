@@ -256,6 +256,16 @@ def list_redeem_codes(limit: int | None = 100, *, connection=None, offset: int =
             """,
             (now, now, safe_limit, max(0, offset)),
         ).fetchall()
+        activations = {int(row["id"]): [] for row in rows}
+        ids = list(activations)
+        for start in range(0, len(ids), 200):
+            batch = ids[start:start + 200]
+            marks = ",".join("?" for _ in batch)
+            for usage in cx.execute(
+                f"SELECT redeem_code_id,redeemed_at FROM redeem_usages WHERE redeem_code_id IN ({marks}) ORDER BY redeemed_at,id",
+                batch,
+            ):
+                activations[int(usage["redeem_code_id"])].append(iso(usage["redeemed_at"]))
     finally:
         if connection is None:
             cx.close()
@@ -279,11 +289,12 @@ def list_redeem_codes(limit: int | None = 100, *, connection=None, offset: int =
                 "duration_seconds": int(row["duration_seconds"]),
                 "max_users": int(row["max_users"]),
                 "usage_count": usage_count,
-                "all_users_finished": usage_count > 0 and active_usage_count == 0,
+                "all_users_finished": usage_count >= int(row["max_users"]) and active_usage_count == 0,
                 "unfinished_usage_count": active_usage_count,
                 "waiting_usage_count": int(row["waiting_usage_count"] or 0),
                 "created_at": iso(int(row["created_at"])),
                 "last_redeemed_at": iso(row["last_redeemed_at"]),
+                "activation_dates": activations[int(row["id"])],
                 "last_expires_at": iso(row["last_expires_at"]),
             }
         )

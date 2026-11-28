@@ -39,7 +39,7 @@ def test_custom_quota_stops_with_account(env,monkeypatch):
     assert rs.reseller_quota(account['id'])['limit'] == 0
 
 
-def test_redeem_all_finished_even_with_unused_seats(env,monkeypatch):
+def test_redeem_unused_seats_prevent_finished_status(env,monkeypatch):
     _, svc, _, ops, _, main, _ = env
     now = svc.now_ts()
     monkeypatch.setattr(svc,'now_ts',lambda:now)
@@ -49,10 +49,10 @@ def test_redeem_all_finished_even_with_unused_seats(env,monkeypatch):
     assert svc.redeem_activation_code('lot23-shared-a',code)[0]
     now += 3601
     row = ops.list_redeem_codes()[0]
-    assert row['all_users_finished'] and row['status'] == 'active'
+    assert not row['all_users_finished'] and row['status'] == 'active'
     with client_for(main) as client:
         reply=client.get('/v1/admin/redeem-codes')
-        assert reply.status_code == 200 and reply.json()[0]['all_users_finished']
+        assert reply.status_code == 200 and not reply.json()[0]['all_users_finished']
     assert svc.redeem_activation_code('lot23-shared-b',code)[0]
     assert not ops.list_redeem_codes()[0]['all_users_finished']
 

@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 class VpnShareFieldsTest {
     @Test fun credentialsAreSeparatedAndClearedWhenSharingStops() {
         val field=VpnShareService::class.java.getDeclaredField("state").apply {isAccessible=true}
-        field.set(null,VpnShareService.State("192.168.43.1",36399,"test-password"))
+        field.set(null,VpnShareService.State("192.168.43.1",36399,"01234567"))
         val controller=Robolectric.buildActivity(VpnToolsActivity::class.java,
             Intent(RuntimeEnvironment.getApplication(),VpnToolsActivity::class.java).putExtra("share",true)).setup()
         try {
@@ -27,7 +27,7 @@ class VpnShareFieldsTest {
             val activity=controller.get()
             assertEquals(View.GONE,activity.findViewById<View>(R.id.toolValue).visibility)
             for ((id,value) in listOf(R.id.shareAddress to "192.168.43.1",R.id.sharePort to "36399",
-                R.id.shareUsername to "Barka",R.id.sharePassword to "test-password")) {
+                R.id.shareUsername to "Barka",R.id.sharePassword to "01234567")) {
                 val view=activity.findViewById<TextView>(id)
                 assertEquals(value,view.text.toString());assertTrue(view.isTextSelectable)
             }

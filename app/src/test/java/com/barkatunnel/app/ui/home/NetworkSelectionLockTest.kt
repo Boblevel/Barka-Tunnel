@@ -55,6 +55,13 @@ class NetworkSelectionLockTest {
         runtime(BarkaVpnService.RuntimeConnectionState.DISCONNECTED)
         call(a,"showNetworkDialog")
         val dialog=ShadowDialog.getLatestDialog();assertTrue(dialog.isShowing)
+        val telecel=dialog.findViewById<View>(R.id.optionTelecel)
+        val tiktok=dialog.findViewById<View>(R.id.optionTiktok)
+        val rows=telecel.parent as android.view.ViewGroup
+        assertSame(rows,tiktok.parent)
+        assertEquals(rows.indexOfChild(telecel)+1,rows.indexOfChild(tiktok))
+        val ids=NetworkOption.ALL.map { it.id }
+        assertEquals(ids.indexOf("telecel_bf")+1,ids.indexOf("moov_tiktok"))
         flag(a,"connectionStartRequested",true)
         dialog.findViewById<View>(R.id.optionOrange).performClick()
         assertFalse(dialog.isShowing)

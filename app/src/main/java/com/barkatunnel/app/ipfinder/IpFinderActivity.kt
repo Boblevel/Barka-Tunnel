@@ -82,7 +82,7 @@ class IpFinderActivity : AppCompatActivity() {
     private fun renderSearchState() {
         searching = IpSearchService.active
         stopButton.visibility = if (searching) View.VISIBLE else View.INVISIBLE
-        ipInput.isEnabled = !searching
+        ipInput.isEnabled = false
         refreshNetworkState()
     }
 
@@ -116,11 +116,10 @@ class IpFinderActivity : AppCompatActivity() {
         wifiWarning = findViewById(R.id.wifiWarning)
 
         ipInput.setText(loadSearchPattern(this))
-        if (usesOrangeRules(this)) {
-            ipInput.keyListener = null
-            ipInput.setTextIsSelectable(true)
-            findViewById<TextView>(R.id.ipPatternHelp).setText(R.string.ip_finder_orange_patterns)
-        }
+        ipInput.keyListener = null
+        ipInput.setTextIsSelectable(false)
+        ipInput.isEnabled = false
+        ipInput.isFocusable = false
         ipInput.doAfterTextChanged { if (!searching) refreshNetworkState() }
 
         findViewById<android.view.View>(R.id.backButton).setOnClickListener {
@@ -375,7 +374,7 @@ class IpFinderActivity : AppCompatActivity() {
         statusText.text = message
         statusText.setTextColor(ContextCompat.getColor(this, colorRes))
         stopButton.visibility = View.INVISIBLE
-        ipInput.isEnabled = true
+        ipInput.isEnabled = false
         refreshNetworkState()
     }
 
@@ -531,38 +530,6 @@ class IpFinderActivity : AppCompatActivity() {
             context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE)
                 .getString("selected_network_id", null) in listOf("orange_bf", "orange_bf_v2")
 
-        private fun loadSearchPattern(context: Context): String {
-            if (usesOrangeRules(context)) return OrangeIpPolicy.PATTERNS
-            val preferences = context.getSharedPreferences(
-                PREFERENCES_NAME,
-                Context.MODE_PRIVATE
-            )
-            val savedPattern = preferences.getString(KEY_SEARCH_PATTERN, "")
-                .orEmpty()
-            val resolvedPattern = savedPattern.ifBlank { DEFAULT_SEARCH_PATTERN }
-            val patterns = resolvedPattern
-                .replace(LEGACY_IP_SEQUENCE, UPDATED_IP_SEQUENCE)
-                .split(Regex("[;,\\n]+"))
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-            // Upgrade the previous built-in list, preserving genuinely custom filters.
-            val previousDefaults = DEFAULT_SEARCH_PATTERN.split(';').filterNot { it in setOf("10.46", "100.80") }.toSet()
-            val currentPatterns = if (patterns.toSet() == previousDefaults) DEFAULT_SEARCH_PATTERN.split(';') else patterns
-            val migratedPattern = currentPatterns.filterNot { pattern ->
-                    pattern.removePrefix("=")
-                        .removePrefix("^")
-                        .removeSuffix("$")
-                        .trim() in RETIRED_IP_PREFIXES
-                }
-                .joinToString(";")
-                .ifBlank { if (patterns.isNotEmpty()) DEFAULT_SEARCH_PATTERN.replace(',', ';') else "" }
-
-            if (migratedPattern != savedPattern) {
-                preferences.edit()
-                    .putString(KEY_SEARCH_PATTERN, migratedPattern)
-                    .apply()
-            }
-            return migratedPattern
-        }
+        private fun loadSearchPattern(context: Context): String = OrangeIpPolicy.PATTERNS
     }
 }

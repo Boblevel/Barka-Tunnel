@@ -49,13 +49,11 @@ class IpFinderUpdate112Test {
         assertFalse(IpFinderActivity.isIpCompatible(context, "10.148.1.2"))
     }
 
-    @Test fun savedPatternsAreMigratedWithoutRemovingSimilarPrefixesOrCustomRules() {
-        preferences.edit().putString("search_pattern", "10.46;^10.46;=10.46;10.148,10.146\n^10.75;=192.168.1.2").commit()
+    @Test fun savedCustomRulesCannotOverrideTheLockedList() {
+        preferences.edit().putString("search_pattern", "10.146;=192.168.1.2").commit()
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
-        assertEquals("10.46;^10.46;=10.46;10.146;^10.75;=192.168.1.2", preferences.getString("search_pattern", ""))
-        assertTrue(IpFinderActivity.isIpCompatible(context, "10.146.1.2"))
-        assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.2"))
-        assertFalse(IpFinderActivity.isIpCompatible(context, "192.168.1.3"))
+        assertFalse(IpFinderActivity.isIpCompatible(context, "10.146.1.2"))
+        assertFalse(IpFinderActivity.isIpCompatible(context, "192.168.1.2"))
     }
 
     @Test fun onlyRetiredPatternsRestoreTheSupportedDefaults() {
@@ -64,28 +62,24 @@ class IpFinderUpdate112Test {
         assertTrue(IpFinderActivity.isIpCompatible(context, "10.161.1.2"))
     }
 
-    @Test fun previousDefaultListGetsNewPrefixesOnceWithoutChangingCustomFilters() {
-        preferences.edit().putString("search_pattern", "10.161;10.76;10.74;10.102;10.75;10.195;10.196;10.197;10.198;10.199;10.204;10.205;10.206;10.207;10.208;10.209;10.210;10.212;10.213;10.214;10.215;10.216;10.217;10.218;10.219;10.220;10.221;10.222;10.223;10.224;10.225;10.226;10.227;10.228;10.229;10.230;10.143;10.165;10.51;10.63;10.193;10.67;10.43;10.73").commit()
+    @Test fun oldInstallGetsNewPrefixesWithoutAnEditablePreference() {
+        preferences.edit().putString("search_pattern", "10.161;10.46").commit()
         repeat(2) {
-            assertTrue(IpFinderActivity.isIpCompatible(context, "10.46.1.2"))
-            assertTrue(IpFinderActivity.isIpCompatible(context, "100.80.1.2"))
-            assertEquals(46, preferences.getString("search_pattern", "")!!.split(';').size)
+            for (ip in listOf("10.41.1.2", "10.77.1.2", "10.46.1.2", "100.80.1.2"))
+                assertTrue(ip, IpFinderActivity.isIpCompatible(context, ip))
         }
         preferences.edit().putString("search_pattern", "=192.168.1.1").commit()
-        assertFalse(IpFinderActivity.isIpCompatible(context, "100.80.1.2"))
-        assertEquals("=192.168.1.1", preferences.getString("search_pattern", ""))
+        assertFalse(IpFinderActivity.isIpCompatible(context, "192.168.1.1"))
+        assertTrue(IpFinderActivity.isIpCompatible(context, "10.41.1.2"))
     }
 
-    @Test fun removesRetiredPrefixesAndPreservesLaterUserEdits() {
-        preferences.edit().putString("search_pattern", "10.193;10.194;10.80;10.165").commit()
-        assertFalse(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
-        assertEquals("10.193;10.165",preferences.getString("search_pattern", ""))
-        preferences.edit().putString("search_pattern", "=192.168.1.1").commit()
-        assertFalse(IpFinderActivity.isIpCompatible(context, "10.194.1.2"))
-        assertTrue(IpFinderActivity.isIpCompatible(context, "192.168.1.1"))
+    @Test fun retiredPrefixesStayRejectedDespiteSavedRules() {
+        preferences.edit().putString("search_pattern", "10.194;10.148;10.80").commit()
+        for (ip in listOf("10.194.1.2", "10.148.1.2", "10.80.1.2"))
+            assertFalse(ip, IpFinderActivity.isIpCompatible(context, ip))
     }
 
-    @Test fun orangeRulesOverrideSavedWildcardsWithoutChangingOtherNetworks() {
+    @Test fun lockedRulesOverrideSavedWildcards() {
         context.getSharedPreferences("barka_home_preferences", Context.MODE_PRIVATE).edit()
             .putString("selected_network_id", "orange_bf").commit()
         for (filter in listOf("", "10", "=10.155.127.179", "^10", "10.155;10.161")) {
@@ -100,6 +94,10 @@ class IpFinderUpdate112Test {
             val input = controller.get().findViewById<android.widget.EditText>(R.id.ipInput)
             assertEquals(OrangeIpPolicy.PATTERNS, input.text.toString())
             assertNull(input.keyListener)
+            assertFalse(input.isEnabled)
+            assertFalse(input.isFocusable)
+            assertFalse(input.isTextSelectable)
+            assertEquals(View.GONE, (input.parent as View).visibility)
         } finally { controller.pause().stop().destroy() }
     }
 

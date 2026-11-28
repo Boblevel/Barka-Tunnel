@@ -51,11 +51,16 @@ class VpnToolsActivity : AppCompatActivity() {
         action = findViewById(R.id.toolAction); progress = findViewById(R.id.toolProgress)
         addresses = findViewById(R.id.toolAddresses)
         findViewById<View>(R.id.toolBack).setOnClickListener { finish() }
-        findViewById<TextView>(R.id.toolTitle).setText(if (isShare) R.string.vpn_share_title else R.string.vpn_speed_title)
+        findViewById<TextView>(R.id.toolTitle).apply {
+            setText(if (isShare) R.string.vpn_share_title else R.string.vpn_speed_title)
+            isAllCaps = isShare
+            if (isShare) textSize = 21f
+        }
         findViewById<TextView>(R.id.toolHelp).apply {
             visibility = View.VISIBLE
             setText(if (isShare) R.string.share_start_instructions else R.string.vpn_speed_help)
         }
+        findViewById<View>(R.id.shareTitleBalance).visibility = if (isShare) View.VISIBLE else View.GONE
         addresses.visibility = if (isShare) View.VISIBLE else View.GONE
         findViewById<View>(R.id.shareAddressLabel).visibility = if (isShare) View.VISIBLE else View.GONE
         value.visibility = if (isShare) View.GONE else View.VISIBLE

@@ -57,7 +57,7 @@
             android:gravity="center"
             android:padding="8dp"
             android:text="@string/video_guide_hint"
-            android:textColor="?attr/barkaAccent"
+            android:textColor="#E60012"
             android:textSize="13sp"
             android:textStyle="bold"
             android:visibility="gone" />

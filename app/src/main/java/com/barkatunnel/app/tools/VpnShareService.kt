@@ -59,7 +59,7 @@ class VpnShareService : Service() {
     companion object {
         const val USERNAME = "Barka"
         internal fun newPassword(): String {
-            val alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+            val alphabet = "0123456789"
             val random = SecureRandom()
             return CharArray(8) { alphabet[random.nextInt(alphabet.length)] }.concatToString()
         }
